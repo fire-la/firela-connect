@@ -1,6 +1,6 @@
 {
   "name": "@firela/billclaw-connect",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "OAuth service for BillClaw - provides web interface for financial data provider authentication",
   "type": "module",
   "main": "./dist/index.js",
