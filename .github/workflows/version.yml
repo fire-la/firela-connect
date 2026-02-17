@@ -9,9 +9,12 @@ on:
       - "billclaw-docs/**"
       - ".claude/**"
       - "CLAUDE.md"
-      - "**.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".changeset/README.md"
       - ".gitignore"
       - ".gitmodules"
+      # Note: .changeset/*.md files (except README) will trigger this workflow
   workflow_dispatch:
 
 jobs:
