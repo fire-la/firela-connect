@@ -124,9 +124,9 @@ async function startServer() {
   const webhookRoutes = createWebhookRoutes()
 
   // Apply rate limiting to webhook routes
-  app.use("/webhook/plaid", plaidRateLimit, webhookRoutes)
-  app.use("/webhook/gocardless", gocardlessRateLimit, webhookRoutes)
-  app.use("/webhook/test", testRateLimit, webhookRoutes)
+  // Note: Routes are defined as /plaid, /gocardless, /test in webhooks.ts
+  // so we mount at /webhook to get /webhook/plaid, /webhook/gocardless, /webhook/test
+  app.use("/webhook", plaidRateLimit, webhookRoutes)
 
   // Default route
   app.get("/", (_req, res) => {
