@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Dependency Unification** - Unify connect package dependency versions
 - [ ] **Phase 2: Code Deduplication** - Eliminate duplicate code across packages
-- [ ] **Phase 3: Test Coverage** - Increase test coverage for critical paths
+- [x] **Phase 3: Test Coverage** - Increase test coverage for critical paths
 - [ ] **Phase 4: Relay Reconnection** - Improve Relay WebSocket reconnection mechanism
 
 ## Phase Details
@@ -47,12 +47,12 @@ Plans:
 **Goal**: Increase test coverage for critical paths (CLI: 8.7%→80%, connect: 20%→80%)
 **Depends on**: Phase 2
 **Research**: Unlikely (internal testing, established patterns)
-**Plans**: 3 plans (2/3 complete)
+**Plans**: 3 plans
 
 Plans:
 - [x] 03-01: Add CLI command tests
 - [x] 03-02: Add connect package route tests
-- [ ] 03-03: Add integration tests for critical paths
+- [x] 03-03: Add integration tests for critical paths
 
 ### Phase 4: Relay Reconnection
 **Goal**: Improve Relay WebSocket reconnection mechanism (exponential backoff, state recovery)
@@ -74,5 +74,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Dependency Unification | 2/2 | Complete | 2026-02-23 |
 | 2. Code Deduplication | 2/2 | Complete | 2026-02-24 |
-| 3. Test Coverage | 2/3 | In progress | - |
+| 3. Test Coverage | 3/3 | Complete | 2026-02-24 |
 | 4. Relay Reconnection | 0/2 | Not started | - |
