@@ -349,6 +349,8 @@ export async function saveRelayCredentials(
           reconnectDelay: existingRelay?.reconnectDelay ?? 1000,
           maxReconnectDelay: existingRelay?.maxReconnectDelay ?? 300000,
           autoFallbackToPolling: existingRelay?.autoFallbackToPolling ?? true,
+          enableRecovery: existingRelay?.enableRecovery ?? true,
+          maxRecoveryEvents: existingRelay?.maxRecoveryEvents ?? 100,
         },
       },
     },

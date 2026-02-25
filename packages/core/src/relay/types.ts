@@ -31,6 +31,10 @@ export const MessageDirectionSchema = {
   EVENT_ACK: "event_ack",
   /** Server → Client: Connection state change */
   STATE_CHANGE: "state_change",
+  /** Client → Server: Request missed events after reconnection */
+  EVENT_RECOVERY: "event_recovery",
+  /** Server → Client: Response with missed events */
+  EVENT_RECOVERY_RESPONSE: "event_recovery_response",
 } as const
 
 export type MessageDirection = (typeof MessageDirectionSchema)[keyof typeof MessageDirectionSchema]
@@ -108,6 +112,26 @@ export interface StateChangeMessage {
 }
 
 /**
+ * Event recovery request message (Client → Server)
+ */
+export interface EventRecoveryMessage {
+  type: typeof MessageDirectionSchema.EVENT_RECOVERY
+  lastEventTimestamp: number
+  webhookId: string
+  timestamp: number
+}
+
+/**
+ * Event recovery response message (Server → Client)
+ */
+export interface EventRecoveryResponseMessage {
+  type: typeof MessageDirectionSchema.EVENT_RECOVERY_RESPONSE
+  events: WebhookEvent[]
+  recovered: boolean
+  timestamp: number
+}
+
+/**
  * Union type of all relay messages
  */
 export type RelayMessage =
@@ -119,6 +143,8 @@ export type RelayMessage =
   | WebhookEventMessage
   | EventAckMessage
   | StateChangeMessage
+  | EventRecoveryMessage
+  | EventRecoveryResponseMessage
 
 /**
  * Relay connection state
@@ -158,6 +184,10 @@ export interface RelayConnectionConfig {
   maxReconnectDelay: number
   /** Auto fallback to polling on failure */
   autoFallbackToPolling: boolean
+  /** Enable state recovery on reconnection */
+  enableRecovery: boolean
+  /** Maximum events to recover (0 = unlimited) */
+  maxRecoveryEvents: number
 }
 
 /**
@@ -178,6 +208,10 @@ export interface RelayConnectionStats {
   eventsAcked: number
   /** Last error message */
   lastError?: string
+  /** Timestamp of last successfully processed event */
+  lastEventTimestamp?: number
+  /** Total number of events recovered after reconnection */
+  eventsRecovered: number
 }
 
 /**

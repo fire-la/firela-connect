@@ -45,6 +45,7 @@ export class RelayWebSocketClient {
       reconnectAttempts: 0,
       eventsReceived: 0,
       eventsAcked: 0,
+      eventsRecovered: 0,
     }
   }
 
@@ -437,6 +438,8 @@ export async function createRelayClient(
       reconnectDelay: relayConfig.reconnectDelay ?? 1000,
       maxReconnectDelay: relayConfig.maxReconnectDelay ?? 300000,
       autoFallbackToPolling: relayConfig.autoFallbackToPolling ?? true,
+      enableRecovery: relayConfig.enableRecovery ?? true,
+      maxRecoveryEvents: relayConfig.maxRecoveryEvents ?? 100,
     },
     context,
   )

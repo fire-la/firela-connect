@@ -85,6 +85,15 @@ export const RelayWebhookConfigSchema = z.object({
    * Automatically fallback to polling if relay unavailable
    */
   autoFallbackToPolling: z.boolean().default(true),
+  /**
+   * Enable state recovery on reconnection
+   * When enabled, client requests missed events from server after reconnect
+   */
+  enableRecovery: z.boolean().default(true),
+  /**
+   * Maximum number of events to recover (0 = unlimited)
+   */
+  maxRecoveryEvents: z.number().int().min(0).default(100),
 })
 export type RelayWebhookConfig = z.infer<typeof RelayWebhookConfigSchema>
 
