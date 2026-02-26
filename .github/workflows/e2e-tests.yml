@@ -73,6 +73,8 @@ jobs:
               "host": "localhost"
             },
             "plaid": {
+              "clientId": "${{ secrets.PLAID_CLIENT_ID }}",
+              "secret": "${{ secrets.PLAID_SECRET }}",
               "environment": "sandbox"
             },
             "storage": {
@@ -81,7 +83,7 @@ jobs:
           }
           EOF
           echo "Created test config at ~/.firela/billclaw/config.json"
-          cat ~/.firela/billclaw/config.json
+          # Don't print config as it contains secrets
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
