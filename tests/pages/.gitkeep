@@ -1,0 +1,24 @@
+# Page Object Model Directory
+
+This directory contains Page Object Model classes for E2E tests.
+
+## Base Classes
+
+- `base-page.ts` - Abstract base class with common functionality
+
+## Page Objects
+
+Create page objects for each major page/feature:
+- `login-page.ts` - Login page interactions
+- `dashboard-page.ts` - Dashboard page interactions
+- etc.
+
+## Usage
+
+```typescript
+import { BasePage } from './base-page'
+
+class MyPage extends BasePage {
+  // Page-specific methods
+}
+```

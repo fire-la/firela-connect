@@ -1,0 +1,15 @@
+# Test Fixtures Directory
+
+This directory contains test fixtures and test data for E2E tests.
+
+## Contents
+
+- Mock data for OAuth flows
+- Test credentials (use environment variables for real credentials)
+- Shared test utilities and helpers
+
+## Usage
+
+```typescript
+import { testCredentials } from './test-credentials'
+```

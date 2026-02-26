@@ -1,0 +1,25 @@
+# E2E Test Directory
+
+This directory contains end-to-end tests for BillClaw using Playwright.
+
+## Structure
+
+- `auth/` - Authentication flow tests (Plaid OAuth, Gmail OAuth)
+- `sync/` - Transaction sync tests
+- `export/` - Export functionality tests
+
+## Running Tests
+
+```bash
+# Run all E2E tests
+npx playwright test
+
+# Run specific browser
+npx playwright test --project=chromium
+
+# Run in headed mode
+npx playwright test --headed
+
+# Debug mode
+npx playwright test --debug
+```
