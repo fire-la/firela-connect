@@ -114,7 +114,7 @@
     <h1>Connect Gmail</h1>
     <p class="subtitle">BillClaw Connect - Gmail Integration</p>
 
-    <div id="status" class="status loading">
+    <div id="status" class="status loading" style="display: none;">
       Initializing...
     </div>
 
@@ -123,7 +123,7 @@
       We only read emails with bills and invoices - your personal emails remain private.
     </p>
 
-    <button id="authBtn" class="btn" disabled>Loading...</button>
+    <button id="authBtn" class="btn">Authorize Gmail</button>
 
     <div class="footer">
       OAuth 2.0 + PKCE for secure authentication
@@ -201,10 +201,8 @@
           authBtn.disabled = false;
         }
       } else {
-        // Normal page load
-        authBtn.textContent = 'Authorize Gmail';
-        authBtn.disabled = false;
-        statusEl.style.display = 'none';
+        // Normal page load - already in ready state (button enabled, status hidden)
+        // No action needed - initial HTML already has correct state
       }
     });
   </script>
