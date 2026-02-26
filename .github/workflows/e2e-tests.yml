@@ -1,11 +1,15 @@
 # E2E Tests Workflow
 #
-# Runs Playwright E2E tests on push and pull requests.
+# Runs Playwright E2E tests on push, pull requests, and scheduled daily.
 # Tests are stored in the billclaw-docs/testing submodule.
+#
+# Schedule: Daily at UTC 6:00 (Beijing 14:00)
 
 name: E2E Tests
 
 on:
+  schedule:
+    - cron: "0 6 * * *" # Daily at UTC 6:00 (Beijing 14:00)
   push:
     branches: [main]
     paths:
@@ -56,6 +60,27 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Create test config
+        run: |
+          mkdir -p ~/.firela/billclaw
+          cat > ~/.firela/billclaw/config.json << 'EOF'
+          {
+            "version": 1,
+            "connect": {
+              "port": 4456,
+              "host": "localhost"
+            },
+            "plaid": {
+              "environment": "sandbox"
+            },
+            "storage": {
+              "path": "~/.firela/billclaw"
+            }
+          }
+          EOF
+          echo "Created test config at ~/.firela/billclaw/config.json"
+          cat ~/.firela/billclaw/config.json
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
