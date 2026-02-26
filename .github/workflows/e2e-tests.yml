@@ -93,6 +93,22 @@ jobs:
         env:
           CI: true
 
+      - name: Run Healer on failed tests
+        if: failure()
+        run: |
+          echo "Running Healer Agent to diagnose and fix failed tests..."
+          npx playwright test --config billclaw-docs/testing/playwright.config.ts --healer || true
+        env:
+          CI: true
+          # Claude Code CLI Configuration (uses 智谱 AI endpoint)
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          ANTHROPIC_BASE_URL: https://open.bigmodel.cn/api/anthropic
+          API_TIMEOUT_MS: "3000000"
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-5
+          ANTHROPIC_DEFAULT_SONNET_MODEL: glm-5
+          ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.5-air
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: always()
