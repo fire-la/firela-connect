@@ -41,6 +41,24 @@
     "url": "https://github.com/fire-la/billclaw.git",
     "directory": "packages/cloudflare-worker"
   },
+  "cloudflare": {
+    "bindings": {
+      "PLAID_CLIENT_ID": {
+        "description": "Your Plaid client ID from dashboard.plaid.com"
+      },
+      "PLAID_SECRET": {
+        "description": "Your Plaid secret key (sandbox/development/production)"
+      },
+      "JWT_SECRET": {
+        "description": "Secret key for JWT tokens (any random 32+ char string)",
+        "generate": "random"
+      },
+      "SETUP_PASSWORD": {
+        "description": "One-time password to get your API token",
+        "generate": "random"
+      }
+    }
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250214.0",
     "@hono/zod-validator": "^0.4.3",
