@@ -10,16 +10,15 @@ compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
 # D1 Database (auto-provisioned by Deploy Button)
-# On first deploy, Cloudflare will create a new D1 database automatically
 [[d1_databases]]
 binding = "DB"
 database_name = "billclaw-data"
-database_id = "will-be-created-on-deploy"
+database_id = "ae67cab3-392b-4f46-b783-9a8e32b6250f"
 
 # KV Namespace for config and rate limiting (auto-provisioned)
 [[kv_namespaces]]
 binding = "CONFIG"
-id = "will-be-created-on-deploy"
+id = "59865e1e3cb34909ade239a6423f7fec"
 
 # Environment variables (non-sensitive defaults)
 [vars]
