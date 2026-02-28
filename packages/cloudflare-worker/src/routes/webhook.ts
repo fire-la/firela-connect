@@ -2,7 +2,7 @@
  * Webhook Routes
  *
  * Provides endpoints for receiving webhooks from Plaid.
- * Does NOT require JWT authentication - uses HMAC signature verification instead.
+ * Uses JWT-based verification via verifyPlaidWebhookJWT.
  *
  * @packageDocumentation
  */
@@ -19,14 +19,14 @@ export const webhookRoutes = new Hono<{ Bindings: Env }>()
  * Receive and process a Plaid webhook.
  *
  * This endpoint:
- * 1. Verifies the webhook signature using HMAC-SHA256
+ * 1. Verifies the webhook signature using JWT (Plaid-Verification header)
  * 2. Parses the webhook payload
  * 3. Returns 200 immediately (Plaid expects a fast response)
- * 4. Queues the sync operation for background processing (future)
+ * 4. Triggers async sync via waitUntil for SYNC_UPDATES_AVAILABLE
  *
  * Request body: Plaid webhook JSON payload
  * Headers:
- * - Plaid-Signature: HMAC-SHA256 signature (hex-encoded)
+ * - Plaid-Verification: JWT signature
  *
  * Response:
  * - 200: Webhook received and will be processed
@@ -36,13 +36,17 @@ export const webhookRoutes = new Hono<{ Bindings: Env }>()
 webhookRoutes.post("/plaid", async (c) => {
   // Get the raw body
   const body = await c.req.text()
-  const signature = c.req.header("Plaid-Signature") || null
+  const verificationHeader = c.req.header("Plaid-Verification") || null
 
-  // Process the webhook
-  const result = await processPlaidWebhook(c.env, body, signature)
+  // Process the webhook (pass execution context for waitUntil)
+  const result = await processPlaidWebhook(
+    c.env,
+    body,
+    verificationHeader,
+    c.executionCtx, // Pass execution context for async sync
+  )
 
-  // For debugging - you might want to log the webhook details
-  // In production, this would use the logger middleware
+  // For debugging - log webhook details
   console.log("[webhook]", {
     type: result.type,
     itemId: result.itemId,

@@ -190,7 +190,7 @@ export async function syncPlaidAccount(
     const initialCursor = lastSync?.cursor || undefined
 
     // PAGINATION: Collect all transactions across all pages
-    let currentCursor = initialCursor
+    let currentCursor: string = initialCursor ?? ""
     let hasMore = true
     const allAdded: any[] = []
     const allModified: any[] = []
@@ -217,8 +217,8 @@ export async function syncPlaidAccount(
       allRemoved.push(...(response.removed || []))
 
       // Update cursor and has_more for next iteration
-      currentCursor = response.next_cursor || ""
-      hasMore = response.has_more || false
+      currentCursor = response.next_cursor ?? ""
+      hasMore = response.has_more ?? false
 
       logger.debug?.(
         `Plaid sync page for ${account.id}: ${allAdded.length} added, ${allModified.length} modified, ${allRemoved.length} removed, hasMore: ${hasMore}`,
