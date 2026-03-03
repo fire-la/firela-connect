@@ -177,6 +177,44 @@ export const GoCardlessConfigSchema = z.object({
 export type GoCardlessConfig = z.infer<typeof GoCardlessConfigSchema>
 
 /**
+ * IGN region options
+ */
+export const IgnRegionSchema = z.enum(["cn", "us", "eu-core", "de"])
+export type IgnRegion = z.infer<typeof IgnRegionSchema>
+
+/**
+ * IGN upload mode options
+ */
+export const IgnUploadModeSchema = z.enum(["auto", "manual", "disabled"])
+export type IgnUploadMode = z.infer<typeof IgnUploadModeSchema>
+
+/**
+ * IGN upload configuration
+ */
+export const IgnUploadConfigSchema = z.object({
+  mode: IgnUploadModeSchema.default("manual"),
+  sourceAccount: z.string().min(1),
+  defaultCurrency: z.string().default("USD"),
+  defaultExpenseAccount: z.string().default("Expenses:Unknown"),
+  defaultIncomeAccount: z.string().default("Income:Unknown"),
+  filterPending: z.boolean().default(true),
+})
+export type IgnUploadConfig = z.infer<typeof IgnUploadConfigSchema>
+
+/**
+ * IGN (Beancount SaaS) integration configuration
+ *
+ * Allows BillClaw to upload transactions to the IGN platform.
+ */
+export const IgnConfigSchema = z.object({
+  apiUrl: z.string().url().default("http://localhost:3000/api/v1"),
+  apiToken: z.string().optional(),
+  region: IgnRegionSchema.default("us"),
+  upload: IgnUploadConfigSchema.optional(),
+})
+export type IgnConfig = z.infer<typeof IgnConfigSchema>
+
+/**
  * Gmail configuration
  */
 export const GmailConfigSchema = z.object({
@@ -212,7 +250,7 @@ export const ConnectConfigSchema = z.object({
    *
    * Examples:
    * - https://billclaw.yourdomain.com
-   * - https://abc123.ngrok.io (for tunneling)
+   * - https://billclaw-worker.your-subdomain.workers.dev (Cloudflare Worker)
    *
    * If not set, defaults to http://localhost:{port} for local development.
    */
@@ -283,6 +321,7 @@ export const BillclawConfigSchema = z.object({
   }),
   gocardless: GoCardlessConfigSchema.optional(),
   gmail: GmailConfigSchema.optional(),
+  ign: IgnConfigSchema.optional(),
   connect: ConnectConfigSchema.default({
     port: 4456,
     host: "localhost",

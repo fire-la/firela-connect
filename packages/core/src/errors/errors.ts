@@ -39,6 +39,9 @@ export enum ErrorCategory {
   // OAuth errors (OAuth flow and device code flow)
   OAUTH = "oauth",
 
+  // IGN errors
+  IGN = "ign",
+
   // General errors
   UNKNOWN = "unknown",
 }
@@ -133,6 +136,15 @@ export const ERROR_CODES = {
   OAUTH_GMAIL_AUTH_URL_FAILED: "OAUTH_GMAIL_AUTH_URL_FAILED",
   OAUTH_GMAIL_CODE_EXCHANGE_FAILED: "OAUTH_GMAIL_CODE_EXCHANGE_FAILED",
   OAUTH_GMAIL_API_ERROR: "OAUTH_GMAIL_API_ERROR",
+
+  // IGN errors
+  IGN_AUTH_FAILED: "IGN_AUTH_FAILED",
+  IGN_TOKEN_EXPIRED: "IGN_TOKEN_EXPIRED",
+  IGN_API_ERROR: "IGN_API_ERROR",
+  IGN_UPLOAD_FAILED: "IGN_UPLOAD_FAILED",
+  IGN_REGION_INVALID: "IGN_REGION_INVALID",
+  IGN_CONNECTION_FAILED: "IGN_CONNECTION_FAILED",
+  IGN_RATE_LIMITED: "IGN_RATE_LIMITED",
 
   // Generic
   UNKNOWN_ERROR: "UNKNOWN_ERROR",
@@ -344,6 +356,7 @@ function getCategoryEmoji(category: ErrorCategory): string {
     [ErrorCategory.RELAY]: "🔌",
     [ErrorCategory.WEBHOOK]: "🪝",
     [ErrorCategory.OAUTH]: "🔑",
+    [ErrorCategory.IGN]: "📤",
     [ErrorCategory.UNKNOWN]: "❓",
   }
   return emojis[category] || "❓"
@@ -1587,6 +1600,279 @@ export function logError(
 }
 
 /**
+ * Parse IGN API errors and *
+ * @param error - Error from IGN API
+ * @param context - Additional context (region, endpoint)
+ * @returns UserError with appropriate IGN error code
+ */
+export function parseIgnError(
+  error: Error | { code?: string; message?: string; status?: number },
+  context?: {
+    region?: string
+    endpoint?: string
+  },
+): UserError {
+  const message = error.message || String(error)
+  const statusCode = (error as any).status
+
+  // Convert context to ErrorEntities format
+  const entities: ErrorEntities = {}
+  if (context?.region) entities.region = context.region
+  if (context?.endpoint) entities.endpoint = context.endpoint
+
+  // Authentication failed (401)
+  if (statusCode === 401 || message.includes("401") || message.includes("Unauthorized")) {
+    return createUserError(
+      ERROR_CODES.IGN_AUTH_FAILED,
+      ErrorCategory.IGN,
+      "error",
+      true,
+      {
+        title: "IGN Authentication Failed",
+        message:
+          "Authentication with IGN API failed. Your API token may be invalid or expired.",
+        suggestions: [
+          "Check your IGN API token in the configuration file",
+          "Re-authenticate by obtaining a new token from IGN dashboard",
+          "Verify the token has not been revoked",
+        ],
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+      },
+      [
+        {
+          type: "config_change",
+          params: { setting: "ign_api_token" },
+          description: "Update IGN API token in configuration",
+        },
+      ],
+      entities,
+      error instanceof Error ? error : undefined,
+    )
+  }
+
+  // Token expired (401 with specific message)
+  if (
+    message.includes("expired") ||
+    message.includes("jwt") ||
+    message.includes("token")
+  ) {
+    return createUserError(
+      ERROR_CODES.IGN_TOKEN_EXPIRED,
+      ErrorCategory.IGN,
+      "error",
+      true,
+      {
+        title: "IGN Token Expired",
+        message:
+          "Your IGN API token has expired. Please obtain a new token from the IGN dashboard.",
+        suggestions: [
+          "Log into IGN dashboard to generate a new API token",
+          "Update the token in BillClaw configuration",
+          "Tokens typically expire after a period of time for security",
+        ],
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+      },
+      [
+        {
+          type: "config_change",
+          params: { setting: "ign_api_token" },
+          description: "Update IGN API token",
+        },
+      ],
+      entities,
+      error instanceof Error ? error : undefined,
+    )
+  }
+
+  // Rate limited (429)
+  if (statusCode === 429 || message.includes("429") || message.includes("rate limit")) {
+    return createUserError(
+      ERROR_CODES.IGN_RATE_LIMITED,
+      ErrorCategory.IGN,
+      "warning",
+      true,
+      {
+        title: "IGN Rate Limit Exceeded",
+        message:
+          "Too many requests to IGN API. You have exceeded the rate limit.",
+        suggestions: [
+          "Wait a few minutes before retrying",
+          "Reduce upload frequency if possible",
+          "Check IGN plan limits if consistent uploads are needed",
+        ],
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+      },
+      [
+        {
+          type: "retry",
+          delayMs: 60000,
+          description: "Retry after 1 minute",
+        },
+      ],
+      entities,
+      error instanceof Error ? error : undefined,
+    )
+  }
+
+  // Server error (5xx)
+  if (
+    statusCode >= 500 ||
+    message.includes("500") ||
+    message.includes("502") ||
+    message.includes("503") ||
+    message.includes("504")
+  ) {
+    return createUserError(
+      ERROR_CODES.IGN_API_ERROR,
+      ErrorCategory.IGN,
+      "warning",
+      true,
+      {
+        title: "IGN API Error",
+        message:
+          "The IGN API encountered an internal error. Please try again later.",
+        suggestions: [
+          "Wait a few minutes and try again",
+          "Check IGN service status if the issue persists",
+          "Contact IGN support if errors continue",
+        ],
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+      },
+      [
+        {
+          type: "retry",
+          delayMs: 30000,
+          description: "Retry after 30 seconds",
+        },
+      ],
+      entities,
+      error instanceof Error ? error : undefined,
+    )
+  }
+
+  // Connection failed
+  if (
+    message.includes("ECONNREFUSED") ||
+    message.includes("network") ||
+    message.includes("connection")
+  ) {
+    return createUserError(
+      ERROR_CODES.IGN_CONNECTION_FAILED,
+      ErrorCategory.NETWORK,
+      "error",
+      true,
+      {
+        title: "IGN Connection Failed",
+        message:
+          "Could not connect to IGN API. Please check your network connection.",
+        suggestions: [
+          "Verify your internet connection is working",
+          "Check if IGN service is accessible",
+          "Try again in a few moments",
+        ],
+      },
+      [
+        {
+          type: "retry",
+          delayMs: 10000,
+          description: "Retry after 10 seconds",
+        },
+      ],
+      entities,
+      error instanceof Error ? error : undefined,
+    )
+  }
+
+  // Invalid region
+  if (message.includes("region") || message.includes("invalid")) {
+    return createUserError(
+      ERROR_CODES.IGN_REGION_INVALID,
+      ErrorCategory.CONFIG,
+      "error",
+      true,
+      {
+        title: "IGN Region Invalid",
+        message:
+          "The configured IGN region is not valid. Valid regions are: cn, us, eu-core, de.",
+        suggestions: [
+          "Check the region setting in configuration",
+          "Valid regions: cn, us, eu-core, de",
+          "Update to a valid region",
+        ],
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+      },
+      [
+        {
+          type: "config_change",
+          params: { setting: "ign_region" },
+          description: "Update IGN region configuration",
+        },
+      ],
+      entities,
+      error instanceof Error ? error : undefined,
+    )
+  }
+
+  // Generic upload failed
+  if (message.includes("upload") || message.includes("failed")) {
+    return createUserError(
+      ERROR_CODES.IGN_UPLOAD_FAILED,
+      ErrorCategory.IGN,
+      "error",
+      true,
+      {
+        title: "IGN Upload Failed",
+        message:
+          "Failed to upload transactions to IGN. Local data has been preserved.",
+        suggestions: [
+          "Check your network connection",
+          "Verify IGN API token is valid",
+          "Try uploading again later",
+          "Your transactions are safely stored locally",
+        ],
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+      },
+      [
+        {
+          type: "retry",
+          delayMs: 30000,
+          description: "Retry upload after 30 seconds",
+        },
+      ],
+      entities,
+      error instanceof Error ? error : undefined,
+    )
+  }
+
+  // Generic IGN error
+  return createUserError(
+    ERROR_CODES.IGN_API_ERROR,
+    ErrorCategory.IGN,
+    "error",
+    true,
+    {
+      title: "IGN API Error",
+      message: `An error occurred while communicating with IGN: ${message}`,
+      suggestions: [
+        "Check your network connection",
+        "Verify IGN configuration is correct",
+        "Try again later",
+      ],
+      docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+    },
+    [
+      {
+        type: "retry",
+        delayMs: 30000,
+        description: "Retry after 30 seconds",
+      },
+    ],
+    entities,
+    error instanceof Error ? error : undefined,
+  )
+}
+
+/**
  * Get troubleshooting guide URL for error category
  */
 export function getTroubleshootingUrl(category: ErrorCategory): string {
@@ -1605,6 +1891,7 @@ export function getTroubleshootingUrl(category: ErrorCategory): string {
     [ErrorCategory.FILE_SYSTEM]: `${baseUrl}#storage-issues`,
     [ErrorCategory.RELAY]: `${baseUrl}#webhook-relay-issues`,
     [ErrorCategory.WEBHOOK]: `${baseUrl}#webhook-relay-issues`,
+    [ErrorCategory.IGN]: `${baseUrl}#ign-integration`,
   }
 
   return urls[category] || baseUrl
