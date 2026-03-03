@@ -5,6 +5,7 @@
  * - IGN API client with retry logic
  * - Transaction transformation (BillClaw -> Plaid format)
  * - Upload status tracking
+ * - Upload service for orchestrating the upload flow
  *
  * @packageDocumentation
  */
@@ -30,3 +31,10 @@ export {
   UploadStatusStore,
   type IgnUploadStatus,
 } from "./upload-status.js"
+
+// Upload service
+export {
+  UploadService,
+  type UploadServiceResult,
+  type UploadOptions,
+} from "./upload-service.js"
