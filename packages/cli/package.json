@@ -59,6 +59,7 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
+    "@firela/api-types": "0.0.0-canary.ed674c1",
     "@firela/billclaw-core": "workspace:*",
     "chalk": "^5.4.0",
     "cli-table3": "^0.6.5",
