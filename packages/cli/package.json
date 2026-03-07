@@ -51,6 +51,7 @@
     "directory": "packages/cli"
   },
   "devDependencies": {
+    "@types/express": "^4.17.25",
     "@types/node": "^25.2.0",
     "@vitest/coverage-v8": "^4.0.18",
     "oxfmt": "^0.1.0",
@@ -60,10 +61,12 @@
   },
   "dependencies": {
     "@firela/api-types": "file:../../../../ign/milestone-v1.2/libs/api-types",
+    "@firela/billclaw-connect": "workspace:*",
     "@firela/billclaw-core": "workspace:*",
     "chalk": "^5.4.0",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
+    "express": "^4.18.2",
     "inquirer": "^12.0.0",
     "open": "^11.0.0",
     "ora": "^8.1.0"

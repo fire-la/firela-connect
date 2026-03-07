@@ -9,6 +9,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./routes/config": {
+      "types": "./dist/routes/config.d.ts",
+      "import": "./dist/routes/config.js"
+    },
+    "./routes/plaid": {
+      "types": "./dist/routes/plaid.d.ts",
+      "import": "./dist/routes/plaid.js"
+    },
+    "./routes/gmail": {
+      "types": "./dist/routes/gmail.d.ts",
+      "import": "./dist/routes/gmail.js"
     }
   },
   "files": [
