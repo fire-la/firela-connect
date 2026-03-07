@@ -15,12 +15,14 @@
     "dist",
     "src"
   ],
-  "scripts": {
+    "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "oxlint",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@firela/billclaw-core": "workspace:*",
@@ -43,17 +45,23 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.2.0",
     "@types/node": "^25.2.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
+    "@vitest/ui": "^3.0.0",
     "autoprefixer": "^10.4.16",
+    "happy-dom": "^17.0.0",
+    "jsdom": "^26.0.0",
     "oxfmt": "^0.1.0",
     "oxlint": "^0.15.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.8.0",
-    "vite": "^5.2.0"
+    "vite": "^5.2.0",
+    "vitest": "^3.0.0"
   },
   "engines": {
     "node": ">=20.0.0"
