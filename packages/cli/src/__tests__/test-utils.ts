@@ -75,6 +75,13 @@ export function createMockConfig(
       port: 4456,
       host: "localhost",
     },
+    export: {
+      format: "beancount",
+      outputPath: "~/.firela/billclaw/exports",
+      filePrefix: "transactions",
+      includePending: false,
+      currencyColumn: true,
+    },
     ...overrides,
   }
 }
