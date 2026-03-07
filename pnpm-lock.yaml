@@ -29,6 +29,9 @@ importers:
       '@firela/api-types':
         specifier: file:../../../../ign/milestone-v1.2/libs/api-types
         version: file:../../ign/milestone-v1.2/libs/api-types
+      '@firela/billclaw-connect':
+        specifier: workspace:*
+        version: link:../connect
       '@firela/billclaw-core':
         specifier: workspace:*
         version: link:../core
@@ -41,6 +44,9 @@ importers:
       commander:
         specifier: ^13.1.0
         version: 13.1.0
+      express:
+        specifier: ^4.18.2
+        version: 4.22.1
       inquirer:
         specifier: ^12.0.0
         version: 12.11.1(@types/node@25.2.1)
@@ -51,6 +57,9 @@ importers:
         specifier: ^8.1.0
         version: 8.2.0
     devDependencies:
+      '@types/express':
+        specifier: ^4.17.25
+        version: 4.17.25
       '@types/node':
         specifier: ^25.2.0
         version: 25.2.1
