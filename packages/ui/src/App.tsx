@@ -7,6 +7,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { ConnectPage } from "@/components/pages/ConnectPage"
 import { SyncPage } from "@/components/pages/SyncPage"
+import { ExportPage } from "@/components/pages/ExportPage"
+import { IgnPage } from "@/components/pages/IgnPage"
+import { WebhooksPage } from "@/components/pages/WebhooksPage"
 import { PlaidConnectPage } from "@/components/pages/PlaidConnectPage"
 import { GmailConnectPage } from "@/components/pages/GmailConnectPage"
 
@@ -43,7 +46,7 @@ export function App() {
           path="/export"
           element={
             <PageLayout>
-              <PlaceholderPage title="Export Settings" />
+              <ExportPage />
             </PageLayout>
           }
         />
@@ -51,7 +54,7 @@ export function App() {
           path="/ign"
           element={
             <PageLayout>
-              <PlaceholderPage title="IGN Integration" />
+              <IgnPage />
             </PageLayout>
           }
         />
@@ -59,7 +62,7 @@ export function App() {
           path="/webhooks"
           element={
             <PageLayout>
-              <PlaceholderPage title="Webhook Configuration" />
+              <WebhooksPage />
             </PageLayout>
           }
         />
@@ -83,16 +86,6 @@ function HomePage() {
       <p className="text-gray-600">
         Use the sidebar to navigate to configuration sections.
       </p>
-    </div>
-  )
-}
-
-// Placeholder page for routes not yet implemented
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="placeholder-page">
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">{title}</h1>
-      <p className="text-gray-600">This section is coming soon.</p>
     </div>
   )
 }
