@@ -332,3 +332,29 @@
     display: block;
   }
 }
+
+/* Page Layout Styles */
+.page-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 240px;
+  min-height: 100vh;
+}
+
+.placeholder-page {
+  padding: 24px;
+  text-align: center;
+  padding-top: 100px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+  }
+}
