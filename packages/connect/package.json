@@ -14,6 +14,10 @@
       "types": "./dist/routes/config.d.ts",
       "import": "./dist/routes/config.js"
     },
+    "./routes/credentials": {
+      "types": "./dist/routes/credentials.d.ts",
+      "import": "./dist/routes/credentials.js"
+    },
     "./routes/plaid": {
       "types": "./dist/routes/plaid.d.ts",
       "import": "./dist/routes/plaid.js"
@@ -21,6 +25,10 @@
     "./routes/gmail": {
       "types": "./dist/routes/gmail.d.ts",
       "import": "./dist/routes/gmail.js"
+    },
+    "./routes/webhooks": {
+      "types": "./dist/routes/webhooks.d.ts",
+      "import": "./dist/routes/webhooks.js"
     }
   },
   "files": [

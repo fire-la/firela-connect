@@ -11,8 +11,10 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import open from "open"
 import { configRouter } from "@firela/billclaw-connect/routes/config"
+import { credentialsRouter } from "@firela/billclaw-connect/routes/credentials"
 import { plaidRouter } from "@firela/billclaw-connect/routes/plaid"
 import { gmailRouter } from "@firela/billclaw-connect/routes/gmail"
+import { createWebhookRoutes } from "@firela/billclaw-connect/routes/webhooks"
 
 /**
  * Get the path to UI static files
@@ -52,12 +54,30 @@ async function runUi(
   const app = express()
   const uiDistPath = getUiDistPath()
 
+  // Parse JSON bodies for API routes
+  app.use(express.json())
+
+  // Health check endpoint
+  app.get("/health", (_req: Request, res: Response) => {
+    res.json({
+      status: "ok",
+      service: "billclaw-ui",
+      version: process.env.npm_package_version || "0.0.0",
+    })
+  })
+
   // API routes
   app.use("/api", configRouter)
+
+  // Credentials routes (for Direct mode polling)
+  app.use("/api/connect", credentialsRouter)
 
   // OAuth routes (for Plaid/Gmail connection flows)
   app.use("/oauth/plaid", plaidRouter)
   app.use("/oauth/gmail", gmailRouter)
+
+  // Webhook routes (for Plaid/GoCardless webhooks)
+  app.use("/webhook", createWebhookRoutes())
 
   // Serve static UI files
   app.use(express.static(uiDistPath))
