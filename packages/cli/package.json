@@ -60,7 +60,6 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "@firela/api-types": "file:../../../../ign/milestone-v1.2/libs/api-types",
     "@firela/billclaw-connect": "workspace:*",
     "@firela/billclaw-core": "workspace:*",
     "chalk": "^5.4.0",
