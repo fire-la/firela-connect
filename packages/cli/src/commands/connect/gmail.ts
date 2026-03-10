@@ -100,7 +100,7 @@ async function runDirectConnectMode(
 
   // Generate session ID
   const sessionId = randomUUID()
-  const authorizeUrl = `${publicUrl}/gmail.html?session=${sessionId}`
+  const authorizeUrl = `${publicUrl}/connect/gmail?session=${sessionId}`
 
   console.log("")
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

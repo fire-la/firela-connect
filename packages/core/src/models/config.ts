@@ -205,10 +205,21 @@ export type IgnUploadConfig = z.infer<typeof IgnUploadConfigSchema>
  * IGN (Beancount SaaS) integration configuration
  *
  * Allows BillClaw to upload transactions to the IGN platform.
+ *
+ * Authentication flow:
+ * 1. User gets accessToken from Firela Vault app
+ * 2. accessToken is used to exchange for JWT token via /auth/sessions/anonymous
+ * 3. JWT token is cached in keychain and auto-refreshed before expiry
  */
 export const IgnConfigSchema = z.object({
-  apiUrl: z.string().url().default("http://localhost:3334/api/v1"),
-  apiToken: z.string().optional(),
+  apiUrl: z.string().url().default("https://ign-dev.firela.io/api/v1"),
+  /**
+   * Access token for authentication (obtained from Firela Vault app)
+   *
+   * This is used to exchange for a JWT token via the /auth/sessions/anonymous endpoint.
+   * The JWT token is then cached in the system keychain and auto-refreshed.
+   */
+  accessToken: z.string().optional(),
   region: IgnRegionSchema.default("us"),
   upload: IgnUploadConfigSchema.optional(),
 })

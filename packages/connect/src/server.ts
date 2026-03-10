@@ -117,18 +117,19 @@ async function startServer() {
   app.use("/oauth/plaid", plaidRouter)
   app.use("/oauth/gmail", gmailRouter)
 
-  // Redirect /oauth/plaid/link to / with session parameter (for Direct mode)
+  // Redirect /oauth/plaid/link to /connect/plaid with session parameter (for Direct mode)
+  // Updated: Uses React SPA route instead of old index.html
   app.get("/oauth/plaid/link", (req, res) => {
     const session = req.query.session
     if (session) {
-      res.redirect(`/?session=${session}`)
+      res.redirect(`/connect/plaid?session=${session}`)
     } else {
-      res.redirect("/")
+      res.redirect("/connect/plaid")
     }
   })
 
-  // Redirect /gmail.html to /gmail.html with session (for Gmail Direct mode)
-  // Note: gmail.html already handles session extraction from URL
+  // Redirect /connect/gmail to handle session parameter (for Gmail Direct mode)
+  // Updated: Uses React SPA route instead of old gmail.html
 
   // Credential polling API (for Direct mode OAuth completion)
   app.use("/api/connect", credentialsRouter)
