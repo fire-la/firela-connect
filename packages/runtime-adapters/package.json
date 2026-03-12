@@ -1,0 +1,69 @@
+{
+  "name": "@firela/runtime-adapters",
+  "version": "0.1.0",
+  "description": "Platform-agnostic runtime adapters for Cloudflare Workers, Node.js, and edge runtimes",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./cloudflare": {
+      "types": "./dist/cloudflare.d.ts",
+      "import": "./dist/cloudflare.js",
+      "default": "./dist/cloudflare.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js",
+      "default": "./dist/node.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "default": "./dist/types.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "oxlint",
+    "format": "oxfmt src/",
+    "format:write": "oxfmt -w src/",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "runtime",
+    "adapters",
+    "cloudflare-workers",
+    "nodejs",
+    "edge-computing",
+    "platform-agnostic"
+  ],
+  "author": "fire-la",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fire-la/billclaw.git",
+    "directory": "packages/runtime-adapters"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250310.0",
+    "@types/node": "^25.2.0",
+    "oxfmt": "^0.1.0",
+    "oxlint": "^0.15.0",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
