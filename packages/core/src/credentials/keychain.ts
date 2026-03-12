@@ -10,25 +10,53 @@
  * - Plaid access tokens
  * - Gmail refresh tokens
  * - GoCardless access tokens
+ *
+ * In Cloudflare Workers environment, keytar is not available.
+ * Use CredentialStrategy.MEMORY or Workers Secrets instead.
  */
 
 import type { Logger } from "../errors/errors.js"
+
+// Detect Cloudflare Workers environment
+const isWorkers =
+  typeof (globalThis as unknown as { WebSocketPair?: unknown }).WebSocketPair !==
+  "undefined"
 
 // Keytar is an optional dependency - will be installed by adapter
 let keytarModule: typeof import("keytar") | null = null
 
 /**
+ * Check if running in Cloudflare Workers environment
+ */
+export function isWorkersEnvironment(): boolean {
+  return isWorkers
+}
+
+/**
+ * Check if keytar is available in the current environment
+ * Returns false in Workers environment or if keytar is not installed
+ */
+export function isKeytarAvailable(): boolean {
+  return keytarModule !== null && !isWorkers
+}
+
+/**
  * Initialize keytar module
  * Call this before using keychain functions
+ *
+ * In Workers environment, this is a no-op
  */
 export async function initKeytar(): Promise<void> {
+  // Skip keytar entirely in Workers environment
+  if (isWorkers) {
+    return
+  }
+
   if (!keytarModule) {
     try {
       keytarModule = await import("keytar")
     } catch {
-      throw new Error(
-        "keytar is not installed. Install it with: npm install keytar",
-      )
+      // keytar not installed - will throw on use
     }
   }
 }
@@ -44,6 +72,7 @@ const KEYCHAIN_SERVICE = "billclaw"
  * @param key - Credential identifier (e.g., "plaid_access_token:account123")
  * @param value - Sensitive value to store (e.g., access token)
  * @param logger - Optional logger for audit logging
+ * @throws Error if keytar is not available (Workers or not installed)
  */
 export async function setCredential(
   key: string,
@@ -52,10 +81,20 @@ export async function setCredential(
 ): Promise<void> {
   await initKeytar()
 
-  const keytar = keytarModule!
+  if (isWorkers) {
+    throw new Error(
+      "Keychain is not available in Cloudflare Workers. Use CredentialStrategy.MEMORY or Workers Secrets instead.",
+    )
+  }
+
+  if (!keytarModule) {
+    throw new Error(
+      "keytar is not installed. Install it with: npm install keytar",
+    )
+  }
 
   try {
-    await keytar.setPassword(KEYCHAIN_SERVICE, key, value)
+    await keytarModule.setPassword(KEYCHAIN_SERVICE, key, value)
     logger?.debug?.(`Stored credential in keychain: ${key}`)
   } catch (error) {
     logger?.error?.(`Failed to store credential in keychain: ${key}`, error)
@@ -73,6 +112,7 @@ export async function setCredential(
  * @param key - Credential identifier
  * @param logger - Optional logger for audit logging
  * @returns The credential value, or null if not found
+ * @throws Error if keytar is not available (Workers or not installed)
  */
 export async function getCredential(
   key: string,
@@ -80,10 +120,20 @@ export async function getCredential(
 ): Promise<string | null> {
   await initKeytar()
 
-  const keytar = keytarModule!
+  if (isWorkers) {
+    throw new Error(
+      "Keychain is not available in Cloudflare Workers. Use CredentialStrategy.MEMORY or Workers Secrets instead.",
+    )
+  }
+
+  if (!keytarModule) {
+    throw new Error(
+      "keytar is not installed. Install it with: npm install keytar",
+    )
+  }
 
   try {
-    const value = await keytar.getPassword(KEYCHAIN_SERVICE, key)
+    const value = await keytarModule.getPassword(KEYCHAIN_SERVICE, key)
 
     if (value !== null) {
       logger?.debug?.(`Retrieved credential from keychain: ${key}`)
@@ -111,6 +161,7 @@ export async function getCredential(
  * @param key - Credential identifier
  * @param logger - Optional logger for audit logging
  * @returns true if the credential was deleted, false if it didn't exist
+ * @throws Error if keytar is not available (Workers or not installed)
  */
 export async function deleteCredential(
   key: string,
@@ -118,10 +169,20 @@ export async function deleteCredential(
 ): Promise<boolean> {
   await initKeytar()
 
-  const keytar = keytarModule!
+  if (isWorkers) {
+    throw new Error(
+      "Keychain is not available in Cloudflare Workers. Use CredentialStrategy.MEMORY or Workers Secrets instead.",
+    )
+  }
+
+  if (!keytarModule) {
+    throw new Error(
+      "keytar is not installed. Install it with: npm install keytar",
+    )
+  }
 
   try {
-    const result = await keytar.deletePassword(KEYCHAIN_SERVICE, key)
+    const result = await keytarModule.deletePassword(KEYCHAIN_SERVICE, key)
 
     if (result) {
       logger?.debug?.(`Deleted credential from keychain: ${key}`)
