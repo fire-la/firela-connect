@@ -1,0 +1,146 @@
+/**
+ * BillClaw UI - Hono Server Entry Point
+ *
+ * Unified server for Cloudflare Workers deployment.
+ * Provides both API routes and serves the React SPA.
+ *
+ * @packageDocumentation
+ */
+
+import { Hono } from "hono"
+import { cors } from "hono/cors"
+import { logger } from "hono/logger"
+
+/**
+ * Environment bindings for Cloudflare Workers
+ */
+export type Env = {
+  DB: D1Database
+  CONFIG: KVNamespace
+  PLAID_CLIENT_ID: string
+  PLAID_SECRET: string
+  PLAID_ENV: string
+  PLAID_WEBHOOK_SECRET: string
+  JWT_SECRET: string
+}
+
+/**
+ * Main Hono application with type bindings
+ */
+const app = new Hono<{ Bindings: Env }>()
+
+// ============================================================================
+// Global Middleware
+// ============================================================================
+
+// Request logging
+app.use("*", logger())
+
+// CORS - allows frontend to call the API
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    exposeHeaders: ["Content-Length", "X-Request-Id"],
+    maxAge: 600,
+    credentials: true,
+  }),
+)
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+/**
+ * Health check endpoint
+ */
+app.get("/health", (c) => {
+  return c.json({
+    status: "ok",
+    service: "billclaw-ui",
+    version: "0.0.1",
+  })
+})
+
+/**
+ * Root API info endpoint
+ */
+app.get("/api", (c) => {
+  return c.json({
+    service: "BillClaw UI",
+    version: "0.0.1",
+    description: "Unified UI and API service",
+    endpoints: {
+      health: "/health",
+      // Routes will be added in subsequent plans:
+      // oauth: "/api/oauth/*",
+      // config: "/api/config",
+      // webhooks: "/webhook/*",
+    },
+  })
+})
+
+// ============================================================================
+// API Routes (to be added in subsequent plans)
+// ============================================================================
+
+// TODO: Plan 13.2-02 - OAuth routes
+// import plaidRoutes from './routes/oauth/plaid'
+// import gmailRoutes from './routes/oauth/gmail'
+// app.route('/api/oauth/plaid', plaidRoutes)
+// app.route('/api/oauth/gmail', gmailRoutes)
+
+// TODO: Plan 13.2-03 - Webhook and Config routes
+// import webhookRoutes from './routes/webhooks'
+// import configRoutes from './routes/config'
+// app.route('/webhook', webhookRoutes)
+// app.route('/api', configRoutes)
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+// Handle 404 - Route not found
+app.notFound((c) => {
+  // For API routes, return JSON error
+  if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/webhook/")) {
+    return c.json(
+      {
+        success: false,
+        error: "Not Found",
+        errorCode: "NOT_FOUND",
+        path: c.req.path,
+      },
+      404,
+    )
+  }
+
+  // For other routes, return a simple 404 (SPA routing handled by wrangler assets)
+  return c.text("Not Found", 404)
+})
+
+// Global error handler
+app.onError((err, c) => {
+  console.error("Error:", err)
+
+  return c.json(
+    {
+      success: false,
+      error: err.message || "Internal Server Error",
+      errorCode: "INTERNAL_ERROR",
+    },
+    500,
+  )
+})
+
+/**
+ * Export the Hono app for Cloudflare Workers runtime
+ */
+export default app
+
+/**
+ * Export types for consumers
+ */
+export type AppType = typeof app
