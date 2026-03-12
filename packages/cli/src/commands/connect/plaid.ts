@@ -6,7 +6,7 @@
  */
 
 import type { CliCommand, CliContext } from "../registry.js"
-import { success } from "../../utils/format.js"
+import { success, logError } from "../../utils/format.js"
 import { Spinner } from "../../utils/progress.js"
 import {
   selectConnectionMode,

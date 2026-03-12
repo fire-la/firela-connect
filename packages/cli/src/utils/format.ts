@@ -178,3 +178,16 @@ export function warn(message: string): void {
 export function info(message: string): void {
   console.log(chalk.blue("ℹ") + " " + message)
 }
+
+/**
+ * Log error with context
+ */
+export function logError(
+  logger: { error: (msg: string, ...args: unknown[]) => void },
+  err: Error | unknown,
+  context?: Record<string, unknown>
+): void {
+  const errorMessage = err instanceof Error ? err.message : String(err)
+  const contextStr = context ? ` ${JSON.stringify(context)}` : ""
+  logger.error(`Error: ${errorMessage}${contextStr}`)
+}

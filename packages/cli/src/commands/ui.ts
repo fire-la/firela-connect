@@ -2,31 +2,24 @@
  * UI command
  *
  * Start BillClaw configuration UI server.
+ * Uses wrangler dev for local development with Cloudflare Workers compatibility.
  */
 
 import type { CliCommand, CliContext } from "./registry.js"
-import express, { type Request, type Response } from "express"
-import { createServer } from "node:http"
+import { spawn } from "node:child_process"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import open from "open"
-import { configRouter } from "@firela/billclaw-connect/routes/config"
-import { credentialsRouter } from "@firela/billclaw-connect/routes/credentials"
-import { plaidRouter } from "@firela/billclaw-connect/routes/plaid"
-import { gmailRouter } from "@firela/billclaw-connect/routes/gmail"
-import { createWebhookRoutes } from "@firela/billclaw-connect/routes/webhooks"
 
 /**
- * Get the path to UI static files
+ * Get the path to UI package
  */
-function getUiDistPath(): string {
-  // Resolve UI dist path relative to this CLI package
-  // In development: packages/ui/dist
-  // In production (after pnpm build): ../../../ui/dist relative to dist/commands/ui.js
+function getUiPackagePath(): string {
+  // Resolve UI package path relative to this CLI package
   const currentDir = path.dirname(fileURLToPath(import.meta.url))
-  const uiDistPath = path.resolve(currentDir, "..", "..", "..", "ui", "dist")
+  const uiPath = path.resolve(currentDir, "..", "..", "..", "ui")
 
-  return uiDistPath
+  return uiPath
 }
 
 /**
@@ -39,80 +32,86 @@ async function runUi(
   const { runtime } = context
 
   // Extract options from Commander Command object if needed
-  // Commander passes the Command instance as the last parameter
   let opts: Record<string, unknown>
   if (options && typeof options === "object" && "opts" in options) {
-    // This is a Commander Command object, extract options using opts()
     opts = (options as { opts: () => Record<string, unknown> }).opts()
   } else {
     opts = options || {}
   }
 
-  const port = parseInt(opts.port as string, 10) || 3000
+  const port = parseInt(opts.port as string, 10) || 8787
   const shouldOpen = opts.open !== false
 
-  const app = express()
-  const uiDistPath = getUiDistPath()
+  const uiPath = getUiPackagePath()
 
-  // Parse JSON bodies for API routes
-  app.use(express.json())
+  runtime.logger.info(`Starting BillClaw UI server on port ${port}...`)
+  runtime.logger.info(`UI package path: ${uiPath}`)
 
-  // Health check endpoint
-  app.get("/health", (_req: Request, res: Response) => {
-    res.json({
-      status: "ok",
-      service: "billclaw-ui",
-      version: process.env.npm_package_version || "0.0.0",
+  // Use wrangler dev to start the UI server
+  const wranglerArgs = [
+    "run",
+    "wrangler",
+    "dev",
+    "--port",
+    String(port),
+    "--local",
+  ]
+
+  return new Promise<void>((resolve, reject) => {
+    const serverProcess = spawn("pnpm", wranglerArgs, {
+      cwd: uiPath,
+      stdio: "pipe",
+      shell: true,
     })
-  })
 
-  // API routes
-  app.use("/api", configRouter)
+    let serverReady = false
 
-  // Credentials routes (for Direct mode polling)
-  app.use("/api/connect", credentialsRouter)
+    serverProcess.stdout?.on("data", (data) => {
+      const output = data.toString()
+      process.stdout.write(data)
 
-  // OAuth routes (for Plaid/Gmail connection flows)
-  app.use("/oauth/plaid", plaidRouter)
-  app.use("/oauth/gmail", gmailRouter)
+      // Check if server is ready
+      if (!serverReady && output.includes(`http://localhost:${port}`)) {
+        serverReady = true
+        runtime.logger.info(`BillClaw UI running at http://localhost:${port}`)
 
-  // Webhook routes (for Plaid/GoCardless webhooks)
-  app.use("/webhook", createWebhookRoutes())
-
-  // Serve static UI files
-  app.use(express.static(uiDistPath))
-
-  // SPA fallback - serve index.html for all unmatched routes
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(uiDistPath, "index.html"))
-  })
-
-  const server = createServer(app)
-
-  // Return a promise that resolves when server closes
-  // This keeps the CLI process running until user stops it
-  return new Promise<void>((resolve) => {
-    server.listen(port, () => {
-      runtime.logger.info(`BillClaw UI running at http://localhost:${port}`)
-
-      if (shouldOpen) {
-        open(`http://localhost:${port}`).catch((err) => {
-          runtime.logger.warn(`Failed to open browser: ${err}`)
-        })
+        if (shouldOpen) {
+          open(`http://localhost:${port}`).catch((err) => {
+            runtime.logger.warn(`Failed to open browser: ${err}`)
+          })
+        }
       }
+    })
+
+    serverProcess.stderr?.on("data", (data) => {
+      process.stderr.write(data)
+    })
+
+    serverProcess.on("error", (err) => {
+      runtime.logger.error(`Failed to start UI server: ${err}`)
+      reject(err)
     })
 
     // Graceful shutdown
     const shutdown = () => {
       runtime.logger.info("Shutting down UI server...")
-      server.close(() => {
-        runtime.logger.info("UI server stopped")
+      serverProcess.kill("SIGTERM")
+      setTimeout(() => {
+        serverProcess.kill("SIGKILL")
         resolve()
-      })
+      }, 5000)
     }
 
     process.on("SIGINT", shutdown)
     process.on("SIGTERM", shutdown)
+
+    // Handle server exit
+    serverProcess.on("exit", (code) => {
+      if (code !== 0 && code !== null) {
+        runtime.logger.error(`UI server exited with code ${code}`)
+      }
+      resolve()
+    })
   })
 }
 
@@ -126,7 +125,7 @@ export const uiCommand: CliCommand = {
     {
       flags: "-p, --port <port>",
       description: "Port to run UI server",
-      default: "3000",
+      default: "8787",
     },
     {
       flags: "--no-open",

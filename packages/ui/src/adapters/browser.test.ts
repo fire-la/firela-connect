@@ -101,7 +101,7 @@ describe("BrowserAdapter", () => {
     it("should initiate connection and return URL", async () => {
       const mockUrl = "https://oauth.example.com/authorize"
       fetchMock.mockResolvedValueOnce({
-        json: () => Promise.resolve({ url: mockUrl }),
+        json: () => Promise.resolve({ success: true, data: { url: mockUrl } }),
       })
 
       const result = await adapter.connectAccount("plaid")

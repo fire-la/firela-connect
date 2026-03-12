@@ -13,6 +13,13 @@ import type {
   SystemStatus,
 } from "./types"
 
+// API response wrapper types
+interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
 /**
  * Browser-based adapter using fetch API
  */
@@ -21,8 +28,9 @@ export class BrowserAdapter implements UIAdapter {
 
   async getConfig(): Promise<BillclawConfig> {
     const res = await fetch(`${this.baseUrl}/config`)
-    const { data } = await res.json()
-    return data
+    const json: ApiResponse<BillclawConfig> = await res.json()
+    if (!json.data) throw new Error("No config data returned")
+    return json.data
   }
 
   async updateConfig(config: Partial<BillclawConfig>): Promise<void> {
@@ -32,23 +40,24 @@ export class BrowserAdapter implements UIAdapter {
       body: JSON.stringify(config),
     })
     if (!res.ok) {
-      const { error } = await res.json()
-      throw new Error(error || "Failed to update config")
+      const json: ApiResponse<unknown> = await res.json()
+      throw new Error(json.error || "Failed to update config")
     }
   }
 
   async listAccounts(): Promise<Account[]> {
     const res = await fetch(`${this.baseUrl}/accounts`)
-    const { data } = await res.json()
-    return data
+    const json: ApiResponse<Account[]> = await res.json()
+    return json.data || []
   }
 
   async connectAccount(provider: "plaid" | "gmail"): Promise<{ url: string }> {
     const res = await fetch(`${this.baseUrl}/connect/${provider}`, {
       method: "POST",
     })
-    const { url } = await res.json()
-    return { url }
+    const json: ApiResponse<{ url: string }> = await res.json()
+    if (!json.data) throw new Error("No connection URL returned")
+    return json.data
   }
 
   async disconnectAccount(accountId: string): Promise<void> {
@@ -56,8 +65,8 @@ export class BrowserAdapter implements UIAdapter {
       method: "DELETE",
     })
     if (!res.ok) {
-      const { error } = await res.json()
-      throw new Error(error || "Failed to disconnect account")
+      const json: ApiResponse<unknown> = await res.json()
+      throw new Error(json.error || "Failed to disconnect account")
     }
   }
 
@@ -65,19 +74,22 @@ export class BrowserAdapter implements UIAdapter {
     const res = await fetch(`${this.baseUrl}/sync/${accountId}`, {
       method: "POST",
     })
-    const { data } = await res.json()
-    return data
+    const json: ApiResponse<SyncResult> = await res.json()
+    if (!json.data) throw new Error("No sync result returned")
+    return json.data
   }
 
   async getSyncStatus(): Promise<SyncStatus> {
     const res = await fetch(`${this.baseUrl}/sync/status`)
-    const { data } = await res.json()
-    return data
+    const json: ApiResponse<SyncStatus> = await res.json()
+    if (!json.data) throw new Error("No sync status returned")
+    return json.data
   }
 
   async getSystemStatus(): Promise<SystemStatus> {
     const res = await fetch(`${this.baseUrl}/system/status`)
-    const { data } = await res.json()
-    return data
+    const json: ApiResponse<SystemStatus> = await res.json()
+    if (!json.data) throw new Error("No system status returned")
+    return json.data
   }
 }
