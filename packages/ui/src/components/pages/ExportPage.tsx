@@ -18,6 +18,7 @@ import {
 import { useConfigStore } from "@/stores/configStore"
 import { createAdapter } from "@/adapters"
 import "@/styles/firela-theme.css"
+import type { ApiResultResponse } from "@/types/api"
 
 // Export config type
 interface ExportConfig {
@@ -100,9 +101,9 @@ export function ExportPage() {
         throw new Error(`Test failed: ${response.statusText}`)
       }
 
-      const result = await response.json()
+      const result: ApiResultResponse = await response.json()
       if (result.success) {
-        setTestResult({ success: true, message: result.message })
+        setTestResult({ success: true, message: result.message || "Configuration valid" })
         toast.success("Export configuration is valid")
       } else {
         setTestResult({

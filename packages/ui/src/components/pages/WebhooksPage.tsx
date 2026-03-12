@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
 import "@/styles/firela-theme.css"
+import type { WebhookResultResponse } from "@/types/api"
 
 type ConnectionMode = "auto" | "direct" | "relay" | "polling"
 
@@ -109,14 +110,14 @@ export function WebhooksPage() {
         body: JSON.stringify(formData),
       })
 
-      const result = await response.json()
+      const result: WebhookResultResponse = await response.json()
 
       if (result.success) {
-        toast.success(result.message)
-        setTestResult({ success: true, message: result.message })
+        toast.success(result.message || "Test successful")
+        setTestResult({ success: true, message: result.message || "Test successful" })
       } else {
-        toast.error(result.error)
-        setTestResult({ success: false, message: result.error })
+        toast.error(result.error || "Test failed")
+        setTestResult({ success: false, message: result.error || "Test failed" })
       }
     } catch (error) {
       const message =

@@ -6,6 +6,11 @@
  */
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "react-router-dom"
+import type {
+  LinkTokenResponse,
+  GmailAuthorizeResponse,
+  OAuthExchangeResponse,
+} from "@/types/api"
 
 export type OAuthStatus = "idle" | "loading" | "success" | "error"
 export type OAuthProvider = "plaid" | "gmail"
@@ -14,7 +19,7 @@ interface UseOAuthReturn {
   status: OAuthStatus
   error: string | null
   sessionId: string | null
-  startOAuth: () => Promise<void>
+  startOAuth: () => Promise<string | void>
   handleCallback: (code?: string, state?: string) => Promise<void>
 }
 
@@ -38,7 +43,7 @@ export function useOAuth(provider: OAuthProvider): UseOAuthReturn {
       if (provider === "plaid") {
         // For Plaid, we fetch a link token and use Plaid Link SDK
         const res = await fetch(`/oauth/plaid/link-token${sessionId ? `?session=${sessionId}` : ""}`)
-        const data = await res.json()
+        const data: LinkTokenResponse = await res.json()
 
         if (!data.success) {
           throw new Error(data.error || "Failed to get link token")
@@ -52,20 +57,24 @@ export function useOAuth(provider: OAuthProvider): UseOAuthReturn {
         const res = await fetch(
           `/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}${sessionId ? `&session=${sessionId}` : ""}`
         )
-        const data = await res.json()
+        const data: GmailAuthorizeResponse = await res.json()
 
         if (!data.success) {
           throw new Error(data.error || "Failed to get authorization URL")
         }
 
         // Store state for callback verification
-        sessionStorage.setItem("gmail_oauth_state", data.state)
+        if (data.state) {
+          sessionStorage.setItem("gmail_oauth_state", data.state)
+        }
         if (sessionId) {
           sessionStorage.setItem("gmail_session_id", sessionId)
         }
 
         // Redirect to Gmail OAuth
-        window.location.href = data.authUrl
+        if (data.authUrl) {
+          window.location.href = data.authUrl
+        }
       }
     } catch (err) {
       setStatus("error")
@@ -105,7 +114,7 @@ export function useOAuth(provider: OAuthProvider): UseOAuthReturn {
           body: JSON.stringify(requestBody),
         })
 
-        const data = await res.json()
+        const data: OAuthExchangeResponse = await res.json()
 
         if (!data.success) {
           throw new Error(data.error || "Token exchange failed")

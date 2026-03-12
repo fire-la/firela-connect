@@ -7,6 +7,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Loader2, CheckCircle, XCircle } from "lucide-react"
 import "@/styles/firela-theme.css"
+import type { GmailAuthorizeResponse, OAuthExchangeResponse } from "@/types/api"
 
 type PageStatus = "ready" | "authorizing" | "exchanging" | "success" | "error"
 
@@ -47,7 +48,7 @@ export function GmailConnectPage() {
           body: JSON.stringify(requestBody),
         })
 
-        const data = await res.json()
+        const data: OAuthExchangeResponse = await res.json()
 
         if (data.success) {
           setStatus("success")
@@ -82,11 +83,13 @@ export function GmailConnectPage() {
         : `/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}`
 
       const res = await fetch(url)
-      const data = await res.json()
+      const data: GmailAuthorizeResponse = await res.json()
 
-      if (data.success) {
+      if (data.success && data.authUrl) {
         // Store state for callback verification
-        sessionStorage.setItem("gmail_oauth_state", data.state)
+        if (data.state) {
+          sessionStorage.setItem("gmail_oauth_state", data.state)
+        }
         // Redirect to Gmail OAuth page
         window.location.href = data.authUrl
       } else {

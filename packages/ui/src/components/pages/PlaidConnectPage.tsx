@@ -7,6 +7,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Loader2, CheckCircle, XCircle } from "lucide-react"
 import "@/styles/firela-theme.css"
+import type { LinkTokenResponse, OAuthExchangeResponse } from "@/types/api"
 
 // Type for Plaid Link handler
 declare global {
@@ -46,7 +47,7 @@ export function PlaidConnectPage() {
           ? `/oauth/plaid/link-token?session=${sessionId}`
           : "/oauth/plaid/link-token"
         const res = await fetch(url)
-        const data = await res.json()
+        const data: LinkTokenResponse = await res.json()
 
         if (data.success) {
           setLinkToken(data.linkToken)
@@ -104,7 +105,7 @@ export function PlaidConnectPage() {
             body: JSON.stringify(requestBody),
           })
 
-          const data = await res.json()
+          const data: OAuthExchangeResponse = await res.json()
 
           if (data.success) {
             setStatus("success")
