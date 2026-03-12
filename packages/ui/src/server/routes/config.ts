@@ -291,11 +291,10 @@ configRoutes.delete("/accounts/:id", async (c) => {
  */
 configRoutes.post("/export/test", async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = (await c.req.json().catch(() => ({}))) as {
       format?: string
-      outputPath?: string
       filePrefix?: string
-    }>().catch(() => ({}))
+    }
     const { format, filePrefix } = body
 
     // Validate export format
@@ -349,11 +348,11 @@ configRoutes.post("/export/test", async (c) => {
  */
 configRoutes.post("/ign/test", async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = (await c.req.json().catch(() => ({}))) as {
       apiUrl?: string
       accessToken?: string
       region?: string
-    }>().catch(() => ({}))
+    }
     const { apiUrl, accessToken, region } = body
 
     const validRegions = ["cn", "us", "eu-core", "de"]
@@ -415,12 +414,12 @@ configRoutes.post("/ign/test", async (c) => {
  */
 configRoutes.post("/webhooks/test", async (c) => {
   try {
-    const body = await c.req.json<{
+    const body = (await c.req.json().catch(() => ({}))) as {
       mode?: string
       publicUrl?: string
       healthCheckEnabled?: boolean
       healthCheckTimeout?: number
-    }>().catch(() => ({}))
+    }
     const { mode, publicUrl, healthCheckEnabled, healthCheckTimeout } = body
 
     // Validate connection mode

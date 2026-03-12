@@ -99,11 +99,15 @@ app.route("/api/oauth/gmail", gmailRoutes)
 // Register credential routes for Direct mode
 app.route("/api/connect", credentialsRoutes)
 
-// TODO: Plan 13.2-03 - Webhook and Config routes
-// import webhookRoutes from './routes/webhooks'
-// import configRoutes from './routes/config'
-// app.route('/webhook', webhookRoutes)
-// app.route('/api', configRoutes)
+// Webhook and Config routes (Plan 13.2-03)
+import { webhookRoutes } from "./routes/webhooks.js"
+import { configRoutes } from "./routes/config.js"
+
+// Register webhook routes
+app.route("/webhook", webhookRoutes)
+
+// Register config routes (already under /api prefix)
+app.route("/api", configRoutes)
 
 // ============================================================================
 // Error Handling
