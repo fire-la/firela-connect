@@ -6,6 +6,7 @@
  * - Transaction transformation (BillClaw -> Plaid format)
  * - Upload status tracking
  * - Upload service for orchestrating the upload flow
+ * - Automatic JWT token management (IgnAuthManager)
  *
  * @packageDocumentation
  */
@@ -38,3 +39,9 @@ export {
   type UploadServiceResult,
   type UploadOptions,
 } from "./upload-service.js"
+
+// IGN Authentication Manager
+export {
+  IgnAuthManager,
+  type IgnAuthManagerConfig,
+} from "./ign-auth.js"

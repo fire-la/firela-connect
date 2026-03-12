@@ -6,13 +6,20 @@
  *
  * Key principle: Local data is ALWAYS preserved, even on upload failure.
  *
+ * Authentication:
+ * - Uses IgnAuthManager for automatic JWT token management
+ * - User provides accessToken (from Firela Vault app) in config
+ * - JWT token is cached in keychain and auto-refreshed
+ *
  * @packageDocumentation
  */
 
+import type { CredentialStore } from "../credentials/store.js"
 import type { Logger } from "../errors/errors.js"
 import type { IgnConfig, StorageConfig } from "../models/config.js"
 import type { Transaction } from "../storage/transaction-storage.js"
 import type { IgnUploadResult, ProviderSyncConfig } from "./ign-client.js"
+import { IgnAuthManager } from "./ign-auth.js"
 import { uploadTransactions } from "./ign-client.js"
 import { transformTransactionsToPlaidFormat } from "./transform.js"
 import { UploadStatusStore, type IgnUploadStatus } from "./upload-status.js"
@@ -61,7 +68,8 @@ export interface UploadOptions {
  *
  * @example
  * ```typescript
- * const service = new UploadService(ignConfig, storageConfig, logger)
+ * const credentialStore = await createCredentialStore({ strategy: CredentialStrategy.KEYCHAIN })
+ * const service = new UploadService(ignConfig, storageConfig, credentialStore, logger)
  *
  * if (await service.shouldUpload()) {
  *   const result = await service.uploadAccountTransactions('account-123')
@@ -71,13 +79,16 @@ export interface UploadOptions {
  */
 export class UploadService {
   private readonly statusStore: UploadStatusStore
+  private readonly authManager: IgnAuthManager
 
   constructor(
     private readonly ignConfig: IgnConfig,
     private readonly storageConfig: StorageConfig | undefined,
+    credentialStore: CredentialStore,
     private readonly logger: Logger,
   ) {
     this.statusStore = new UploadStatusStore(storageConfig)
+    this.authManager = new IgnAuthManager(ignConfig, credentialStore, logger)
   }
 
   /**
@@ -86,25 +97,42 @@ export class UploadService {
    * @returns true if upload should proceed
    */
   async shouldUpload(): Promise<boolean> {
-    // Check if IGN is configured
-    if (!this.ignConfig.apiToken) {
-      this.logger.debug?.("IGN upload disabled: no API token configured")
+    // Check if IGN is configured (accessToken required for auth)
+    if (!this.ignConfig.accessToken) {
+      this.logger.debug?.("Firela Vault upload disabled: no access token configured")
       return false
     }
 
     // Check if upload is enabled
     if (!this.ignConfig.upload) {
-      this.logger.debug?.("IGN upload disabled: no upload configuration")
+      this.logger.debug?.("Firela Vault upload disabled: no upload configuration")
       return false
     }
 
     // Check upload mode
     if (this.ignConfig.upload.mode === "disabled") {
-      this.logger.debug?.("IGN upload disabled: mode is 'disabled'")
+      this.logger.debug?.("Firela Vault upload disabled: mode is 'disabled'")
       return false
     }
 
     return true
+  }
+
+  /**
+   * Start background token refresh
+   *
+   * Keeps the JWT token valid for long-running processes.
+   * Call stopBackgroundRefresh() when done.
+   */
+  startBackgroundRefresh(): void {
+    this.authManager.startBackgroundRefresh()
+  }
+
+  /**
+   * Stop background token refresh
+   */
+  stopBackgroundRefresh(): void {
+    this.authManager.stopBackgroundRefresh()
   }
 
   /**
@@ -132,18 +160,18 @@ export class UploadService {
     const { days = 30, dryRun = false } = options
 
     // 1. Check IGN config
-    if (!this.ignConfig.apiToken) {
+    if (!this.ignConfig.accessToken) {
       throw createUserError(
         ERROR_CODES.IGN_AUTH_FAILED,
         ErrorCategory.IGN,
         "error",
         false,
         {
-          title: "IGN Not Configured",
-          message: "IGN API token is not configured. Please add your API token to the configuration.",
+          title: "Firela Vault Not Configured",
+          message: "Firela Vault access token is not configured. Please add your access token to the configuration.",
           suggestions: [
-            "Add ign.apiToken to your configuration file",
-            "Get your API token from the IGN dashboard",
+            "Add ign.accessToken to your configuration file",
+            "Get your access token from the Firela Vault app",
           ],
         },
         [],
@@ -158,8 +186,8 @@ export class UploadService {
         "error",
         false,
         {
-          title: "IGN Upload Not Configured",
-          message: "IGN upload configuration is missing. Please configure the upload settings.",
+          title: "Firela Vault Upload Not Configured",
+          message: "Firela Vault upload configuration is missing. Please configure the upload settings.",
           suggestions: [
             "Add ign.upload to your configuration file",
             "Set sourceAccount, defaultExpenseAccount, and defaultIncomeAccount",
@@ -230,13 +258,16 @@ export class UploadService {
     // 6. Upload to IGN
     try {
       this.logger.info?.(
-        `Uploading ${plaidTransactions.length} transactions to IGN (${this.ignConfig.region})...`,
+        `Uploading ${plaidTransactions.length} transactions to Firela Vault (${this.ignConfig.region})...`,
       )
+
+      // Get valid JWT token (auto-refresh if needed)
+      const apiToken = await this.authManager.ensureValidToken()
 
       const result = await uploadTransactions(
         {
           apiUrl: this.ignConfig.apiUrl,
-          apiToken: this.ignConfig.apiToken,
+          apiToken,
           region: this.ignConfig.region,
         },
         plaidTransactions,
@@ -254,7 +285,7 @@ export class UploadService {
       await this.statusStore.writeStatus(accountId, status)
 
       this.logger.info?.(
-        `IGN upload complete: ${result.imported} imported, ${result.skipped} skipped, ${result.pendingReview} pending review, ${result.failed} failed`,
+        `Firela Vault upload complete: ${result.imported} imported, ${result.skipped} skipped, ${result.pendingReview} pending review, ${result.failed} failed`,
       )
 
       return {
@@ -277,7 +308,7 @@ export class UploadService {
       await this.statusStore.writeStatus(accountId, status)
 
       this.logger.error?.(
-        `IGN upload failed for account ${accountId}. Local data preserved:`,
+        `Firela Vault upload failed for account ${accountId}. Local data preserved:`,
         errorMessage,
       )
 

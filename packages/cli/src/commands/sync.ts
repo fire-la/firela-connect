@@ -11,6 +11,8 @@ import {
   Billclaw,
   formatError,
   UploadService,
+  createCredentialStore,
+  CredentialStrategy,
   type IgnUploadResult,
 } from "@firela/billclaw-core"
 
@@ -243,8 +245,8 @@ async function handleUpload(
 ): Promise<{ accountId: string; result?: IgnUploadResult; error?: string } | null> {
   const config = await runtime.config.getConfig()
 
-  // Check if IGN is configured
-  if (!config.ign?.apiToken || !config.ign?.upload) {
+  // Check if IGN is configured (accessToken required for auth)
+  if (!config.ign?.accessToken || !config.ign?.upload) {
     return null
   }
 
@@ -257,9 +259,17 @@ async function handleUpload(
   }
 
   const storageConfig = await runtime.config.getStorageConfig()
+
+  // Create credential store for JWT token caching
+  const credentialStore = createCredentialStore({
+    strategy: CredentialStrategy.KEYCHAIN,
+    logger: runtime.logger,
+  })
+
   const uploadService = new UploadService(
     config.ign,
     storageConfig,
+    credentialStore,
     runtime.logger,
   )
 

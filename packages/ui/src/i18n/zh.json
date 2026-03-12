@@ -40,7 +40,7 @@
     "title": "IGN 设置",
     "description": "配置 IGN Beancount SaaS 平台集成。",
     "apiUrl": "API 地址",
-    "apiToken": "API 令牌",
+    "accessToken": "Access Token",
     "region": "区域",
     "regions": {
       "cn": "中国",

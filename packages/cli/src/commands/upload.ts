@@ -1,12 +1,17 @@
 /**
  * Upload command
  *
- * Upload transactions to IGN Beancount SaaS.
+ * Upload transactions to Firela Vault (IGN Beancount SaaS).
  */
 
 import type { CliCommand, CliContext } from "./registry.js"
 import { Spinner } from "../utils/progress.js"
-import { Billclaw, UploadService } from "@firela/billclaw-core"
+import {
+  Billclaw,
+  UploadService,
+  createCredentialStore,
+  CredentialStrategy,
+} from "@firela/billclaw-core"
 
 /**
  * Run upload command
@@ -19,22 +24,22 @@ async function runUpload(
   const billclaw = new Billclaw(runtime)
   const config = await runtime.config.getConfig()
 
-  // Check if IGN is configured
-  if (!config.ign?.apiToken) {
-    console.log("IGN is not configured. Please add your API token to the configuration.")
+  // Check if Firela Vault is configured
+  if (!config.ign?.accessToken) {
+    console.log("Firela Vault is not configured. Please add your access token to the configuration.")
     console.log("")
     console.log("Configuration example:")
     console.log("  ign:")
-    console.log("    apiUrl: http://localhost:3000/api/v1")
-    console.log("    apiToken: your-jwt-token-here")
-    console.log("    region: us")
+    console.log("    apiUrl: https://ign-dev.firela.io/api/v1")
+    console.log("    accessToken: your-access-token-from-app")
+    console.log("    region: cn")
     console.log("    upload:")
     console.log("      sourceAccount: Assets:Bank:Chase")
     return
   }
 
   if (!config.ign?.upload) {
-    console.log("IGN upload is not configured. Please add upload configuration.")
+    console.log("Firela Vault upload is not configured. Please add upload configuration.")
     console.log("")
     console.log("Configuration example:")
     console.log("  ign:")
@@ -50,15 +55,25 @@ async function runUpload(
   const dryRun = args.dryRun ?? false
   const storageConfig = await runtime.config.getStorageConfig()
 
+  // Create credential store for JWT token caching
+  const credentialStore = createCredentialStore({
+    strategy: CredentialStrategy.KEYCHAIN,
+    logger: runtime.logger,
+  })
+
   console.log("")
-  console.log(`Uploading transactions to IGN (region: ${config.ign.region})...`)
+  console.log(`Uploading transactions to Firela Vault (region: ${config.ign.region})...`)
   console.log("")
 
   const uploadService = new UploadService(
     config.ign,
     storageConfig,
+    credentialStore,
     runtime.logger,
   )
+
+  // Start background token refresh
+  uploadService.startBackgroundRefresh()
 
   // Get accounts to upload
   const accounts = await billclaw.getAccounts()
@@ -154,7 +169,7 @@ async function runUpload(
  */
 export const uploadCommand: CliCommand = {
   name: "upload",
-  description: "Upload transactions to IGN Beancount SaaS",
+  description: "Upload transactions to Firela Vault (IGN Beancount SaaS)",
   options: [
     {
       flags: "-a, --account <id>",

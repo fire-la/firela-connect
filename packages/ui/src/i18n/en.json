@@ -40,7 +40,7 @@
     "title": "IGN Settings",
     "description": "Configure integration with IGN Beancount SaaS platform.",
     "apiUrl": "API URL",
-    "apiToken": "API Token",
+    "accessToken": "Access Token",
     "region": "Region",
     "regions": {
       "cn": "China",

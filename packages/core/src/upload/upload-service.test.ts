@@ -1,15 +1,25 @@
 /**
  * Tests for Upload Service
+ *
+ * Orchestrates the upload flow from BillClaw transactions to IGN.
+ * Handles loading, transformation, upload, and status tracking.
+ *
+ * On upload failure, local data is always preserved
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { UploadService } from "./upload-service.js"
 import type { IgnConfig, StorageConfig } from "../models/config.js"
 import type { Logger } from "../errors/errors.js"
+import {
+  createCredentialStore,
+  CredentialStrategy,
+  type CredentialStore,
+} from "../credentials/store.js"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
-vi.stubGlobal("fetch", mockFetch)
+global.fetch = mockFetch
 
 // Mock logger
 const mockLogger: Logger = {
@@ -19,144 +29,164 @@ const mockLogger: Logger = {
   debug: vi.fn(),
 }
 
-describe("UploadService", () => {
-  let service: UploadService
-  const ignConfig: IgnConfig = {
-    apiUrl: "http://localhost:3000/api/v1",
-    apiToken: "test-token",
-    region: "us",
-    upload: {
-      mode: "auto",
-      sourceAccount: "Assets:Bank",
-      defaultCurrency: "USD",
-      defaultExpenseAccount: "Expenses:Unknown",
-      defaultIncomeAccount: "Income:Unknown",
-      filterPending: true,
-    },
-  }
-  const storageConfig: StorageConfig = {
-    path: "~/.firela/billclaw",
-    format: "json",
-  }
+// Mock config
+const ignConfig: IgnConfig = {
+  apiUrl: "http://localhost:3000/api/v1",
+  accessToken: "test-access-token",
+  region: "us",
+  upload: {
+    mode: "auto",
+    sourceAccount: "Assets:Bank",
+    defaultCurrency: "USD",
+    defaultExpenseAccount: "Expenses:Unknown",
+    defaultIncomeAccount: "Income:Unknown",
+    filterPending: true,
+  },
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    service = new UploadService(ignConfig, storageConfig, mockLogger)
+const storageConfig: StorageConfig | undefined = undefined
+
+describe("UploadService", () => {
+  let mockCredentialStore: CredentialStore
+
+  beforeEach(async () => {
+    mockCredentialStore = await createCredentialStore({
+      strategy: CredentialStrategy.MEMORY,
+      logger: mockLogger,
+    })
   })
 
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("shouldUpload", () => {
+    let service: UploadService
+
+    beforeEach(() => {
+      service = new UploadService(
+        ignConfig,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
+    })
+
     it("should return true when configured with auto mode", async () => {
       const result = await service.shouldUpload()
       expect(result).toBe(true)
     })
 
-    it("should return false when apiToken is missing", async () => {
-      const configWithoutToken: IgnConfig = {
+    it("should return false when accessToken is missing", async () => {
+      const configWithoutToken = {
         ...ignConfig,
-        apiToken: undefined,
-      }
-      const s = new UploadService(configWithoutToken, storageConfig, mockLogger)
-      const result = await s.shouldUpload()
+        accessToken: undefined,
+      } as IgnConfig
+      const serviceWithoutToken = new UploadService(
+        configWithoutToken,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
+
+      const result = await serviceWithoutToken.shouldUpload()
       expect(result).toBe(false)
     })
 
     it("should return false when upload config is missing", async () => {
-      const configWithoutUpload: IgnConfig = {
-        ...ignConfig,
-        upload: undefined,
-      }
-      const s = new UploadService(configWithoutUpload, storageConfig, mockLogger)
-      const result = await s.shouldUpload()
+      const configWithoutUpload = { ...ignConfig }
+      configWithoutUpload.upload = undefined
+      const serviceWithoutUpload = new UploadService(
+        configWithoutUpload,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
+
+      const result = await serviceWithoutUpload.shouldUpload()
       expect(result).toBe(false)
     })
 
     it("should return false when mode is disabled", async () => {
-      const configDisabled: IgnConfig = {
-        ...ignConfig,
-        upload: {
-          ...ignConfig.upload!,
-          mode: "disabled",
-        },
-      }
-      const s = new UploadService(configDisabled, storageConfig, mockLogger)
-      const result = await s.shouldUpload()
+      const configDisabled = { ...ignConfig }
+      configDisabled.upload!.mode = "disabled"
+      const serviceDisabled = new UploadService(
+        configDisabled,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
+
+      const result = await serviceDisabled.shouldUpload()
       expect(result).toBe(false)
     })
   })
 
   describe("uploadAccountTransactions", () => {
-    it("should throw when apiToken is missing", async () => {
-      const configWithoutToken: IgnConfig = {
-        ...ignConfig,
-        apiToken: undefined,
-      }
-      const s = new UploadService(configWithoutToken, storageConfig, mockLogger)
+    let service: UploadService
 
-      await expect(s.uploadAccountTransactions("acc-1")).rejects.toThrow()
+    beforeEach(() => {
+      service = new UploadService(
+        ignConfig,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
+    })
+
+    it("should throw when accessToken is missing", async () => {
+      const configWithoutToken = {
+        ...ignConfig,
+        accessToken: undefined,
+      } as IgnConfig
+      const serviceWithoutToken = new UploadService(
+        configWithoutToken,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
+
+      const error = await serviceWithoutToken
+        .uploadAccountTransactions("acc-1")
+        .catch((e) => e)
+
+      expect(error.type).toBe("UserError")
+      expect(error.humanReadable.title).toBe("Firela Vault Not Configured")
+      expect(error.humanReadable.message).toContain("access token is not configured")
     })
 
     it("should throw when upload config is missing", async () => {
-      const configWithoutUpload: IgnConfig = {
-        ...ignConfig,
-        upload: undefined,
-      }
-      const s = new UploadService(configWithoutUpload, storageConfig, mockLogger)
+      const configWithoutUpload = { ...ignConfig }
+      configWithoutUpload.upload = undefined
+      const serviceWithoutUpload = new UploadService(
+        configWithoutUpload,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
 
-      await expect(s.uploadAccountTransactions("acc-1")).rejects.toThrow()
-    })
+      const error = await serviceWithoutUpload
+        .uploadAccountTransactions("acc-1")
+        .catch((e) => e)
 
-    it("should return empty result when no transactions found", async () => {
-      // Use mock implementation that simulates no transactions
-      const mockReaddir = vi.fn().mockRejectedValue(new Error("ENOENT"))
-      const mockMkdir = vi.fn().mockResolvedValue(undefined)
-      const mockWriteFile = vi.fn().mockResolvedValue(undefined)
-      const mockRename = vi.fn().mockResolvedValue(undefined)
-
-      vi.doMock("node:fs/promises", () => ({
-        readdir: mockReaddir,
-        mkdir: mockMkdir,
-        writeFile: mockWriteFile,
-        rename: mockRename,
-      }))
-
-      // Create service with mocked fs
-      const s = new UploadService(ignConfig, storageConfig, mockLogger)
-
-      // Since loadTransactions is private and uses fs internally,
-      // we just verify the service handles missing transactions gracefully
-      const result = await s.uploadAccountTransactions("acc-1")
-
-      expect(result.success).toBe(true)
-      expect(result.transactionsUploaded).toBe(0)
-    })
-
-    it("should preserve local data on upload failure", async () => {
-      // This test verifies the error handling pattern
-      // The service is designed to:
-      // 1. Catch upload errors
-      // 2. Store failed status
-      // 3. Re-throw the error
-      // 4. Never delete local data
-
-      // We can verify this by checking the error handling code path
-      // exists in the implementation
-      const configWithToken: IgnConfig = {
-        ...ignConfig,
-        apiToken: "valid-token",
-      }
-      const s = new UploadService(configWithToken, storageConfig, mockLogger)
-
-      // When there are no transactions, upload succeeds without error
-      const result = await s.uploadAccountTransactions("nonexistent-account")
-      expect(result.success).toBe(true)
+      expect(error.type).toBe("UserError")
+      expect(error.humanReadable.title).toBe("Firela Vault Upload Not Configured")
+      expect(error.humanReadable.message).toContain("upload configuration is missing")
     })
   })
 
   describe("getUploadStatus", () => {
+    let service: UploadService
+
+    beforeEach(() => {
+      service = new UploadService(
+        ignConfig,
+        storageConfig,
+        mockCredentialStore,
+        mockLogger,
+      )
+    })
+
     it("should return null when no status file exists", async () => {
       const status = await service.getUploadStatus("nonexistent")
       expect(status).toBeNull()

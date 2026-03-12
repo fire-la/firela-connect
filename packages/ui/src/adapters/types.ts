@@ -60,7 +60,7 @@ export interface BillclawConfig {
   }
   ign?: {
     apiUrl?: string
-    apiToken?: string // Masked as "***"
+    accessToken?: string // Masked as "***"
     region?: "cn" | "us" | "eu-core" | "de"
     upload?: {
       mode?: "auto" | "manual" | "disabled"

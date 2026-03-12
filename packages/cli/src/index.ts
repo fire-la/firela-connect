@@ -8,11 +8,12 @@ import { Command } from "commander"
 import { CommandRegistry } from "./commands/registry.js"
 import { allCommands } from "./commands/index.js"
 import { registerConnectSubcommands } from "./commands/connect.js"
+import { showUpdateNotification } from "./utils/update-check.js"
 
 /**
  * CLI version
  */
-const VERSION = "0.0.1"
+const VERSION = "0.5.4"
 
 /**
  * Create and configure the CLI program
@@ -50,9 +51,9 @@ export async function main(args: string[] = process.argv): Promise<void> {
   try {
     const program = await createProgram()
     await program.parseAsync(args)
-    // Exit successfully after command completion
-    // This ensures the process terminates even if there are pending async operations
-    process.exit(0)
+
+    // Show update notification after command completes (non-blocking)
+    showUpdateNotification()
   } catch (error) {
     console.error("CLI error:", error)
     process.exit(1)

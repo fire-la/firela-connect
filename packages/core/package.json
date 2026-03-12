@@ -95,6 +95,7 @@
     "keytar": "^6.0.1"
   },
   "dependencies": {
+    "@firela/api-types": "0.0.0-canary.a7bda42",
     "plaid": "^32.0.0",
     "proper-lockfile": "^4.1.2",
     "ws": "^8.19.0",

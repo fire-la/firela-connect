@@ -205,10 +205,10 @@ async function runStatus(context: CliContext): Promise<void> {
     `Total: ${totalTransactions} transactions, ${formatBytes(totalSize * 1024)}`,
   )
 
-  // IGN Upload Status (if configured)
-  if (config.ign?.apiToken) {
+  // Firela Vault Upload Status (if configured)
+  if (config.ign?.accessToken) {
     console.log("")
-    console.log("IGN Upload Status")
+    console.log("Firela Vault Upload Status")
 
     const uploadStatusStore = new UploadStatusStore(storageConfig)
     const uploadTable = createTable({
@@ -272,11 +272,11 @@ async function runStatus(context: CliContext): Promise<void> {
   // IGN Configuration Section
   if (config.ign) {
     console.log("")
-    console.log("IGN Integration:")
+    console.log("Firela Vault Integration:")
     console.log(`  Region: ${config.ign.region}`)
     console.log(`  Upload mode: ${config.ign.upload?.mode || "not configured"}`)
     console.log(`  API URL: ${config.ign.apiUrl}`)
-    console.log(`  Configured: ${config.ign.apiToken ? "Yes" : "No"}`)
+    console.log(`  Configured: ${config.ign.accessToken ? "Yes" : "No"}`)
   }
 
   // Status summary

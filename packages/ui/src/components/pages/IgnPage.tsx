@@ -22,8 +22,8 @@ import "@/styles/firela-theme.css"
 
 // Form schema for IGN settings
 const IgnSettingsSchema = z.object({
-  apiUrl: z.string().url().default("http://localhost:3334/api/v1"),
-  apiToken: z.string().optional(),
+  apiUrl: z.string().url().default("https://ign-dev.firela.io/api/v1"),
+  accessToken: z.string().optional(),
   region: z.enum(["cn", "us", "eu-core", "de"]).default("us"),
   uploadMode: z.enum(["disabled", "auto", "manual"]).default("disabled"),
   sourceAccount: z.string().optional(),
@@ -56,8 +56,8 @@ export function IgnPage() {
     getValues,
   } = useForm<IgnSettings>({
     defaultValues: {
-      apiUrl: config?.ign?.apiUrl || "http://localhost:3334/api/v1",
-      apiToken: config?.ign?.apiToken || "",
+      apiUrl: config?.ign?.apiUrl || "https://ign-dev.firela.io/api/v1",
+      accessToken: config?.ign?.accessToken || "",
       region: config?.ign?.region || "us",
       uploadMode: config?.ign?.upload?.mode || "disabled",
       sourceAccount: config?.ign?.upload?.sourceAccount || "",
@@ -78,7 +78,7 @@ export function IgnPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiUrl: getValues("apiUrl"),
-          apiToken: getValues("apiToken"),
+          accessToken: getValues("accessToken"),
           region: getValues("region"),
         }),
       })
@@ -114,7 +114,7 @@ export function IgnPage() {
       // Transform form data to config structure
       const ignConfig = {
         apiUrl: data.apiUrl,
-        apiToken: data.apiToken || undefined,
+        accessToken: data.accessToken || undefined,
         region: data.region,
         upload: data.uploadMode !== "disabled" ? {
           mode: data.uploadMode as "auto" | "manual",
@@ -194,7 +194,7 @@ export function IgnPage() {
               id="apiUrl"
               {...register("apiUrl")}
               className="form-input pl-10"
-              placeholder="http://localhost:3334/api/v1"
+              placeholder="https://ign-dev.firela.io/api/v1"
             />
           </div>
           {errors.apiUrl && (
@@ -203,19 +203,19 @@ export function IgnPage() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="apiToken">API Token</label>
+          <label htmlFor="accessToken">Access Token</label>
           <div className="relative">
             <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="password"
-              id="apiToken"
-              {...register("apiToken")}
+              id="accessToken"
+              {...register("accessToken")}
               className="form-input pl-10"
-              placeholder="Enter your API token"
+              placeholder="Enter your access token"
             />
           </div>
-          {errors.apiToken && (
-            <p className="text-red-500 text-sm">{errors.apiToken.message}</p>
+          {errors.accessToken && (
+            <p className="text-red-500 text-sm">{errors.accessToken.message}</p>
           )}
         </div>
 

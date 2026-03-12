@@ -36,11 +36,11 @@ function maskConfig(config: BillclawConfig): BillclawConfig {
     }
   }
 
-  // Mask IGN API token
+  // Mask IGN access token
   if (masked.ign) {
     masked.ign = {
       ...masked.ign,
-      apiToken: masked.ign.apiToken ? "***" : undefined,
+      accessToken: masked.ign.accessToken ? "***" : undefined,
     }
   }
 
@@ -243,11 +243,11 @@ configRouter.post("/export/test", async (req, res) => {
 
 /**
  * POST /api/ign/test
- * Validates IGN configuration
+ * Validates IGN (Firela Vault) configuration
  */
 configRouter.post("/ign/test", async (req, res) => {
   try {
-    const { apiUrl, apiToken, region } = req.body
+    const { apiUrl, accessToken, region } = req.body
 
     const validRegions = ["cn", "us", "eu-core", "de"]
     if (!validRegions.includes(region)) {
@@ -269,11 +269,11 @@ configRouter.post("/ign/test", async (req, res) => {
       return
     }
 
-    // If apiToken is provided, try to validate token
-    if (apiToken && apiToken.length < 10) {
+    // If accessToken is provided, validate format
+    if (accessToken && accessToken.length < 10) {
       res.status(400).json({
         success: false,
-        error: "API token too short",
+        error: "Access token too short",
       })
       return
     }
@@ -282,7 +282,7 @@ configRouter.post("/ign/test", async (req, res) => {
     // Note: In production, you would actually make a real API call
     res.json({
       success: true,
-      message: "IGN configuration is valid",
+      message: "Firela Vault configuration is valid",
     })
   } catch (error) {
     const message =
