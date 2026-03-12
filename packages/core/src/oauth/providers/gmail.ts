@@ -58,8 +58,8 @@ export async function generateAuthorizationUrl(
 ): Promise<GmailAuthUrlResult> {
   cleanupExpiredStates()
 
-  // Generate PKCE verifier and challenge using core module
-  const pkcePair = generatePKCEPair("S256", 128)
+  // Generate PKCE verifier and challenge using core module (async for Workers compatibility)
+  const pkcePair = await generatePKCEPair("S256", 128)
   const codeVerifier = pkcePair.codeVerifier
   const codeChallenge = pkcePair.codeChallenge
 

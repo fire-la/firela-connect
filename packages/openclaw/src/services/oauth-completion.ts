@@ -156,7 +156,7 @@ export async function startOAuthSession(
       logger.info?.(`OAuth session started: ${sessionId} (plaid, direct mode, local OAuth)`)
     } else {
       // Relay mode: PKCE required
-      const pkcePair = generatePKCEPair("S256", 128)
+      const pkcePair = await generatePKCEPair("S256", 128)
       codeVerifier = pkcePair.codeVerifier
 
       sessionId = await initConnectSession(RELAY_URL, pkcePair)

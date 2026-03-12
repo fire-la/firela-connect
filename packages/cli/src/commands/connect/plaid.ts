@@ -83,7 +83,7 @@ export async function runPlaidConnect(
     console.log("Opening Plaid Link via your Connect service...")
   } else {
     // Relay mode: Use Firela Relay with PKCE
-    const pkcePair = generatePKCEPair("S256", 128)
+    const pkcePair = await generatePKCEPair("S256", 128)
     pkceCodeVerifier = pkcePair.codeVerifier
 
     sessionId = await initConnectSession(RELAY_URL, pkcePair)

@@ -25,8 +25,22 @@ export {
   getEnvMappings,
 } from "./env-loader.js"
 
-// Convenience functions for common operations
-const defaultManager = ConfigManager.getInstance()
+// Lazy-initialized default manager
+// Workers-compatible: Only create when actually needed, not at module load time
+let defaultManager: ConfigManager | null = null
+
+/**
+ * Get the default ConfigManager instance (lazy initialization)
+ *
+ * Creates the singleton on first call instead of at module load time.
+ * This avoids Workers global scope violations.
+ */
+function getDefaultManager(): ConfigManager {
+  if (!defaultManager) {
+    defaultManager = ConfigManager.getInstance()
+  }
+  return defaultManager
+}
 
 /**
  * Get configuration using the default ConfigManager instance
@@ -35,7 +49,7 @@ const defaultManager = ConfigManager.getInstance()
  * For advanced use cases, create your own ConfigManager instance.
  */
 export async function getConfig(): Promise<BillclawConfig> {
-  return defaultManager.getConfig()
+  return getDefaultManager().getConfig()
 }
 
 /**
@@ -45,5 +59,5 @@ export async function getConfig(): Promise<BillclawConfig> {
  * For advanced use cases, create your own ConfigManager instance.
  */
 export async function updateConfig(updates: Partial<BillclawConfig>): Promise<void> {
-  return defaultManager.updateConfig(updates)
+  return getDefaultManager().updateConfig(updates)
 }

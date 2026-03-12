@@ -40,6 +40,12 @@ PLAID_ENV = "sandbox"
 port = 8787
 local_protocol = "http"
 
+# Module aliasing - replace Node.js native modules with Workers-compatible shims
+# keytar is a native Node.js module for keychain access that doesn't work in Workers
+# Workers should use KV or D1 for credential storage instead
+[alias]
+keytar = "./src/server/shims/keytar.ts"
+
 # Production settings (configure after first deploy)
 # [env.production]
 # routes = [

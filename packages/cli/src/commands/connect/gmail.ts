@@ -229,7 +229,7 @@ async function runRelayMode(
 
   // Generate PKCE pair
   const pkceSpinner = new Spinner({ text: "Generating PKCE challenge..." }).start()
-  const pkcePair = generatePKCEPair("S256", 128)
+  const pkcePair = await generatePKCEPair("S256", 128)
 
   // Initialize session with relay
   let sessionId: string

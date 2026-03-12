@@ -39,19 +39,44 @@ const DEFAULT_CACHE_CONFIG: CacheConfig = {
 
 /**
  * In-memory cache with TTL support
+ *
+ * Workers-compatible: Timer is lazily initialized on first cache operation,
+ * not in constructor. This avoids global scope violations in Cloudflare Workers.
  */
 export class MemoryCache {
   private cache = new Map<string, CacheEntry<unknown>>()
   private config: CacheConfig
   private cleanupTimer?: ReturnType<typeof setInterval>
+  private timerStarted = false
 
   constructor(config: Partial<CacheConfig> = {}) {
     this.config = { ...DEFAULT_CACHE_CONFIG, ...config }
+    // Timer is NOT started here - it's started lazily on first use
+    // This makes the class safe to instantiate in Workers global scope
+  }
+
+  /**
+   * Start the cleanup timer (lazy initialization)
+   *
+   * Only called on first cache operation to avoid Workers global scope violations.
+   * In Workers, setInterval is not allowed in global scope but is allowed
+   * within request handlers. By deferring timer start until first use,
+   * we ensure the timer is only started when the cache is actually used
+   * during request handling.
+   */
+  private startCleanupTimer(): void {
+    if (this.timerStarted) {
+      return
+    }
+    this.timerStarted = true
 
     // Periodically clean up expired entries
-    this.cleanupTimer = setInterval(() => {
-      this.cleanupExpired()
-    }, 60 * 1000) // Every minute
+    // Only start timer if setInterval is available (not in all Workers environments)
+    if (typeof setInterval !== "undefined") {
+      this.cleanupTimer = setInterval(() => {
+        this.cleanupExpired()
+      }, 60 * 1000) // Every minute
+    }
   }
 
   /**
@@ -61,7 +86,10 @@ export class MemoryCache {
    * @param value - Value to cache
    * @param ttl - Time to live in milliseconds (uses default if not specified)
    */
-  set<T,>(key: string, value: T, ttl?: number): void {
+  set<T>(key: string, value: T, ttl?: number): void {
+    // Lazy initialize timer on first use
+    this.startCleanupTimer()
+
     const expiresAt = Date.now() + (ttl ?? this.config.defaultTtl)
 
     // Enforce max size by removing oldest entries if needed

@@ -94,8 +94,8 @@ async function executeRelayMode(
   timeoutMs: number,
 ) {
   try {
-    // Generate PKCE pair
-    const pkcePair = generatePKCEPair("S256", 128)
+    // Generate PKCE pair (async for Workers compatibility)
+    const pkcePair = await generatePKCEPair("S256", 128)
 
     // Initialize session with relay
     const sessionId = await initConnectSession(RELAY_URL, pkcePair)

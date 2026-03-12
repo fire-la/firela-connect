@@ -147,7 +147,7 @@ export const connectPlaidTool = {
         modeDescription = "Direct (your Connect service)"
       } else {
         // Relay mode: PKCE required, use Firela Relay
-        pkcePair = generatePKCEPair("S256", 128)
+        pkcePair = await generatePKCEPair("S256", 128)
         sessionId = await initConnectSession(RELAY_URL, pkcePair)
         connectUrl = `https://connect.firela.io/plaid?session=${sessionId}`
         modeDescription = "Relay (Firela Relay service)"

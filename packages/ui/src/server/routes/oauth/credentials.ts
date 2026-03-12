@@ -16,8 +16,14 @@
 import { Hono } from "hono"
 import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
-import { randomUUID } from "crypto"
 import type { OAuthEnv } from "./env.js"
+
+/**
+ * Generate a UUID using Web Crypto API (Workers-compatible)
+ */
+function generateUUID(): string {
+  return crypto.randomUUID()
+}
 
  /**
  * Session TTL in milliseconds (10 minutes)
@@ -72,6 +78,9 @@ const sessionStore = new Map<string, CredentialSession>()
 
 /**
  * Clean up expired sessions
+ *
+ * Workers-compatible: Called lazily during request handling instead of
+ * using setInterval at module load time (which violates Workers global scope).
  */
 function cleanupExpiredSessions(): void {
   const now = Date.now()
@@ -82,9 +91,21 @@ function cleanupExpiredSessions(): void {
   }
 }
 
-// Run cleanup periodically (note: in Workers this only runs per-isolate)
-if (typeof setInterval !== "undefined") {
-  setInterval(cleanupExpiredSessions, 60 * 1000)
+/**
+ * Track last cleanup time to avoid excessive cleanup calls
+ */
+let lastCleanupTime = 0
+const CLEANUP_INTERVAL = 60 * 1000 // 1 minute
+
+/**
+ * Run cleanup if enough time has passed (lazy cleanup strategy)
+ */
+function maybeCleanup(): void {
+  const now = Date.now()
+  if (now - lastCleanupTime > CLEANUP_INTERVAL) {
+    lastCleanupTime = now
+    cleanupExpiredSessions()
+  }
 }
 
 export const credentialsRoutes = new Hono<{ Bindings: OAuthEnv }>()
@@ -123,9 +144,11 @@ credentialsRoutes.post(
   "/session",
   zValidator("json", createSessionSchema),
   (c) => {
+    maybeCleanup() // Lazy cleanup on each request
+
     const { code_challenge, code_challenge_method } = c.req.valid("json")
 
-    const sessionId = randomUUID()
+    const sessionId = generateUUID()
     const now = Date.now()
 
     const session: CredentialSession = {
@@ -174,6 +197,8 @@ credentialsRoutes.post(
  * sessions, allowing CLI to poll before OAuth completion creates the session.
  */
 credentialsRoutes.get("/credentials/:sessionId", async (c) => {
+  maybeCleanup() // Lazy cleanup on each request
+
   const sessionId = c.req.param("sessionId")
   const wait = c.req.query("wait") === "true"
   const timeout = Math.min(
