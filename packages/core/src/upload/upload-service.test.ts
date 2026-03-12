@@ -123,10 +123,10 @@ describe("UploadService", () => {
   })
 
   describe("uploadAccountTransactions", () => {
-    let service: UploadService
+    let _service: UploadService
 
     beforeEach(() => {
-      service = new UploadService(
+      _service = new UploadService(
         ignConfig,
         storageConfig,
         mockCredentialStore,
