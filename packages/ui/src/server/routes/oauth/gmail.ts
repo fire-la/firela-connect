@@ -19,15 +19,7 @@ import {
 } from "@firela/billclaw-core"
 import { storeCredential } from "./credentials.js"
 
-/**
- * Environment bindings type
- */
-type Env = {
-  GMAIL_CLIENT_ID: string
-  GMAIL_CLIENT_SECRET: string
-  GMAIL_REDIRECT_URI: string
-  CONFIG: KVNamespace
-}
+import type { OAuthEnv as Env } from "./env.js"
 
 export const gmailRoutes = new Hono<{ Bindings: Env }>()
 

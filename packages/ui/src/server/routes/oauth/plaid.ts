@@ -19,15 +19,7 @@ import {
 } from "@firela/billclaw-core"
 import { storeCredential } from "./credentials.js"
 
-/**
- * Environment bindings type
- */
-type Env = {
-  PLAID_CLIENT_ID: string
-  PLAID_SECRET: string
-  PLAID_ENV: string
-  CONFIG: KVNamespace
-}
+import type { OAuthEnv as Env } from "./env.js"
 
 export const plaidRoutes = new Hono<{ Bindings: Env }>()
 

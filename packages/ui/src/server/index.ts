@@ -22,6 +22,8 @@ export type Env = {
   PLAID_ENV: string
   PLAID_WEBHOOK_SECRET: string
   JWT_SECRET: string
+  GMAIL_CLIENT_ID?: string
+  GMAIL_CLIENT_SECRET?: string
 }
 
 /**
@@ -74,23 +76,28 @@ app.get("/api", (c) => {
     description: "Unified UI and API service",
     endpoints: {
       health: "/health",
-      // Routes will be added in subsequent plans:
-      // oauth: "/api/oauth/*",
-      // config: "/api/config",
-      // webhooks: "/webhook/*",
+      oauthPlaid: "/api/oauth/plaid",
+      oauthGmail: "/api/oauth/gmail",
+      credentials: "/api/connect",
     },
   })
 })
 
 // ============================================================================
-// API Routes (to be added in subsequent plans)
+// API Routes
 // ============================================================================
 
-// TODO: Plan 13.2-02 - OAuth routes
-// import plaidRoutes from './routes/oauth/plaid'
-// import gmailRoutes from './routes/oauth/gmail'
-// app.route('/api/oauth/plaid', plaidRoutes)
-// app.route('/api/oauth/gmail', gmailRoutes)
+// OAuth routes
+import plaidRoutes from "./routes/oauth/plaid.js"
+import gmailRoutes from "./routes/oauth/gmail.js"
+import credentialsRoutes from "./routes/oauth/credentials.js"
+
+// Register OAuth routes
+app.route("/api/oauth/plaid", plaidRoutes)
+app.route("/api/oauth/gmail", gmailRoutes)
+
+// Register credential routes for Direct mode
+app.route("/api/connect", credentialsRoutes)
 
 // TODO: Plan 13.2-03 - Webhook and Config routes
 // import webhookRoutes from './routes/webhooks'

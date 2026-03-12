@@ -17,13 +17,11 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import { randomUUID } from "crypto"
+import type { OAuthEnv } from "./env.js"
 
-/**
- * Environment bindings type
+ /**
+ * Session TTL in milliseconds (10 minutes)
  */
-type Env = {
-  CONFIG: KVNamespace
-}
 
 /**
  * Session TTL in milliseconds (10 minutes)
@@ -89,7 +87,7 @@ if (typeof setInterval !== "undefined") {
   setInterval(cleanupExpiredSessions, 60 * 1000)
 }
 
-export const credentialsRoutes = new Hono<{ Bindings: Env }>()
+export const credentialsRoutes = new Hono<{ Bindings: OAuthEnv }>()
 
 /**
  * Request validation schemas
