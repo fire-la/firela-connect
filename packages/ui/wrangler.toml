@@ -41,9 +41,14 @@ port = 8787
 local_protocol = "http"
 
 # Module aliasing - replace Node.js native modules with Workers-compatible shims
-# keytar is a native Node.js module for keychain access that doesn't work in Workers
-# Workers should use KV or D1 for credential storage instead
+# These modules are not fully supported in Workers local mode (workerd)
+# The shims provide stubs or minimal implementations
 [alias]
+"node:fs" = "./src/server/shims/node-fs.ts"
+"node:fs/promises" = "./src/server/shims/node-fs.ts"
+"node:os" = "./src/server/shims/node-os.ts"
+"node:path" = "./src/server/shims/node-path.ts"
+"node:readline" = "./src/server/shims/node-readline.ts"
 keytar = "./src/server/shims/keytar.ts"
 
 # Production settings (configure after first deploy)
