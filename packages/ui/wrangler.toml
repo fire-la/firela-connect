@@ -1,0 +1,47 @@
+# BillClaw UI - Cloudflare Workers configuration
+# https://developers.cloudflare.com/workers/wrangler/configuration/
+#
+# Unified UI + API service for Cloudflare Workers deployment
+# Combines React SPA with Hono API server
+
+name = "billclaw-ui"
+main = "src/server/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets (React SPA build output)
+[assets]
+directory = "dist"
+
+# D1 Database (for configuration storage)
+[[d1_databases]]
+binding = "DB"
+database_name = "billclaw-ui-data"
+database_id = "placeholder-replace-after-create"
+
+# KV Namespace (for config and rate limiting)
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "placeholder-replace-after-create"
+
+# Environment variables (non-sensitive defaults)
+[vars]
+PLAID_ENV = "sandbox"
+
+# Secrets (set in Cloudflare dashboard after deploy)
+# Required secrets:
+# - PLAID_CLIENT_ID: Your Plaid client ID from dashboard.plaid.com
+# - PLAID_SECRET: Your Plaid secret key (sandbox/development/production)
+# - PLAID_WEBHOOK_SECRET: Secret for verifying Plaid webhooks
+# - JWT_SECRET: Secret key for JWT tokens (any random 32+ char string)
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Production settings (configure after first deploy)
+# [env.production]
+# routes = [
+#   { pattern = "billclaw.example.com/*", zone_name = "example.com" }
+# ]
