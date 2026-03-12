@@ -6,8 +6,8 @@
 
 name = "billclaw-ui"
 main = "src/server/index.ts"
-compatibility_date = "2024-12-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat_v2"]
 
 # Static assets (React SPA build output)
 [assets]
