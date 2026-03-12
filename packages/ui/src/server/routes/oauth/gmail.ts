@@ -15,13 +15,25 @@ import {
 } from "@firela/billclaw-core/errors"
 import {
   gmailOAuthHandler,
-  ConfigManager,
-} from "@firela/billclaw-core"
+  type GmailOAuthConfig,
+} from "@firela/billclaw-core/oauth"
 import { storeCredential } from "./credentials.js"
 
 import type { OAuthEnv as Env } from "./env.js"
 
 export const gmailRoutes = new Hono<{ Bindings: Env }>()
+
+/**
+ * Get Gmail configuration from environment bindings
+ *
+ * Workers-compatible: Uses env bindings instead of file-based ConfigManager
+ */
+function getGmailConfig(env: Env): GmailOAuthConfig {
+  return {
+    clientId: env.GMAIL_CLIENT_ID || "",
+    clientSecret: env.GMAIL_CLIENT_SECRET || "",
+  }
+}
 
 /**
  * Request validation schemas
@@ -48,8 +60,7 @@ const exchangeTokenSchema = z.object({
  */
 gmailRoutes.get("/authorize", async (c) => {
   try {
-    const configManager = ConfigManager.getInstance()
-    const config = await configManager.getServiceConfig("gmail")
+    const config = getGmailConfig(c.env)
     const redirectUri = c.req.query("redirectUri")
 
     const result = await gmailOAuthHandler(config, { redirectUri })
@@ -105,8 +116,7 @@ gmailRoutes.post(
     try {
       const { code, state, redirectUri, sessionId } = c.req.valid("json")
 
-      const configManager = ConfigManager.getInstance()
-      const config = await configManager.getServiceConfig("gmail")
+      const config = getGmailConfig(c.env)
       const result = await gmailOAuthHandler(config, { code, state, redirectUri })
 
       // Store credential for Direct mode polling if sessionId is provided

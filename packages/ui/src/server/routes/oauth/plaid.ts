@@ -15,13 +15,26 @@ import {
 } from "@firela/billclaw-core/errors"
 import {
   plaidOAuthHandler,
-  ConfigManager,
-} from "@firela/billclaw-core"
+  type PlaidConfig,
+} from "@firela/billclaw-core/oauth"
 import { storeCredential } from "./credentials.js"
 
 import type { OAuthEnv as Env } from "./env.js"
 
 export const plaidRoutes = new Hono<{ Bindings: Env }>()
+
+/**
+ * Get Plaid configuration from environment bindings
+ *
+ * Workers-compatible: Uses env bindings instead of file-based ConfigManager
+ */
+function getPlaidConfig(env: Env): PlaidConfig {
+  return {
+    clientId: env.PLAID_CLIENT_ID,
+    secret: env.PLAID_SECRET,
+    environment: (env.PLAID_ENV as PlaidConfig["environment"]) || "sandbox",
+  }
+}
 
 /**
  * Request validation schemas
@@ -44,8 +57,7 @@ const exchangeTokenSchema = z.object({
  */
 plaidRoutes.get("/link-token", async (c) => {
   try {
-    const configManager = ConfigManager.getInstance()
-    const config = await configManager.getServiceConfig("plaid")
+    const config = getPlaidConfig(c.env)
     const result = await plaidOAuthHandler(config)
 
     // Return the Link token and the Plaid Link URL
@@ -98,8 +110,7 @@ plaidRoutes.post(
     try {
       const { publicToken, accountId, sessionId } = c.req.valid("json")
 
-      const configManager = ConfigManager.getInstance()
-      const config = await configManager.getServiceConfig("plaid")
+      const config = getPlaidConfig(c.env)
       const result = await plaidOAuthHandler(config, publicToken, accountId)
 
       // Store credential for Direct mode polling if sessionId is provided
