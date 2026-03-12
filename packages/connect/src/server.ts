@@ -73,7 +73,8 @@ async function startServer() {
     skipSuccessfulRequests: false,
   })
 
-  const gocardlessRateLimit = rateLimit({
+  // Reserved for future use
+  const _gocardlessRateLimit = rateLimit({
     windowMs: 60_000,
     max: 50, // 50 requests per minute
     standardHeaders: true,
@@ -84,7 +85,8 @@ async function startServer() {
     },
   })
 
-  const testRateLimit = rateLimit({
+  // Reserved for future use
+  const _testRateLimit = rateLimit({
     windowMs: 60_000,
     max: 30, // 30 requests per minute
     standardHeaders: true,

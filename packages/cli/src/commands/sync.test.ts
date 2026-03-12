@@ -38,7 +38,6 @@ vi.mock("@firela/billclaw-core", () => ({
 }))
 
 import { Billclaw } from "@firela/billclaw-core"
-import { Spinner } from "../utils/progress.js"
 
 describe("sync command", () => {
   let mockBillclawInstance: {

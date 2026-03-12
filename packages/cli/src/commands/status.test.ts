@@ -8,7 +8,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { statusCommand } from "./status.js"
 import {
   createMockCliContext,
-  MockConfigProvider,
 } from "../__tests__/test-utils.js"
 
 // Mock @firela/billclaw-core

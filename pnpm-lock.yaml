@@ -252,6 +252,27 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@25.2.1)(@vitest/ui@3.2.4)(happy-dom@17.6.3)(jiti@1.21.7)(jsdom@26.1.0)
 
+  packages/runtime-adapters:
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250310.0
+        version: 4.20260226.1
+      '@types/node':
+        specifier: ^25.2.0
+        version: 25.2.1
+      oxfmt:
+        specifier: ^0.1.0
+        version: 0.1.0
+      oxlint:
+        specifier: ^0.15.0
+        version: 0.15.15
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@25.2.1)(@vitest/ui@3.2.4)(happy-dom@17.6.3)(jiti@1.21.7)(jsdom@26.1.0)
+
   packages/ui:
     dependencies:
       '@firela/billclaw-core':

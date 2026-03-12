@@ -42,9 +42,9 @@ const consoleLogger: Logger = {
 let processor: WebhookProcessor | null = null
 
 /**
- * Get client IP from Express request
+ * Get client IP from Express request (reserved for future use)
  */
-function getClientIp(req: Request): string {
+function _getClientIp(req: Request): string {
   const ip = req.headers["x-forwarded-for"] as string | undefined
   if (ip) {
     return ip.split(",")[0].trim()
@@ -76,8 +76,8 @@ export async function initializeWebhooks(
   // Create security layer
   const security = createWebhookSecurity(deduplication, consoleLogger)
 
-  // Create rate limiter
-  const rateLimiter = createSyncRateLimiter(consoleLogger)
+  // Create rate limiter (reserved for future use)
+  const _rateLimiter = createSyncRateLimiter(consoleLogger)
 
   // Create processor
   processor = new WebhookProcessor({

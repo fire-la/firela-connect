@@ -11,7 +11,6 @@ import { Billclaw } from "@firela/billclaw-core"
 import { selectConnectionMode } from "@firela/billclaw-core/connection"
 import {
   logError,
-  parseOauthError,
   formatOauthError,
   createUserError,
   ERROR_CODES,
@@ -28,7 +27,6 @@ export async function runConnectStatus(context: CliContext): Promise<void> {
   const spinner = new Spinner({ text: "Checking connection status..." }).start()
 
   try {
-    const config = await runtime.config.getConfig()
     const accounts = await billclaw.getAccounts()
 
     spinner.succeed(`Found ${accounts.length} account(s)`)

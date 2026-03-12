@@ -6,12 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { setupCommand } from "./setup.js"
-import {
-  createMockCliContext,
-  MockLogger,
-  MockConfigProvider,
-} from "../__tests__/test-utils.js"
-import type { CliContext } from "./registry.js"
+import { createMockCliContext } from "../__tests__/test-utils.js"
 
 // Mock inquirer
 vi.mock("inquirer", () => ({

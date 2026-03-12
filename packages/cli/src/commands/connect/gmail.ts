@@ -8,7 +8,7 @@
  */
 
 import type { CliCommand, CliContext } from "../registry.js"
-import { success, error } from "../../utils/format.js"
+import { success } from "../../utils/format.js"
 import { Spinner } from "../../utils/progress.js"
 import type { AccountConfig } from "@firela/billclaw-core"
 import {

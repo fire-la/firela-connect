@@ -130,7 +130,8 @@ async function getModeStatus(
   directAvailable: boolean
   relayAvailable: boolean
 }> {
-  const { isDirectAvailable, isRelayAvailable } = await import("@firela/billclaw-core")
+  // Import but don't use - we implement our own simplified version here
+  const { isDirectAvailable: _isDirectAvailable, isRelayAvailable: _isRelayAvailable } = await import("@firela/billclaw-core")
 
   // Simple health check - in production, would use actual mode selector
   const directAvailable = mode === "direct" || mode === "auto"

@@ -13,7 +13,7 @@ import {
 } from "@firela/billclaw-core/connection"
 import type { AccountConfig } from "@firela/billclaw-core"
 import { randomUUID } from "crypto"
-import { logError, parseOauthError, formatOauthError } from "@firela/billclaw-core/errors"
+import { parseOauthError, formatOauthError } from "@firela/billclaw-core/errors"
 import {
   generatePKCEPair,
   initConnectSession,

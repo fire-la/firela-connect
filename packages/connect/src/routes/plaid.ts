@@ -10,7 +10,6 @@ import express from "express"
 import type { Router } from "express"
 
 import {
-  logError,
   parseOauthError,
 } from "@firela/billclaw-core/errors"
 
