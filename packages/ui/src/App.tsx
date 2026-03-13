@@ -2,8 +2,11 @@
  * BillClaw UI - Main App Component
  *
  * Router setup for OAuth and configuration pages.
+ * Includes service toggle state management and route protection.
  */
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { ServiceStateProvider } from "@/contexts/ServiceStateContext"
+import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { ConnectPage } from "@/components/pages/ConnectPage"
 import { SyncPage } from "@/components/pages/SyncPage"
@@ -17,70 +20,82 @@ import { GmailConnectPage } from "@/components/pages/GmailConnectPage"
 export function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Main configuration routes with layout */}
-        <Route
-          path="/"
-          element={
-            <PageLayout>
-              <HomePage />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="/connect"
-          element={
-            <PageLayout>
-              <ConnectPage />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="/sync"
-          element={
-            <PageLayout>
-              <SyncPage />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="/export"
-          element={
-            <PageLayout>
-              <ExportPage />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="/ign"
-          element={
-            <PageLayout>
-              <IgnPage />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="/webhooks"
-          element={
-            <PageLayout>
-              <WebhooksPage />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <PageLayout>
-              <SettingsPage />
-            </PageLayout>
-          }
-        />
+      <ServiceStateProvider>
+        <Routes>
+          {/* Main configuration routes with layout */}
+          <Route
+            path="/"
+            element={
+              <PageLayout>
+                <HomePage />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="/connect"
+            element={
+              <ProtectedRoute serviceId="billclaw">
+                <PageLayout>
+                  <ConnectPage />
+                </PageLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sync"
+            element={
+              <ProtectedRoute serviceId="billclaw">
+                <PageLayout>
+                  <SyncPage />
+                </PageLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/export"
+            element={
+              <ProtectedRoute serviceId="billclaw">
+                <PageLayout>
+                  <ExportPage />
+                </PageLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ign"
+            element={
+              <ProtectedRoute serviceId="billclaw">
+                <PageLayout>
+                  <IgnPage />
+                </PageLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/webhooks"
+            element={
+              <ProtectedRoute serviceId="billclaw">
+                <PageLayout>
+                  <WebhooksPage />
+                </PageLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <PageLayout>
+                <SettingsPage />
+              </PageLayout>
+            }
+          />
 
-        {/* OAuth routes without layout (full-page OAuth flows) */}
-        <Route path="/connect/plaid" element={<PlaidConnectPage />} />
-        <Route path="/connect/gmail" element={<GmailConnectPage />} />
-        <Route path="/gmail-callback" element={<GmailConnectPage />} />
-      </Routes>
+          {/* OAuth routes without layout (full-page OAuth flows) - UNPROTECTED */}
+          <Route path="/connect/plaid" element={<PlaidConnectPage />} />
+          <Route path="/connect/gmail" element={<GmailConnectPage />} />
+          <Route path="/gmail-callback" element={<GmailConnectPage />} />
+        </Routes>
+      </ServiceStateProvider>
     </BrowserRouter>
   )
 }
