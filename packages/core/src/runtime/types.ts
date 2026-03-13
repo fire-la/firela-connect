@@ -7,6 +7,47 @@
 
 import type { Logger } from "../errors/errors.js"
 export type { Logger } from "../errors/errors.js"
+
+/**
+ * KVStore - Key-value storage for rate limiting, session, and caching
+ *
+ * This interface is compatible with @firela/runtime-adapters KVStore.
+ * Implementations:
+ * - Cloudflare: KVNamespace binding (via CloudflareKVStore)
+ * - Node.js: MemoryKVStore / SQLite
+ *
+ * @example
+ * ```typescript
+ * // Store rate limit counter with TTL
+ * await kv.set('rate-limit:account1', { count: 5 }, { ttl: 60000 }) // 1 minute
+ *
+ * // Retrieve counter
+ * const counter = await kv.get<{ count: number }>('rate-limit:account1')
+ * ```
+ */
+export interface KVStore {
+  /**
+   * Get a value by key
+   * @param key - The key to retrieve
+   * @returns The value or null if not found or expired
+   */
+  get<T = unknown>(key: string): Promise<T | null>
+
+  /**
+   * Set a value with optional TTL
+   * @param key - The key to set
+   * @param value - The value to store
+   * @param options - Optional settings including TTL in milliseconds
+   */
+  set<T>(key: string, value: T, options?: { ttl?: number }): Promise<void>
+
+  /**
+   * Delete a key
+   * @param key - The key to delete
+   * @returns true if the key existed and was deleted
+   */
+  delete(key: string): Promise<boolean>
+}
 import type { BillclawConfig, StorageConfig } from "../models/config.js"
 export type { BillclawConfig, StorageConfig } from "../models/config.js"
 import type { StorageAdapter } from "../storage/types.js"

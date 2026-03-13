@@ -29,6 +29,25 @@ interface PlaidWebhookBody {
 }
 
 /**
+ * Rate limiter interface for Plaid webhook handler
+ *
+ * Supports both synchronous and asynchronous implementations.
+ * For multi-instance support (Cloudflare Workers), use async methods.
+ */
+export interface PlaidRateLimiter {
+  /**
+   * Check if webhook sync is allowed
+   * @returns true if sync is allowed, false if rate limited
+   */
+  isWebhookSyncAllowed(accountId: string): boolean | Promise<boolean>
+
+  /**
+   * Record a webhook-triggered sync
+   */
+  recordWebhookSync(accountId: string): void | Promise<void>
+}
+
+/**
  * Plaid webhook handler configuration
  */
 export interface PlaidWebhookHandlerConfig {
@@ -59,11 +78,10 @@ export interface PlaidWebhookHandlerConfig {
 
   /**
    * Rate limiter for sync operations
+   *
+   * Supports both sync and async implementations for backward compatibility.
    */
-  rateLimiter?: {
-    isWebhookSyncAllowed: (accountId: string) => boolean
-    recordWebhookSync: (accountId: string) => void
-  }
+  rateLimiter?: PlaidRateLimiter
 }
 
 /**
@@ -78,10 +96,7 @@ export class PlaidWebhookHandler implements WebhookHandler {
   private readonly triggerSync?: (accountId: string) => Promise<void>
   private readonly emitEvent?: (eventType: string, data: unknown) => Promise<void>
   private readonly webhooks?: any[]
-  private readonly rateLimiter?: {
-    isWebhookSyncAllowed: (accountId: string) => boolean
-    recordWebhookSync: (accountId: string) => void
-  }
+  private readonly rateLimiter?: PlaidRateLimiter
 
   constructor(config: PlaidWebhookHandlerConfig) {
     this.logger = config.logger
@@ -167,7 +182,8 @@ export class PlaidWebhookHandler implements WebhookHandler {
 
       // Check rate limiter
       if (this.rateLimiter) {
-        if (!this.rateLimiter.isWebhookSyncAllowed(account.id)) {
+        const allowed = await this.rateLimiter.isWebhookSyncAllowed(account.id)
+        if (!allowed) {
           this.logger.warn?.(
             `Webhook-triggered sync blocked for ${account.id}: rate limit exceeded`,
           )
@@ -180,7 +196,7 @@ export class PlaidWebhookHandler implements WebhookHandler {
             },
           }
         }
-        this.rateLimiter.recordWebhookSync(account.id)
+        await this.rateLimiter.recordWebhookSync(account.id)
       }
 
       // Emit sync started event
