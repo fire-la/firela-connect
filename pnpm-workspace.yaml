@@ -1,3 +1,11 @@
 # BillClaw Monorepo Workspace Configuration
+# Supports nested packages under billclaw/ for product organization
 packages:
-  - 'packages/*'
+  # Shared packages at root level
+  - 'packages/runtime-adapters'
+  # BillClaw product (nested structure)
+  - 'packages/billclaw/*'
+  # Standalone packages
+  - 'packages/ui'
+  # Future: Firela-Bot
+  - 'packages/firela-bot'

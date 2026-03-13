@@ -7,12 +7,12 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "noEmit": true
   },
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/cli" },
-    { "path": "./packages/openclaw" }
+    { "path": "./packages/runtime-adapters" },
+    { "path": "./packages/billclaw/core" },
+    { "path": "./packages/billclaw/cli" },
+    { "path": "./packages/billclaw/worker" }
   ]
 }
