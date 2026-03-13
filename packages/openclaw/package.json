@@ -59,6 +59,7 @@
   },
   "dependencies": {
     "@firela/billclaw-core": "workspace:*",
+    "@firela/runtime-adapters": "workspace:*",
     "plaid": "^32.0.0",
     "zod": "^3.25.0"
   },

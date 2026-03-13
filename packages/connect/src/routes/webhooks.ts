@@ -21,6 +21,7 @@ import {
   type WebhookRequest,
 } from "@firela/billclaw-core"
 import type { Logger } from "@firela/billclaw-core"
+import { MemoryKVStore } from "@firela/runtime-adapters/node"
 
 /**
  * Simple console logger for Connect
@@ -76,8 +77,9 @@ export async function initializeWebhooks(
   // Create security layer
   const security = createWebhookSecurity(deduplication, consoleLogger)
 
-  // Create rate limiter (reserved for future use)
-  const _rateLimiter = createSyncRateLimiter(consoleLogger)
+  // Create rate limiter with KVStore (reserved for future use)
+  const _kv = new MemoryKVStore()
+  const _rateLimiter = createSyncRateLimiter(_kv, consoleLogger)
 
   // Create processor
   processor = new WebhookProcessor({

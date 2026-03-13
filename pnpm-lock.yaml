@@ -133,6 +133,9 @@ importers:
       '@firela/billclaw-core':
         specifier: workspace:*
         version: link:../core
+      '@firela/runtime-adapters':
+        specifier: workspace:*
+        version: link:../runtime-adapters
       express:
         specifier: ^4.18.2
         version: 4.22.1
@@ -220,6 +223,9 @@ importers:
       '@firela/billclaw-core':
         specifier: workspace:*
         version: link:../core
+      '@firela/runtime-adapters':
+        specifier: workspace:*
+        version: link:../runtime-adapters
       plaid:
         specifier: ^32.0.0
         version: 32.0.0
@@ -269,9 +275,6 @@ importers:
       typescript:
         specifier: ^5.8.0
         version: 5.9.3
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/node@25.2.1)(@vitest/ui@3.2.4)(happy-dom@17.6.3)(jiti@1.21.7)(jsdom@26.1.0)
 
   packages/ui:
     dependencies:
@@ -293,12 +296,18 @@ importers:
       dayjs:
         specifier: ^1.11.11
         version: 1.11.19
+      hono:
+        specifier: ^4.7.0
+        version: 4.12.3
       i18next:
         specifier: ^23.16.8
         version: 23.16.8
       i18next-browser-languagedetector:
         specifier: ^7.2.0
         version: 7.2.2
+      jose:
+        specifier: ^6.1.3
+        version: 6.1.3
       lucide-react:
         specifier: ^0.511.0
         version: 0.511.0(react@18.3.1)
@@ -330,6 +339,15 @@ importers:
         specifier: ^4.4.7
         version: 4.5.7(@types/react@18.3.28)(react@18.3.1)
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250214.0
+        version: 4.20260226.1
+      '@hono/vite-dev-server':
+        specifier: ^0.19.0
+        version: 0.19.1(hono@4.12.3)(miniflare@4.20260305.0)(wrangler@3.114.17(@cloudflare/workers-types@4.20260226.1))
+      '@hono/zod-validator':
+        specifier: ^0.4.3
+        version: 0.4.3(hono@4.12.3)(zod@3.25.76)
       '@testing-library/jest-dom':
         specifier: ^6.6.0
         version: 6.9.1
@@ -381,6 +399,9 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@25.2.1)(@vitest/ui@3.2.4)(happy-dom@17.6.3)(jiti@1.21.7)(jsdom@26.1.0)
+      wrangler:
+        specifier: ^3.109.0
+        version: 3.114.17(@cloudflare/workers-types@4.20260226.1)
 
 packages:
 
@@ -1117,6 +1138,25 @@ packages:
 
   '@firela/api-types@0.0.0-canary.a7bda42':
     resolution: {integrity: sha512-c4wdyQk0iUH/grrgUBzXI02tMLyH0YOcQ3NDdgt4zYItuUv2/A4IVYG99wKyskES+ebJelqR/OVr3kVB7VZukQ==}
+
+  '@hono/node-server@1.19.11':
+    resolution: {integrity: sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
+
+  '@hono/vite-dev-server@0.19.1':
+    resolution: {integrity: sha512-hh+0u3IxHErEyj4YwHk/U+2f+qAHEQZ9EIQtadG9jeHfxEXH6r/ZecjnpyEkQbDK7JtgEEoVAq/JGOkd3Dvqww==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: '*'
+      miniflare: '*'
+      wrangler: '*'
+    peerDependenciesMeta:
+      miniflare:
+        optional: true
+      wrangler:
+        optional: true
 
   '@hono/zod-validator@0.4.3':
     resolution: {integrity: sha512-xIgMYXDyJ4Hj6ekm9T9Y27s080Nl9NXHcJkOvkXPhubOLj8hZkOL8pDnnXfvCf5xEE8Q4oMFenQUZZREUY2gqQ==}
@@ -2101,6 +2141,9 @@ packages:
   axios@1.13.4:
     resolution: {integrity: sha512-1wVkUaAO6WyaYtCkcYCOx12ZgpGf9Zif+qXa4n+oYzK558YryKqiL6UWwd5DqiH3VRW0GYhTZQ/vlgJrCoNQlg==}
 
+  balanced-match@1.0.2:
+    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
@@ -2134,6 +2177,9 @@ packages:
   boxen@8.0.1:
     resolution: {integrity: sha512-F3PH5k5juxom4xktynS7MoFY+NUWH5LC4CnH11YB8NPew+HLpmBLCybSAEyb2F+4pRXhuhWqFesoQd6DAyc2hw==}
     engines: {node: '>=18'}
+
+  brace-expansion@2.0.2:
+    resolution: {integrity: sha512-Jt0vHyM+jmUBqojB7E1NIYadt0vI0Qxjxd2TErW94wDz+E2LAm5vKMXXwg6ZZBTHPuUlDgQHKXvjGBdfcF1ZDQ==}
 
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
@@ -3118,6 +3164,10 @@ packages:
     resolution: {integrity: sha512-jVhtKJtiwaZa3rI+WgoLvSJmEazDsoUmAPYRUmEe2VO6VSbvkhbnDRm+dsPbYRatgNIExwrpqG1rv96jHiSb0w==}
     engines: {node: '>=18.0.0'}
     hasBin: true
+
+  minimatch@9.0.9:
+    resolution: {integrity: sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg==}
+    engines: {node: '>=16 || 14 >=14.17'}
 
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
@@ -4871,6 +4921,19 @@ snapshots:
 
   '@firela/api-types@0.0.0-canary.a7bda42': {}
 
+  '@hono/node-server@1.19.11(hono@4.12.3)':
+    dependencies:
+      hono: 4.12.3
+
+  '@hono/vite-dev-server@0.19.1(hono@4.12.3)(miniflare@4.20260305.0)(wrangler@3.114.17(@cloudflare/workers-types@4.20260226.1))':
+    dependencies:
+      '@hono/node-server': 1.19.11(hono@4.12.3)
+      hono: 4.12.3
+      minimatch: 9.0.9
+    optionalDependencies:
+      miniflare: 4.20260305.0
+      wrangler: 3.114.17(@cloudflare/workers-types@4.20260226.1)
+
   '@hono/zod-validator@0.4.3(hono@4.12.3)(zod@3.25.76)':
     dependencies:
       hono: 4.12.3
@@ -5755,6 +5818,8 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  balanced-match@1.0.2: {}
+
   base64-js@1.5.1:
     optional: true
 
@@ -5813,6 +5878,10 @@ snapshots:
       type-fest: 4.41.0
       widest-line: 5.0.0
       wrap-ansi: 9.0.2
+
+  brace-expansion@2.0.2:
+    dependencies:
+      balanced-match: 1.0.2
 
   braces@3.0.3:
     dependencies:
@@ -6801,6 +6870,10 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+
+  minimatch@9.0.9:
+    dependencies:
+      brace-expansion: 2.0.2
 
   minimist@1.2.8: {}
 

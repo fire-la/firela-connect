@@ -3,11 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import {
-  SyncRateLimiter,
-  createSyncRateLimiter,
-  type SyncRateLimiterConfig,
-} from "./sync-rate-limiter.js"
+import { createSyncRateLimiter } from "./sync-rate-limiter.js"
 import type { KVStore, Logger } from "../runtime/index.js"
 
 /**

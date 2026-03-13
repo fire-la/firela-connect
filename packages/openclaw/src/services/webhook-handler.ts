@@ -25,6 +25,7 @@ import {
   type WebhookRequest,
 } from "@firela/billclaw-core"
 import { emitEvent, emitSyncFailed, type WebhookEventType } from "@firela/billclaw-core"
+import { MemoryKVStore } from "@firela/runtime-adapters/node"
 
 /**
  * Dependencies for webhook handlers
@@ -147,8 +148,9 @@ export async function registerWebhookHandlers(
   // Create security layer
   const security = createWebhookSecurity(deduplication, logger)
 
-  // Create rate limiter
-  rateLimiter = createSyncRateLimiter(logger)
+  // Create rate limiter with KVStore for multi-instance support
+  const kv = new MemoryKVStore()
+  rateLimiter = createSyncRateLimiter(kv, logger)
 
   // Create processor
   processor = new WebhookProcessor({
@@ -204,13 +206,13 @@ export async function registerWebhookHandlers(
       },
       webhooks: configWebhooks,
       rateLimiter: {
-        isWebhookSyncAllowed: (accountId: string) => {
+        isWebhookSyncAllowed: async (accountId: string) => {
           if (!rateLimiter) return true
           return rateLimiter.isWebhookSyncAllowed(accountId)
         },
-        recordWebhookSync: (accountId: string) => {
+        recordWebhookSync: async (accountId: string) => {
           if (!rateLimiter) return
-          rateLimiter.recordWebhookSync(accountId)
+          await rateLimiter.recordWebhookSync(accountId)
         },
       },
     }),
