@@ -1,0 +1,597 @@
+/**
+ * Discord Slash Commands Handler
+ *
+ * Handles APPLICATION_COMMAND interactions (type 2).
+ */
+
+import { buildMsgContext, type MsgContext } from '../message/context';
+import { createRelayClient, getUserErrorMessage } from '../relay';
+import { getHistory, appendMessage, type HistoryEntry } from '../storage';
+import { buildChatMessages } from '../conversation';
+import { getRecentMemories, extractAndStoreMemory, type MemoryEntry } from '../memory';
+
+/**
+ * Interaction types from Discord API
+ * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object-interaction-type
+ */
+export const InteractionType = {
+  PING: 1,
+  APPLICATION_COMMAND: 2,
+  MESSAGE_COMPONENT: 3,
+  APPLICATION_COMMAND_AUTOCOMPLETE: 4,
+  MODAL_SUBMIT: 5,
+} as const;
+
+/**
+ * Response types for Discord interactions
+ * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-response-object-interaction-callback-type
+ */
+export const InteractionResponseType = {
+  PONG: 1,
+  CHANNEL_MESSAGE_WITH_SOURCE: 4,
+  DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE: 5,
+  DEFERRED_UPDATE_MESSAGE: 6,
+  UPDATE_MESSAGE: 7,
+  APPLICATION_COMMAND_AUTOCOMPLETE_RESULT: 8,
+  MODAL: 9,
+} as const;
+
+/**
+ * Button component styles
+ * @see https://discord.com/developers/docs/interactions/message-components#button-object-button-styles
+ */
+export const ButtonStyle = {
+  PRIMARY: 1, // Blurple
+  SECONDARY: 2, // Grey
+  SUCCESS: 3, // Green
+  DANGER: 4, // Red
+  LINK: 5, // External link
+} as const;
+
+/**
+ * Component types for message components
+ * @see https://discord.com/developers/docs/interactions/message-components#component-types
+ */
+export const ComponentType = {
+  ACTION_ROW: 1,
+  BUTTON: 2,
+  STRING_SELECT: 3,
+  TEXT_INPUT: 4,
+} as const;
+
+/**
+ * Custom IDs for chat buttons
+ */
+export const ChatButtonCustomId = {
+  CONTINUE: 'chat_continue',
+  CLEAR: 'chat_clear',
+  MODAL_SUBMIT: 'chat_modal_submit',
+} as const;
+
+/**
+ * Handles APPLICATION_COMMAND interactions
+ *
+ * @param interaction - The Discord interaction object
+ * @param env - Worker environment variables
+ * @param ctx - ExecutionContext for background tasks
+ * @returns Response object for Discord
+ */
+export async function handleCommand(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  const commandName = interaction.data?.name;
+
+  switch (commandName) {
+    case 'chat':
+      return handleChatCommand(interaction, env, ctx);
+    default:
+      return Response.json({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `Unknown command: ${commandName}`,
+        },
+      });
+  }
+}
+
+/**
+ * Handles the /chat command
+ *
+ * Uses DEFERRED response mode because LLM calls may exceed
+ * Discord's 3-second timeout.
+ *
+ * Flow:
+ * 1. Immediately return DEFERRED response (type 5)
+ * 2. Process LLM request in background
+ * 3. Send final response via Discord Webhook API
+ *
+ * @param interaction - The Discord interaction object
+ * @param env - Worker environment variables
+ * @returns Deferred response, actual message sent via webhook
+ */
+async function handleChatCommand(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  // Get user message from interaction options
+  const userMessage = interaction.data?.resolved?.values?.[0] ||
+    interaction.data?.options?.find((o) => o.name === 'message')?.value;
+
+  if (!userMessage) {
+    return Response.json({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: '请提供消息内容',
+      },
+    });
+  }
+
+  // Start background processing with ctx.waitUntil() to ensure completion
+  // In Cloudflare Workers, background tasks must be registered with waitUntil
+  // or they will be terminated when the main function returns
+  ctx.waitUntil(processChatAsync(interaction, userMessage, env, ctx));
+
+  // Immediately return DEFERRED response (within Discord's 3-second timeout)
+  return Response.json({
+    type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+  });
+}
+
+/**
+ * Process chat command asynchronously and send response via webhook
+ */
+async function processChatAsync(
+  interaction: DiscordInteraction,
+  userMessage: string,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<void> {
+  const channelId = interaction.channel_id;
+  const userId = interaction.user?.id || 'unknown';
+  const interactionToken = interaction.token;
+  const applicationId = interaction.application_id;
+
+  try {
+    // Create relay client
+    const client = createRelayClient(env);
+
+    // Get conversation history (if KV is available)
+    let history = null;
+    if (env.CONVERSATION_KV) {
+      history = await getHistory(env.CONVERSATION_KV, channelId);
+    }
+
+    // Get D1 long-term memories (if DB is available)
+    let memories: MemoryEntry[] = [];
+    if (env.DB) {
+      try {
+        memories = await getRecentMemories(env.DB, channelId, 10);
+      } catch (error) {
+        console.error('Failed to retrieve long-term memories:', error);
+        // Continue without memories - graceful degradation
+      }
+    }
+
+    // Build messages with history and long-term memories
+    const messages = buildChatMessages(history, userMessage, undefined, memories);
+
+    // Send to LLM
+    const response = await client.chat(messages);
+    // Extract text from Claude response format
+    const assistantMessage = response.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('') || '抱歉，我无法生成回复。';
+
+    // Save to history (if KV available)
+    if (env.CONVERSATION_KV) {
+      const now = Date.now();
+
+      // Save user message
+      await appendMessage(env.CONVERSATION_KV, channelId, {
+        role: 'user',
+        content: userMessage,
+        timestamp: now,
+      });
+
+      // Save assistant response
+      await appendMessage(env.CONVERSATION_KV, channelId, {
+        role: 'assistant',
+        content: assistantMessage,
+        timestamp: now + 1,
+      });
+    }
+
+    // Extract and store memory asynchronously (background task)
+    if (env.DB) {
+      ctx.waitUntil(extractAndStoreMemory(env, channelId, userId, userMessage));
+    }
+
+    // Send response via Discord Webhook API
+    await sendFollowupMessage(applicationId, interactionToken, assistantMessage);
+  } catch (error) {
+    console.error('Chat processing error:', error);
+    // Send error message via webhook
+    await sendFollowupMessage(
+      applicationId,
+      interactionToken,
+      `Error: ${getUserErrorMessage(error)}`
+    );
+  }
+}
+
+/**
+ * Send a followup message via Discord Webhook API
+ * @see https://discord.com/developers/docs/interactions/receiving-and-responding#followup-messages
+ */
+async function sendFollowupMessage(
+  applicationId: string,
+  interactionToken: string,
+  content: string,
+  withButtons: boolean = true
+): Promise<void> {
+  const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`;
+
+  const body: Record<string, unknown> = {
+    content: content.slice(0, 2000), // Discord limit is 2000 chars
+  };
+
+  // Add conversation buttons
+  if (withButtons) {
+    body.components = [
+      {
+        type: ComponentType.ACTION_ROW,
+        components: [
+          {
+            type: ComponentType.BUTTON,
+            style: ButtonStyle.PRIMARY,
+            custom_id: ChatButtonCustomId.CONTINUE,
+            label: '继续对话',
+            emoji: { name: '💬' },
+          },
+          {
+            type: ComponentType.BUTTON,
+            style: ButtonStyle.DANGER,
+            custom_id: ChatButtonCustomId.CLEAR,
+            label: '清除上下文',
+            emoji: { name: '🗑️' },
+          },
+        ],
+      },
+    ];
+  }
+
+  const response = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Webhook failed: ${response.status} - ${errorText}`);
+  }
+}
+
+/**
+ * Edit the original interaction response via Discord Webhook API
+ * This updates the message in place, avoiding the "return" button issue
+ * @see https://discord.com/developers/docs/interactions/receiving-and-responding#edit-original-interaction-response
+ */
+async function editOriginalMessage(
+  applicationId: string,
+  interactionToken: string,
+  content: string,
+  withButtons: boolean = true
+): Promise<void> {
+  const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;
+
+  const body: Record<string, unknown> = {
+    content: content.slice(0, 2000), // Discord limit is 2000 chars
+  };
+
+  // Add conversation buttons
+  if (withButtons) {
+    body.components = [
+      {
+        type: ComponentType.ACTION_ROW,
+        components: [
+          {
+            type: ComponentType.BUTTON,
+            style: ButtonStyle.PRIMARY,
+            custom_id: ChatButtonCustomId.CONTINUE,
+            label: '继续对话',
+            emoji: { name: '💬' },
+          },
+          {
+            type: ComponentType.BUTTON,
+            style: ButtonStyle.DANGER,
+            custom_id: ChatButtonCustomId.CLEAR,
+            label: '清除上下文',
+            emoji: { name: '🗑️' },
+          },
+        ],
+      },
+    ];
+  }
+
+  const response = await fetch(webhookUrl, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Edit original message failed: ${response.status} - ${errorText}`);
+  }
+}
+
+/**
+ * Handle MESSAGE_COMPONENT interactions (button clicks)
+ */
+export function handleButtonInteraction(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  const customId = interaction.data?.custom_id;
+
+  switch (customId) {
+    case ChatButtonCustomId.CONTINUE:
+      return showChatModal(interaction);
+    case ChatButtonCustomId.CLEAR:
+      return handleClearContext(interaction, env, ctx);
+    default:
+      return Response.json({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: { content: '未知的按钮操作' },
+      });
+  }
+}
+
+/**
+ * Show a modal for continuing the conversation
+ */
+function showChatModal(interaction: DiscordInteraction): Response {
+  return Response.json({
+    type: InteractionResponseType.MODAL,
+    data: {
+      custom_id: ChatButtonCustomId.MODAL_SUBMIT,
+      title: '继续对话',
+      components: [
+        {
+          type: ComponentType.ACTION_ROW,
+          components: [
+            {
+              type: ComponentType.TEXT_INPUT,
+              custom_id: 'message_input',
+              style: 2, // Paragraph style
+              label: '输入你的问题',
+              placeholder: '在这里输入你想问的内容...',
+              required: true,
+              min_length: 1,
+              max_length: 2000,
+            },
+          ],
+        },
+      ],
+    },
+  });
+}
+
+/**
+ * Handle clear context button click
+ */
+function handleClearContext(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  const channelId = interaction.channel_id;
+
+  // Clear history in background
+  ctx.waitUntil(clearHistoryAsync(env, channelId));
+
+  return Response.json({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: '✅ 对话上下文已清除，可以开始新的对话了！',
+      flags: 64, // Ephemeral - only visible to the user
+    },
+  });
+}
+
+/**
+ * Clear conversation history asynchronously
+ */
+async function clearHistoryAsync(env: Env, channelId: string): Promise<void> {
+  if (env.CONVERSATION_KV) {
+    try {
+      await env.CONVERSATION_KV.delete(`history:${channelId}`);
+    } catch (error) {
+      console.error('Failed to clear history:', error);
+    }
+  }
+}
+
+/**
+ * Handle MODAL_SUBMIT interactions
+ */
+export function handleModalSubmit(
+  interaction: DiscordInteraction,
+  env: Env,
+  ctx: ExecutionContext
+): Response {
+  // Extract user input from modal
+  const userInput = interaction.data?.components?.[0]?.components?.[0]?.value;
+
+  if (!userInput) {
+    return Response.json({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: '未收到输入内容',
+        flags: 64, // Ephemeral
+      },
+    });
+  }
+
+  // Process in background - use editOriginalMessage for Modal to avoid "return" button
+  ctx.waitUntil(processModalSubmitAsync(interaction, userInput, env, ctx));
+
+  // Return deferred response - this shows "thinking..." state
+  return Response.json({
+    type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+  });
+}
+
+/**
+ * Process Modal submit asynchronously and edit original message
+ * This avoids the "return" button issue by editing in place
+ */
+async function processModalSubmitAsync(
+  interaction: DiscordInteraction,
+  userMessage: string,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<void> {
+  const channelId = interaction.channel_id;
+  const userId = interaction.user?.id || 'unknown';
+  const interactionToken = interaction.token;
+  const applicationId = interaction.application_id;
+
+  try {
+    // Create relay client
+    const client = createRelayClient(env);
+
+    // Get conversation history (if KV is available)
+    let history = null;
+    if (env.CONVERSATION_KV) {
+      history = await getHistory(env.CONVERSATION_KV, channelId);
+    }
+
+    // Get D1 long-term memories (if DB is available)
+    let memories: MemoryEntry[] = [];
+    if (env.DB) {
+      try {
+        memories = await getRecentMemories(env.DB, channelId, 10);
+      } catch (error) {
+        console.error('Failed to retrieve long-term memories:', error);
+        // Continue without memories - graceful degradation
+      }
+    }
+
+    // Build messages with history and long-term memories
+    const messages = buildChatMessages(history, userMessage, undefined, memories);
+
+    // Send to LLM
+    const response = await client.chat(messages);
+    // Extract text from Claude response format
+    const assistantMessage = response.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('') || '抱歉，我无法生成回复。';
+
+    // Save to history (if KV available)
+    if (env.CONVERSATION_KV) {
+      const now = Date.now();
+
+      // Save user message
+      await appendMessage(env.CONVERSATION_KV, channelId, {
+        role: 'user',
+        content: userMessage,
+        timestamp: now,
+      });
+
+      // Save assistant response
+      await appendMessage(env.CONVERSATION_KV, channelId, {
+        role: 'assistant',
+        content: assistantMessage,
+        timestamp: now + 1,
+      });
+    }
+
+    // Extract and store memory asynchronously (background task)
+    if (env.DB) {
+      ctx.waitUntil(extractAndStoreMemory(env, channelId, userId, userMessage));
+    }
+
+    // Edit original message instead of sending new one
+    // This avoids the "return" button issue
+    await editOriginalMessage(applicationId, interactionToken, assistantMessage);
+  } catch (error) {
+    console.error('Modal submit processing error:', error);
+    // Edit original message with error
+    await editOriginalMessage(
+      applicationId,
+      interactionToken,
+      `Error: ${getUserErrorMessage(error)}`,
+      false // No buttons on error
+    );
+  }
+}
+
+/**
+ * Discord Interaction object structure
+ * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object
+ */
+interface DiscordInteraction {
+  id: string;
+  application_id: string;
+  type: typeof InteractionType[keyof typeof InteractionType];
+  data?: {
+    id: string;
+    name: string;
+    type: number;
+    options?: Array<{
+      name: string;
+      type: number;
+      value: string;
+    }>;
+    // Button/Select Menu interaction data
+    custom_id?: string;
+    component_type?: number;
+    // Modal submit data
+    components?: Array<{
+      type: number;
+      components: Array<{
+        type: number;
+        custom_id: string;
+        value: string;
+      }>;
+    }>;
+    // Resolved data for slash commands
+    resolved?: {
+      values?: string[];
+    };
+  };
+  guild_id?: string;
+  channel_id: string;
+  user: {
+    id: string;
+    username: string;
+    discriminator: string;
+    avatar?: string;
+  };
+  member?: {
+    user: DiscordInteraction['user'];
+    roles: string[];
+    permissions: string;
+  };
+  token: string;
+  version: number;
+  message?: {
+    id: string;
+    content: string;
+  };
+  app_permissions: string;
+  locale?: string;
+  guild_locale?: string;
+}

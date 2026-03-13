@@ -1,0 +1,43 @@
+{
+  "name": "@firela/firela-bot",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "dev": "pnpm build && wrangler dev",
+    "deploy": "pnpm build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "register-commands": "node scripts/register-commands.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.6.0",
+    "discord-api-types": "^0.38.38",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250214.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "esbuild": "^0.25.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^4.70.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "DISCORD_PUBLIC_KEY": {
+        "description": "Your Discord application's public key for verifying interaction signatures. Find it in Discord Developer Portal > Your App > General Information > Public Key."
+      },
+      "DISCORD_BOT_TOKEN": {
+        "description": "Your Discord bot token for authentication. Generate it in Discord Developer Portal > Your App > Bot > Reset Token."
+      },
+      "DISCORD_APPLICATION_ID": {
+        "description": "Your Discord application's ID (also called Client ID). Find it in Discord Developer Portal > Your App > General Information > Application ID."
+      },
+      "FIRELA_BOT_API_KEY": {
+        "description": "Your Firela Bot API key for accessing the relay service. Get it from https://firela.io/dashboard after signing up."
+      }
+    }
+  }
+}
