@@ -41,53 +41,24 @@ const app = new Hono<{ Bindings: Env }>()
 // Request logging
 app.use("*", logger())
 
-// CORS - allows frontend to call the API
+// CORS - allows frontend to make API requests
 app.use(
-  "*",
   cors({
     origin: "*",
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
-    exposeHeaders: ["Content-Length", "X-Request-Id"],
-    maxAge: 600,
-    credentials: true,
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    credentials: "include",
   }),
 )
-
-// Service toggle middleware (Plan 13.4-01)
-import { serviceToggleMiddleware } from "./middleware/service-toggle.js"
-
-app.use("*", serviceToggleMiddleware())
 
 // ============================================================================
 // Health Check
 // ============================================================================
 
-/**
- * Health check endpoint
- */
 app.get("/health", (c) => {
   return c.json({
     status: "ok",
     service: "billclaw-ui",
     version: "0.0.1",
-  })
-})
-
-/**
- * Root API info endpoint
- */
-app.get("/api", (c) => {
-  return c.json({
-    service: "BillClaw UI",
-    version: "0.0.1",
-    description: "Unified UI and API service",
-    endpoints: {
-      health: "/health",
-      oauthPlaid: "/api/oauth/plaid",
-      oauthGmail: "/api/oauth/gmail",
-      credentials: "/api/connect",
-    },
   })
 })
 
@@ -103,31 +74,36 @@ import credentialsRoutes from "./routes/oauth/credentials.js"
 // Register OAuth routes
 app.route("/api/oauth/plaid", plaidRoutes)
 app.route("/api/oauth/gmail", gmailRoutes)
-
-// Register credential routes for Direct mode
 app.route("/api/connect", credentialsRoutes)
-
-// Webhook and Config routes (Plan 13.2-03)
-import { webhookRoutes } from "./routes/webhooks.js"
-import { configRoutes } from "./routes/config.js"
-
-// Register webhook routes
-app.route("/webhook", webhookRoutes)
-
-// Register config routes (already under /api prefix)
-app.route("/api", configRoutes)
 
 // Service toggle routes (Plan 13.4-01)
 import { serviceRoutes } from "./routes/services.js"
-
 app.route("/api/services", serviceRoutes)
 
 // ============================================================================
-// Error Handling
+// SPA Fallback - serve index.html for client-side routes
 // ============================================================================
 
-// Handle 404 - Route not found
-app.notFound((c) => {
+// ============================================================================
+// SPA Fallback - serve index.html for client-side routes
+// ============================================================================
+
+const INDEX_HTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BillClaw UI</title>
+    <script type="module" crossorigin src="/assets/index-DDiRU5mW.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BFD3B20P.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`
+
+// For SPA routes, serve index.html from dist folder
+app.notFound(async (c) => {
   // For API routes, return JSON error
   if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/webhook/")) {
     return c.json(
@@ -141,14 +117,13 @@ app.notFound((c) => {
     )
   }
 
-  // For other routes, return a simple 404 (SPA routing handled by wrangler assets)
-  return c.text("Not Found", 404)
+  // For SPA routes, serve the built index.html from dist folder
+  return c.html(INDEX_HTML)
 })
 
 // Global error handler
 app.onError((err, c) => {
   console.error("Error:", err)
-
   return c.json(
     {
       success: false,
@@ -160,11 +135,7 @@ app.onError((err, c) => {
 })
 
 /**
- * Export the Hono app for Cloudflare Workers runtime
+ * export the Hono app for Cloudflare Workers runtime
  */
 export default app
-
-/**
- * Export types for consumers
- */
 export type AppType = typeof app
