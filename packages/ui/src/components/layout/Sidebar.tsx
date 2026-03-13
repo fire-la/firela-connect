@@ -10,6 +10,7 @@ import {
   Download,
   Key,
   Webhook,
+  Settings,
   Menu,
   X,
 } from "lucide-react"
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { path: "/export", label: "Export", icon: <Download className="w-5 h-5" /> },
   { path: "/ign", label: "IGN", icon: <Key className="w-5 h-5" /> },
   { path: "/webhooks", label: "Webhooks", icon: <Webhook className="w-5 h-5" /> },
+  { path: "/settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
 ]
 
 export function Sidebar() {

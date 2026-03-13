@@ -10,6 +10,7 @@ import { SyncPage } from "@/components/pages/SyncPage"
 import { ExportPage } from "@/components/pages/ExportPage"
 import { IgnPage } from "@/components/pages/IgnPage"
 import { WebhooksPage } from "@/components/pages/WebhooksPage"
+import { SettingsPage } from "@/components/pages/SettingsPage"
 import { PlaidConnectPage } from "@/components/pages/PlaidConnectPage"
 import { GmailConnectPage } from "@/components/pages/GmailConnectPage"
 
@@ -63,6 +64,14 @@ export function App() {
           element={
             <PageLayout>
               <WebhooksPage />
+            </PageLayout>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <PageLayout>
+              <SettingsPage />
             </PageLayout>
           }
         />
