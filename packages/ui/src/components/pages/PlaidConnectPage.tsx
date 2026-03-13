@@ -190,7 +190,7 @@ export function PlaidConnectPage() {
 
         {status === "error" && (
           <>
-            <div className="status-badge error flex items-center justify-center gap-2">
+            <div data-testid="plaid-status" className="status-badge error flex items-center justify-center gap-2">
               <XCircle className="w-5 h-5" />
               <span>{error || "An error occurred"}</span>
             </div>
