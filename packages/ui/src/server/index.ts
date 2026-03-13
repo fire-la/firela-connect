@@ -24,6 +24,9 @@ export type Env = {
   JWT_SECRET: string
   GMAIL_CLIENT_ID?: string
   GMAIL_CLIENT_SECRET?: string
+  // Service toggles (from wrangler.toml vars)
+  BILLCLAW_ENABLED?: string
+  FIRELA_BOT_ENABLED?: string
 }
 
 /**
@@ -50,6 +53,11 @@ app.use(
     credentials: true,
   }),
 )
+
+// Service toggle middleware (Plan 13.4-01)
+import { serviceToggleMiddleware } from "./middleware/service-toggle.js"
+
+app.use("*", serviceToggleMiddleware())
 
 // ============================================================================
 // Health Check
@@ -108,6 +116,11 @@ app.route("/webhook", webhookRoutes)
 
 // Register config routes (already under /api prefix)
 app.route("/api", configRoutes)
+
+// Service toggle routes (Plan 13.4-01)
+import { serviceRoutes } from "./routes/services.js"
+
+app.route("/api/services", serviceRoutes)
 
 // ============================================================================
 // Error Handling

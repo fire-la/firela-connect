@@ -27,6 +27,9 @@ id = "placeholder-replace-after-create"
 # Environment variables (non-sensitive defaults)
 [vars]
 PLAID_ENV = "sandbox"
+# Service toggles (default enabled)
+BILLCLAW_ENABLED = "true"
+FIRELA_BOT_ENABLED = "true"
 
 # Secrets (set in Cloudflare dashboard after deploy)
 # Required secrets:
