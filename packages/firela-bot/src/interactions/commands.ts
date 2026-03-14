@@ -4,9 +4,8 @@
  * Handles APPLICATION_COMMAND interactions (type 2).
  */
 
-import { buildMsgContext, type MsgContext } from '../message/context';
 import { createRelayClient, getUserErrorMessage } from '../relay';
-import { getHistory, appendMessage, type HistoryEntry } from '../storage';
+import { getHistory, appendMessage } from '../storage';
 import { buildChatMessages } from '../conversation';
 import { getRecentMemories, extractAndStoreMemory, type MemoryEntry } from '../memory';
 import { getMessage, getLocaleFromInteraction } from '../i18n/index.js';

@@ -5,7 +5,7 @@
  * Uses Claude-compatible /v1/messages API with Bearer token authentication.
  */
 
-import type { ChatMessage, ChatResponse, RelayClientConfig } from './types';
+import type { ChatMessage, ChatResponse, RelayClientConfig, RelayErrorResponse } from './types';
 import { RelayError } from './errors';
 
 /**
@@ -140,9 +140,6 @@ export class RelayClient {
       .join('');
   }
 }
-
-// Import type for error handling
-import type { RelayErrorResponse } from './types';
 
 /**
  * Create RelayClient from environment variables
