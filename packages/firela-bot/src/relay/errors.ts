@@ -5,17 +5,18 @@
  */
 
 import type { RelayErrorResponse } from './types';
+import { getMessage, type MessageKey } from '../i18n/index.js';
 
 /**
- * Error code to user-friendly message mapping
+ * Error code to i18n message key mapping
  */
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid_api_key: 'API Key 无效，请检查配置',
-  api_key_expired: 'API Key 已过期，请访问 firela.io 更新',
-  rate_limit_exceeded: '请求过于频繁，请稍后重试',
-  insufficient_quota: '配额不足，请升级计划',
-  internal_error: '服务暂时不可用，请稍后再试',
-  service_unavailable: '服务暂时不可用，请稍后再试',
+const ERROR_CODE_TO_KEY: Record<string, MessageKey> = {
+  invalid_api_key: 'errors.invalid_api_key',
+  api_key_expired: 'errors.api_key_expired',
+  rate_limit_exceeded: 'errors.rate_limit_exceeded',
+  insufficient_quota: 'errors.insufficient_quota',
+  internal_error: 'errors.service_unavailable',
+  service_unavailable: 'errors.service_unavailable',
 };
 
 /**
@@ -31,13 +32,16 @@ export class RelayError extends Error {
   /** User-friendly error message */
   public readonly userMessage: string;
 
-  constructor(errorResponse: RelayErrorResponse) {
+  constructor(errorResponse: RelayErrorResponse, locale?: string) {
     const { message, type, code } = errorResponse.error;
     super(message);
     this.name = 'RelayError';
     this.code = code;
     this.type = type;
-    this.userMessage = ERROR_MESSAGES[code] || `服务错误: ${message}`;
+    const messageKey = ERROR_CODE_TO_KEY[code];
+    this.userMessage = messageKey
+      ? getMessage(messageKey, locale)
+      : getMessage('errors.internal_error', locale, { message });
   }
 
   /**
@@ -45,7 +49,7 @@ export class RelayError extends Error {
    *
    * Used when the response body doesn't contain a valid error JSON.
    */
-  static fromHttpStatus(status: number, body?: string): RelayError {
+  static fromHttpStatus(status: number, body?: string, locale?: string): RelayError {
     let code = 'internal_error';
     let message = 'Unknown error';
 
@@ -60,9 +64,12 @@ export class RelayError extends Error {
       message = 'Service unavailable';
     }
 
-    return new RelayError({
-      error: { message, type: 'api_error', code },
-    });
+    return new RelayError(
+      {
+        error: { message, type: 'api_error', code },
+      },
+      locale
+    );
   }
 }
 
@@ -70,14 +77,15 @@ export class RelayError extends Error {
  * Get user-friendly error message from any error
  *
  * @param error - The error to convert
+ * @param locale - Optional locale for localized messages
  * @returns User-friendly error message
  */
-export function getUserErrorMessage(error: unknown): string {
+export function getUserErrorMessage(error: unknown, locale?: string): string {
   if (error instanceof RelayError) {
     return error.userMessage;
   }
   if (error instanceof Error) {
-    return `连接失败: ${error.message}`;
+    return getMessage('errors.connection_failed', locale, { message: error.message });
   }
-  return '连接失败，请稍后重试';
+  return getMessage('errors.connection_failed_generic', locale);
 }

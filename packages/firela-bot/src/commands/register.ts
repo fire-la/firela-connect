@@ -41,17 +41,15 @@ interface ApplicationCommandOption {
 const commands: ApplicationCommand[] = [
   {
     name: 'chat',
-    description: '与 Firela Bot 对话',
+    description: 'Chat with Firela Bot',
     description_localizations: {
-      'en-US': 'Chat with Firela Bot',
       'zh-CN': '与 Firela Bot 对话',
     },
     options: [
       {
         name: 'message',
-        description: '你的消息',
+        description: 'Your message',
         description_localizations: {
-          'en-US': 'Your message',
           'zh-CN': '你的消息',
         },
         type: 3, // STRING
@@ -61,9 +59,8 @@ const commands: ApplicationCommand[] = [
   },
   {
     name: 'help',
-    description: '获取帮助信息',
+    description: 'Get help information',
     description_localizations: {
-      'en-US': 'Get help information',
       'zh-CN': '获取帮助信息',
     },
   },

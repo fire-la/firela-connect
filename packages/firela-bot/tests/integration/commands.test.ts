@@ -229,8 +229,8 @@ describe('Slash Command Handling', () => {
 
       expect(response.status).toBe(200);
       expect(body.type).toBe(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE);
-      // Error message is in Chinese: "请提供消息内容"
-      expect(body.data.content).toContain('消息');
+      // Error message is in English by default
+      expect(body.data.content).toContain('provide a message');
     });
 
     it('should handle chat command with message', async () => {
@@ -348,7 +348,8 @@ describe('Slash Command Handling', () => {
       expect(response.status).toBe(200);
       expect(body.type).toBe(InteractionResponseType.MODAL);
       expect(body.data.custom_id).toBe(ChatButtonCustomId.MODAL_SUBMIT);
-      expect(body.data.title).toBe('继续对话');
+      // Default title is in English
+      expect(body.data.title).toBe('Continue Chat');
     });
 
     it('should return ephemeral message for clear context button', async () => {
@@ -360,7 +361,8 @@ describe('Slash Command Handling', () => {
 
       expect(response.status).toBe(200);
       expect(body.type).toBe(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE);
-      expect(body.data.content).toContain('清除');
+      // Default message is in English
+      expect(body.data.content).toContain('cleared');
       expect(body.data.flags).toBe(64); // Ephemeral
       expect(ctx.waitUntil).toHaveBeenCalled();
     });
@@ -374,7 +376,8 @@ describe('Slash Command Handling', () => {
 
       expect(response.status).toBe(200);
       expect(body.type).toBe(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE);
-      expect(body.data.content).toContain('未知');
+      // Default message is in English
+      expect(body.data.content).toContain('Unknown');
     });
   });
 
@@ -403,7 +406,8 @@ describe('Slash Command Handling', () => {
 
       expect(response.status).toBe(200);
       expect(body.type).toBe(InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE);
-      expect(body.data.content).toContain('未收到');
+      // Default message is in English
+      expect(body.data.content).toContain('No input');
       expect(body.data.flags).toBe(64); // Ephemeral
     });
   });

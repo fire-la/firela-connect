@@ -88,7 +88,7 @@ export class RelayClient {
       clearTimeout(timeoutId);
       if (error instanceof RelayError) throw error;
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('请求超时，请稍后重试');
+        throw new Error('Request timed out. Please try again later.');
       }
       throw error;
     }
@@ -112,7 +112,7 @@ export class RelayClient {
       if (error instanceof RelayError) {
         return { valid: false, message: error.userMessage };
       }
-      return { valid: false, message: '连接验证失败' };
+      return { valid: false, message: 'Connection verification failed' };
     }
   }
 
@@ -158,10 +158,10 @@ export function createRelayClient(env: {
   RELAY_URL: string;
 }): RelayClient {
   if (!env.FIRELA_BOT_API_KEY) {
-    throw new Error('FIRELA_BOT_API_KEY 未配置');
+    throw new Error('FIRELA_BOT_API_KEY is not configured');
   }
   if (!env.RELAY_URL) {
-    throw new Error('RELAY_URL 未配置');
+    throw new Error('RELAY_URL is not configured');
   }
   return new RelayClient({
     baseUrl: env.RELAY_URL,

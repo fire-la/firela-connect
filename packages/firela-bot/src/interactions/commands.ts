@@ -9,6 +9,7 @@ import { createRelayClient, getUserErrorMessage } from '../relay';
 import { getHistory, appendMessage, type HistoryEntry } from '../storage';
 import { buildChatMessages } from '../conversation';
 import { getRecentMemories, extractAndStoreMemory, type MemoryEntry } from '../memory';
+import { getMessage, getLocaleFromInteraction } from '../i18n/index.js';
 
 /**
  * Interaction types from Discord API
@@ -121,10 +122,11 @@ async function handleChatCommand(
     interaction.data?.options?.find((o) => o.name === 'message')?.value;
 
   if (!userMessage) {
+    const locale = getLocaleFromInteraction(interaction);
     return Response.json({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: '请提供消息内容',
+        content: getMessage('validation.provide_message', locale),
       },
     });
   }
@@ -153,6 +155,7 @@ async function processChatAsync(
   const userId = interaction.user?.id || 'unknown';
   const interactionToken = interaction.token;
   const applicationId = interaction.application_id;
+  const locale = getLocaleFromInteraction(interaction);
 
   try {
     // Create relay client
@@ -184,7 +187,7 @@ async function processChatAsync(
     const assistantMessage = response.content
       .filter((block) => block.type === 'text')
       .map((block) => block.text)
-      .join('') || '抱歉，我无法生成回复。';
+      .join('') || getMessage('responses.llm_fallback', locale);
 
     // Save to history (if KV available)
     if (env.CONVERSATION_KV) {
@@ -211,14 +214,14 @@ async function processChatAsync(
     }
 
     // Send response via Discord Webhook API
-    await sendFollowupMessage(applicationId, interactionToken, assistantMessage);
+    await sendFollowupMessage(applicationId, interactionToken, assistantMessage, locale);
   } catch (error) {
     console.error('Chat processing error:', error);
     // Send error message via webhook
     await sendFollowupMessage(
       applicationId,
       interactionToken,
-      `Error: ${getUserErrorMessage(error)}`
+      `Error: ${getUserErrorMessage(error, locale)}`
     );
   }
 }
@@ -231,6 +234,7 @@ async function sendFollowupMessage(
   applicationId: string,
   interactionToken: string,
   content: string,
+  locale?: string,
   withButtons: boolean = true
 ): Promise<void> {
   const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`;
@@ -249,14 +253,14 @@ async function sendFollowupMessage(
             type: ComponentType.BUTTON,
             style: ButtonStyle.PRIMARY,
             custom_id: ChatButtonCustomId.CONTINUE,
-            label: '继续对话',
+            label: getMessage('buttons.continue_chat', locale),
             emoji: { name: '💬' },
           },
           {
             type: ComponentType.BUTTON,
             style: ButtonStyle.DANGER,
             custom_id: ChatButtonCustomId.CLEAR,
-            label: '清除上下文',
+            label: getMessage('buttons.clear_context', locale),
             emoji: { name: '🗑️' },
           },
         ],
@@ -287,6 +291,7 @@ async function editOriginalMessage(
   applicationId: string,
   interactionToken: string,
   content: string,
+  locale?: string,
   withButtons: boolean = true
 ): Promise<void> {
   const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;
@@ -305,14 +310,14 @@ async function editOriginalMessage(
             type: ComponentType.BUTTON,
             style: ButtonStyle.PRIMARY,
             custom_id: ChatButtonCustomId.CONTINUE,
-            label: '继续对话',
+            label: getMessage('buttons.continue_chat', locale),
             emoji: { name: '💬' },
           },
           {
             type: ComponentType.BUTTON,
             style: ButtonStyle.DANGER,
             custom_id: ChatButtonCustomId.CLEAR,
-            label: '清除上下文',
+            label: getMessage('buttons.clear_context', locale),
             emoji: { name: '🗑️' },
           },
         ],
@@ -343,16 +348,17 @@ export function handleButtonInteraction(
   ctx: ExecutionContext
 ): Response {
   const customId = interaction.data?.custom_id;
+  const locale = getLocaleFromInteraction(interaction);
 
   switch (customId) {
     case ChatButtonCustomId.CONTINUE:
-      return showChatModal(interaction);
+      return showChatModal(interaction, locale);
     case ChatButtonCustomId.CLEAR:
-      return handleClearContext(interaction, env, ctx);
+      return handleClearContext(interaction, env, ctx, locale);
     default:
       return Response.json({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: { content: '未知的按钮操作' },
+        data: { content: getMessage('responses.unknown_button', locale) },
       });
   }
 }
@@ -360,12 +366,12 @@ export function handleButtonInteraction(
 /**
  * Show a modal for continuing the conversation
  */
-function showChatModal(interaction: DiscordInteraction): Response {
+function showChatModal(interaction: DiscordInteraction, locale?: string): Response {
   return Response.json({
     type: InteractionResponseType.MODAL,
     data: {
       custom_id: ChatButtonCustomId.MODAL_SUBMIT,
-      title: '继续对话',
+      title: getMessage('modals.continue_title', locale),
       components: [
         {
           type: ComponentType.ACTION_ROW,
@@ -374,8 +380,8 @@ function showChatModal(interaction: DiscordInteraction): Response {
               type: ComponentType.TEXT_INPUT,
               custom_id: 'message_input',
               style: 2, // Paragraph style
-              label: '输入你的问题',
-              placeholder: '在这里输入你想问的内容...',
+              label: getMessage('modals.input_label', locale),
+              placeholder: getMessage('modals.input_placeholder', locale),
               required: true,
               min_length: 1,
               max_length: 2000,
@@ -393,7 +399,8 @@ function showChatModal(interaction: DiscordInteraction): Response {
 function handleClearContext(
   interaction: DiscordInteraction,
   env: Env,
-  ctx: ExecutionContext
+  ctx: ExecutionContext,
+  locale?: string
 ): Response {
   const channelId = interaction.channel_id;
 
@@ -403,7 +410,7 @@ function handleClearContext(
   return Response.json({
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
     data: {
-      content: '✅ 对话上下文已清除，可以开始新的对话了！',
+      content: `✅ ${getMessage('responses.context_cleared', locale)}`,
       flags: 64, // Ephemeral - only visible to the user
     },
   });
@@ -430,6 +437,8 @@ export function handleModalSubmit(
   env: Env,
   ctx: ExecutionContext
 ): Response {
+  const locale = getLocaleFromInteraction(interaction);
+
   // Extract user input from modal
   const userInput = interaction.data?.components?.[0]?.components?.[0]?.value;
 
@@ -437,7 +446,7 @@ export function handleModalSubmit(
     return Response.json({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: '未收到输入内容',
+        content: getMessage('validation.no_input_received', locale),
         flags: 64, // Ephemeral
       },
     });
@@ -466,6 +475,7 @@ async function processModalSubmitAsync(
   const userId = interaction.user?.id || 'unknown';
   const interactionToken = interaction.token;
   const applicationId = interaction.application_id;
+  const locale = getLocaleFromInteraction(interaction);
 
   try {
     // Create relay client
@@ -497,7 +507,7 @@ async function processModalSubmitAsync(
     const assistantMessage = response.content
       .filter((block) => block.type === 'text')
       .map((block) => block.text)
-      .join('') || '抱歉，我无法生成回复。';
+      .join('') || getMessage('responses.llm_fallback', locale);
 
     // Save to history (if KV available)
     if (env.CONVERSATION_KV) {
@@ -525,14 +535,15 @@ async function processModalSubmitAsync(
 
     // Edit original message instead of sending new one
     // This avoids the "return" button issue
-    await editOriginalMessage(applicationId, interactionToken, assistantMessage);
+    await editOriginalMessage(applicationId, interactionToken, assistantMessage, locale);
   } catch (error) {
     console.error('Modal submit processing error:', error);
     // Edit original message with error
     await editOriginalMessage(
       applicationId,
       interactionToken,
-      `Error: ${getUserErrorMessage(error)}`,
+      `Error: ${getUserErrorMessage(error, locale)}`,
+      locale,
       false // No buttons on error
     );
   }

@@ -296,14 +296,14 @@ describe('Relay Client Integration', () => {
 
       expect(error.code).toBe('invalid_api_key');
       expect(error.type).toBe('invalid_request_error');
-      expect(error.userMessage).toContain('API Key');
+      expect(error.userMessage).toContain('Invalid API key');
     });
 
     it('should create RelayError from HTTP status', () => {
       const error = RelayError.fromHttpStatus(401, 'Unauthorized');
 
       expect(error.code).toBe('invalid_api_key');
-      expect(error.userMessage).toContain('API Key');
+      expect(error.userMessage).toContain('Invalid API key');
     });
 
     it('should map 429 to rate_limit_exceeded', () => {
@@ -324,7 +324,7 @@ describe('Relay Client Integration', () => {
       const error = new RelayError(mockRelayResponses.invalidApiKey());
       const message = getUserErrorMessage(error);
 
-      expect(message).toContain('API Key');
+      expect(message).toContain('Invalid API key');
     });
 
     it('should return message for generic Error', () => {
@@ -337,8 +337,8 @@ describe('Relay Client Integration', () => {
     it('should return default message for unknown error', () => {
       const message = getUserErrorMessage('unknown');
 
-      // The default message is Chinese: "连接失败，请稍后重试"
-      expect(message).toContain('连接失败');
+      // Default message is in English
+      expect(message).toContain('Connection failed');
     });
   });
 
