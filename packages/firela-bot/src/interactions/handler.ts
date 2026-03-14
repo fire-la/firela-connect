@@ -10,8 +10,8 @@ import {
   handleCommand,
   handleButtonInteraction,
   handleModalSubmit,
-  InteractionType,
 } from './commands';
+import { InteractionType, type DiscordInteraction } from '../types/index.js';
 
 /**
  * Handles incoming Discord Interaction requests
@@ -81,44 +81,3 @@ export async function handleInteraction(
   return new Response('Unknown interaction type', { status: 400 });
 }
 
-/**
- * Discord Interaction object structure
- * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object
- */
-interface DiscordInteraction {
-  id: string;
-  application_id: string;
-  type: number;
-  data?: {
-    id: string;
-    name: string;
-    type: number;
-    options?: Array<{
-      name: string;
-      type: number;
-      value: string;
-    }>;
-  };
-  guild_id?: string;
-  channel_id: string;
-  user: {
-    id: string;
-    username: string;
-    discriminator: string;
-    avatar?: string;
-  };
-  member?: {
-    user: DiscordInteraction['user'];
-    roles: string[];
-    permissions: string;
-  };
-  token: string;
-  version: number;
-  message?: {
-    id: string;
-    content: string;
-  };
-  app_permissions: string;
-  locale?: string;
-  guild_locale?: string;
-}

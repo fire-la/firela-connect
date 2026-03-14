@@ -9,64 +9,24 @@ import { getHistory, appendMessage } from '../storage';
 import { buildChatMessages } from '../conversation';
 import { getRecentMemories, extractAndStoreMemory, type MemoryEntry } from '../memory';
 import { getMessage, getLocaleFromInteraction } from '../i18n/index.js';
+import {
+  InteractionType,
+  InteractionResponseType,
+  ButtonStyle,
+  ComponentType,
+  ChatButtonCustomId,
+  type DiscordInteraction,
+} from '../types/index.js';
 
-/**
- * Interaction types from Discord API
- * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object-interaction-type
- */
-export const InteractionType = {
-  PING: 1,
-  APPLICATION_COMMAND: 2,
-  MESSAGE_COMPONENT: 3,
-  APPLICATION_COMMAND_AUTOCOMPLETE: 4,
-  MODAL_SUBMIT: 5,
-} as const;
-
-/**
- * Response types for Discord interactions
- * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-response-object-interaction-callback-type
- */
-export const InteractionResponseType = {
-  PONG: 1,
-  CHANNEL_MESSAGE_WITH_SOURCE: 4,
-  DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE: 5,
-  DEFERRED_UPDATE_MESSAGE: 6,
-  UPDATE_MESSAGE: 7,
-  APPLICATION_COMMAND_AUTOCOMPLETE_RESULT: 8,
-  MODAL: 9,
-} as const;
-
-/**
- * Button component styles
- * @see https://discord.com/developers/docs/interactions/message-components#button-object-button-styles
- */
-export const ButtonStyle = {
-  PRIMARY: 1, // Blurple
-  SECONDARY: 2, // Grey
-  SUCCESS: 3, // Green
-  DANGER: 4, // Red
-  LINK: 5, // External link
-} as const;
-
-/**
- * Component types for message components
- * @see https://discord.com/developers/docs/interactions/message-components#component-types
- */
-export const ComponentType = {
-  ACTION_ROW: 1,
-  BUTTON: 2,
-  STRING_SELECT: 3,
-  TEXT_INPUT: 4,
-} as const;
-
-/**
- * Custom IDs for chat buttons
- */
-export const ChatButtonCustomId = {
-  CONTINUE: 'chat_continue',
-  CLEAR: 'chat_clear',
-  MODAL_SUBMIT: 'chat_modal_submit',
-} as const;
+// Re-export types for backward compatibility
+export {
+  InteractionType,
+  InteractionResponseType,
+  ButtonStyle,
+  ComponentType,
+  ChatButtonCustomId,
+  type DiscordInteraction,
+};
 
 /**
  * Handles APPLICATION_COMMAND interactions
@@ -142,6 +102,118 @@ async function handleChatCommand(
 }
 
 /**
+ * Build Discord message body with optional buttons
+ *
+ * Shared helper for creating Discord webhook message payloads.
+ */
+function buildDiscordMessageBody(
+  content: string,
+  locale?: string,
+  withButtons: boolean = true
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    content: content.slice(0, 2000), // Discord limit is 2000 chars
+  };
+
+  if (withButtons) {
+    body.components = [
+      {
+        type: ComponentType.ACTION_ROW,
+        components: [
+          {
+            type: ComponentType.BUTTON,
+            style: ButtonStyle.PRIMARY,
+            custom_id: ChatButtonCustomId.CONTINUE,
+            label: getMessage('buttons.continue_chat', locale),
+            emoji: { name: '💬' },
+          },
+          {
+            type: ComponentType.BUTTON,
+            style: ButtonStyle.DANGER,
+            custom_id: ChatButtonCustomId.CLEAR,
+            label: getMessage('buttons.clear_context', locale),
+            emoji: { name: '🗑️' },
+          },
+        ],
+      },
+    ];
+  }
+
+  return body;
+}
+
+/**
+ * Process chat request and return assistant message
+ *
+ * Shared logic for handling chat interactions from both slash commands and modals.
+ */
+async function processChatRequest(
+  channelId: string,
+  userId: string,
+  userMessage: string,
+  env: Env,
+  ctx: ExecutionContext,
+  locale?: string
+): Promise<string> {
+  // Create relay client
+  const client = createRelayClient(env);
+
+  // Get conversation history (if KV is available)
+  let history = null;
+  if (env.CONVERSATION_KV) {
+    history = await getHistory(env.CONVERSATION_KV, channelId);
+  }
+
+  // Get D1 long-term memories (if DB is available)
+  let memories: MemoryEntry[] = [];
+  if (env.DB) {
+    try {
+      memories = await getRecentMemories(env.DB, channelId, 10);
+    } catch (error) {
+      console.error('Failed to retrieve long-term memories:', error);
+      // Continue without memories - graceful degradation
+    }
+  }
+
+  // Build messages with history and long-term memories
+  const messages = buildChatMessages(history, userMessage, undefined, memories);
+
+  // Send to LLM
+  const response = await client.chat(messages);
+  // Extract text from Claude response format
+  const assistantMessage = response.content
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('') || getMessage('responses.llm_fallback', locale);
+
+  // Save to history (if KV available)
+  if (env.CONVERSATION_KV) {
+    const now = Date.now();
+
+    // Save user message
+    await appendMessage(env.CONVERSATION_KV, channelId, {
+      role: 'user',
+      content: userMessage,
+      timestamp: now,
+    });
+
+    // Save assistant response
+    await appendMessage(env.CONVERSATION_KV, channelId, {
+      role: 'assistant',
+      content: assistantMessage,
+      timestamp: now + 1,
+    });
+  }
+
+  // Extract and store memory asynchronously (background task)
+  if (env.DB) {
+    ctx.waitUntil(extractAndStoreMemory(env, channelId, userId, userMessage));
+  }
+
+  return assistantMessage;
+}
+
+/**
  * Process chat command asynchronously and send response via webhook
  */
 async function processChatAsync(
@@ -157,61 +229,14 @@ async function processChatAsync(
   const locale = getLocaleFromInteraction(interaction);
 
   try {
-    // Create relay client
-    const client = createRelayClient(env);
-
-    // Get conversation history (if KV is available)
-    let history = null;
-    if (env.CONVERSATION_KV) {
-      history = await getHistory(env.CONVERSATION_KV, channelId);
-    }
-
-    // Get D1 long-term memories (if DB is available)
-    let memories: MemoryEntry[] = [];
-    if (env.DB) {
-      try {
-        memories = await getRecentMemories(env.DB, channelId, 10);
-      } catch (error) {
-        console.error('Failed to retrieve long-term memories:', error);
-        // Continue without memories - graceful degradation
-      }
-    }
-
-    // Build messages with history and long-term memories
-    const messages = buildChatMessages(history, userMessage, undefined, memories);
-
-    // Send to LLM
-    const response = await client.chat(messages);
-    // Extract text from Claude response format
-    const assistantMessage = response.content
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('') || getMessage('responses.llm_fallback', locale);
-
-    // Save to history (if KV available)
-    if (env.CONVERSATION_KV) {
-      const now = Date.now();
-
-      // Save user message
-      await appendMessage(env.CONVERSATION_KV, channelId, {
-        role: 'user',
-        content: userMessage,
-        timestamp: now,
-      });
-
-      // Save assistant response
-      await appendMessage(env.CONVERSATION_KV, channelId, {
-        role: 'assistant',
-        content: assistantMessage,
-        timestamp: now + 1,
-      });
-    }
-
-    // Extract and store memory asynchronously (background task)
-    if (env.DB) {
-      ctx.waitUntil(extractAndStoreMemory(env, channelId, userId, userMessage));
-    }
-
+    const assistantMessage = await processChatRequest(
+      channelId,
+      userId,
+      userMessage,
+      env,
+      ctx,
+      locale
+    );
     // Send response via Discord Webhook API
     await sendFollowupMessage(applicationId, interactionToken, assistantMessage, locale);
   } catch (error) {
@@ -238,34 +263,7 @@ async function sendFollowupMessage(
 ): Promise<void> {
   const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`;
 
-  const body: Record<string, unknown> = {
-    content: content.slice(0, 2000), // Discord limit is 2000 chars
-  };
-
-  // Add conversation buttons
-  if (withButtons) {
-    body.components = [
-      {
-        type: ComponentType.ACTION_ROW,
-        components: [
-          {
-            type: ComponentType.BUTTON,
-            style: ButtonStyle.PRIMARY,
-            custom_id: ChatButtonCustomId.CONTINUE,
-            label: getMessage('buttons.continue_chat', locale),
-            emoji: { name: '💬' },
-          },
-          {
-            type: ComponentType.BUTTON,
-            style: ButtonStyle.DANGER,
-            custom_id: ChatButtonCustomId.CLEAR,
-            label: getMessage('buttons.clear_context', locale),
-            emoji: { name: '🗑️' },
-          },
-        ],
-      },
-    ];
-  }
+  const body = buildDiscordMessageBody(content, locale, withButtons);
 
   const response = await fetch(webhookUrl, {
     method: 'POST',
@@ -295,34 +293,7 @@ async function editOriginalMessage(
 ): Promise<void> {
   const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;
 
-  const body: Record<string, unknown> = {
-    content: content.slice(0, 2000), // Discord limit is 2000 chars
-  };
-
-  // Add conversation buttons
-  if (withButtons) {
-    body.components = [
-      {
-        type: ComponentType.ACTION_ROW,
-        components: [
-          {
-            type: ComponentType.BUTTON,
-            style: ButtonStyle.PRIMARY,
-            custom_id: ChatButtonCustomId.CONTINUE,
-            label: getMessage('buttons.continue_chat', locale),
-            emoji: { name: '💬' },
-          },
-          {
-            type: ComponentType.BUTTON,
-            style: ButtonStyle.DANGER,
-            custom_id: ChatButtonCustomId.CLEAR,
-            label: getMessage('buttons.clear_context', locale),
-            emoji: { name: '🗑️' },
-          },
-        ],
-      },
-    ];
-  }
+  const body = buildDiscordMessageBody(content, locale, withButtons);
 
   const response = await fetch(webhookUrl, {
     method: 'PATCH',
@@ -477,61 +448,14 @@ async function processModalSubmitAsync(
   const locale = getLocaleFromInteraction(interaction);
 
   try {
-    // Create relay client
-    const client = createRelayClient(env);
-
-    // Get conversation history (if KV is available)
-    let history = null;
-    if (env.CONVERSATION_KV) {
-      history = await getHistory(env.CONVERSATION_KV, channelId);
-    }
-
-    // Get D1 long-term memories (if DB is available)
-    let memories: MemoryEntry[] = [];
-    if (env.DB) {
-      try {
-        memories = await getRecentMemories(env.DB, channelId, 10);
-      } catch (error) {
-        console.error('Failed to retrieve long-term memories:', error);
-        // Continue without memories - graceful degradation
-      }
-    }
-
-    // Build messages with history and long-term memories
-    const messages = buildChatMessages(history, userMessage, undefined, memories);
-
-    // Send to LLM
-    const response = await client.chat(messages);
-    // Extract text from Claude response format
-    const assistantMessage = response.content
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('') || getMessage('responses.llm_fallback', locale);
-
-    // Save to history (if KV available)
-    if (env.CONVERSATION_KV) {
-      const now = Date.now();
-
-      // Save user message
-      await appendMessage(env.CONVERSATION_KV, channelId, {
-        role: 'user',
-        content: userMessage,
-        timestamp: now,
-      });
-
-      // Save assistant response
-      await appendMessage(env.CONVERSATION_KV, channelId, {
-        role: 'assistant',
-        content: assistantMessage,
-        timestamp: now + 1,
-      });
-    }
-
-    // Extract and store memory asynchronously (background task)
-    if (env.DB) {
-      ctx.waitUntil(extractAndStoreMemory(env, channelId, userId, userMessage));
-    }
-
+    const assistantMessage = await processChatRequest(
+      channelId,
+      userId,
+      userMessage,
+      env,
+      ctx,
+      locale
+    );
     // Edit original message instead of sending new one
     // This avoids the "return" button issue
     await editOriginalMessage(applicationId, interactionToken, assistantMessage, locale);
@@ -546,62 +470,4 @@ async function processModalSubmitAsync(
       false // No buttons on error
     );
   }
-}
-
-/**
- * Discord Interaction object structure
- * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object
- */
-interface DiscordInteraction {
-  id: string;
-  application_id: string;
-  type: typeof InteractionType[keyof typeof InteractionType];
-  data?: {
-    id: string;
-    name: string;
-    type: number;
-    options?: Array<{
-      name: string;
-      type: number;
-      value: string;
-    }>;
-    // Button/Select Menu interaction data
-    custom_id?: string;
-    component_type?: number;
-    // Modal submit data
-    components?: Array<{
-      type: number;
-      components: Array<{
-        type: number;
-        custom_id: string;
-        value: string;
-      }>;
-    }>;
-    // Resolved data for slash commands
-    resolved?: {
-      values?: string[];
-    };
-  };
-  guild_id?: string;
-  channel_id: string;
-  user: {
-    id: string;
-    username: string;
-    discriminator: string;
-    avatar?: string;
-  };
-  member?: {
-    user: DiscordInteraction['user'];
-    roles: string[];
-    permissions: string;
-  };
-  token: string;
-  version: number;
-  message?: {
-    id: string;
-    content: string;
-  };
-  app_permissions: string;
-  locale?: string;
-  guild_locale?: string;
 }

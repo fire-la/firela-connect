@@ -88,7 +88,8 @@ export class RelayClient {
       clearTimeout(timeoutId);
       if (error instanceof RelayError) throw error;
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timed out. Please try again later.');
+        // Use RelayError for consistent error handling
+        throw RelayError.fromHttpStatus(408, 'Request timed out');
       }
       throw error;
     }

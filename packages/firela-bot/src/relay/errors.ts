@@ -56,6 +56,9 @@ export class RelayError extends Error {
     if (status === 401) {
       code = 'invalid_api_key';
       message = 'Invalid API key';
+    } else if (status === 408) {
+      code = 'request_timeout';
+      message = 'Request timed out';
     } else if (status === 429) {
       code = 'rate_limit_exceeded';
       message = 'Rate limit exceeded';

@@ -5,6 +5,8 @@
  * This format is used for communication with the Wasm core layer.
  */
 
+import { type DiscordInteraction } from '../types/index.js';
+
 /**
  * Message context format compatible with OpenClaw
  *
@@ -30,34 +32,6 @@ export interface MsgContext {
   MessageSid: string;
   /** Unix timestamp in milliseconds */
   Timestamp: number;
-}
-
-/**
- * Discord interaction data structure (simplified)
- */
-interface DiscordInteractionData {
-  id: string;
-  name: string;
-  type: number;
-  options?: Array<{
-    name: string;
-    type: number;
-    value: string;
-  }>;
-}
-
-/**
- * Discord interaction structure (simplified)
- */
-interface DiscordInteraction {
-  id: string;
-  data?: DiscordInteractionData;
-  guild_id?: string;
-  channel_id: string;
-  user: {
-    id: string;
-    username: string;
-  };
 }
 
 /**
