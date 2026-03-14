@@ -84,10 +84,6 @@ app.route("/api/services", serviceRoutes)
 // SPA Fallback - serve index.html for client-side routes
 // ============================================================================
 
-// ============================================================================
-// SPA Fallback - serve index.html for client-side routes
-// ============================================================================
-
 const INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
   <head>

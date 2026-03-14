@@ -7,7 +7,7 @@
 name = "firela-bot"
 main = "dist/worker.js"
 compatibility_date = "2024-01-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat_v2"]
 
 # ============================================================================
 # Resource Bindings (auto-provisioned by Deploy Button)

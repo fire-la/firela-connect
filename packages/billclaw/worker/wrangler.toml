@@ -7,7 +7,7 @@
 name = "billclaw-worker"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat_v2"]
 
 # D1 Database (auto-provisioned by Deploy Button)
 [[d1_databases]]
