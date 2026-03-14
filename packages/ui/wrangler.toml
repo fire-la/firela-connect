@@ -12,6 +12,7 @@ compatibility_flags = ["nodejs_compat_v2"]
 # Static assets (React SPA build output)
 [assets]
 directory = "dist"
+not_found_handling = "single-page-application"
 
 # D1 Database (for configuration storage)
 [[d1_databases]]

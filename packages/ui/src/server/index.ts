@@ -81,24 +81,18 @@ import { serviceRoutes } from "./routes/services.js"
 app.route("/api/services", serviceRoutes)
 
 // ============================================================================
-// SPA Fallback - serve index.html for client-side routes
+// SPA Fallback - handled by Cloudflare Workers Assets
 // ============================================================================
+// Cloudflare Workers handles SPA routing automatically via wrangler.toml:
+// [assets]
+// directory = "dist"
+// not_found_handling = "single-page-application"
+//
+// This means:
+// - Static assets are served from dist/ automatically
+// - For SPA routes (non-API, non-static), Cloudflare returns dist/index.html
+// - The built index.html already contains correct asset hashes from Vite
 
-const INDEX_HTML = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BillClaw UI</title>
-    <script type="module" crossorigin src="/assets/index-DDiRU5mW.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BFD3B20P.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>`
-
-// For SPA routes, serve index.html from dist folder
 app.notFound(async (c) => {
   // For API routes, return JSON error
   if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/webhook/")) {
@@ -113,8 +107,9 @@ app.notFound(async (c) => {
     )
   }
 
-  // For SPA routes, serve the built index.html from dist folder
-  return c.html(INDEX_HTML)
+  // For SPA routes, let Cloudflare Workers handle it (returns dist/index.html)
+  // This is triggered when the route doesn't match any API or static file
+  return c.notFound()
 })
 
 // Global error handler
