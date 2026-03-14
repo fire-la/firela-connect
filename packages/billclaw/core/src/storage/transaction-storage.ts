@@ -292,7 +292,9 @@ export function deduplicateTransactions(
   windowHours: number = 24,
 ): Transaction[] {
   const seen = new Set<string>()
-  const windowStart = Date.now() - windowHours * 60 * 60 * 1000
+  const now = new Date()
+  const windowStartDate = new Date(now.getTime() - windowHours * 60 * 60 * 1000)
+  const windowStartStr = windowStartDate.toISOString().split("T")[0]
   const result: Transaction[] = []
 
   // Sort by date ascending
@@ -300,10 +302,9 @@ export function deduplicateTransactions(
 
   for (const txn of sorted) {
     const key = `${txn.accountId}_${txn.plaidTransactionId}`
-    const txnDate = new Date(txn.date).getTime()
 
-    // Only include if not seen, or outside deduplication window
-    if (!seen.has(key) || txnDate > windowStart) {
+    // Only include if not seen, or transaction date is within window (>= windowStartStr)
+    if (!seen.has(key) || txn.date >= windowStartStr) {
       seen.add(key)
       result.push(txn)
     }
