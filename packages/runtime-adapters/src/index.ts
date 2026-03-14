@@ -35,5 +35,5 @@
 export type { KVStore, CryptoAdapter, Logger, RuntimeAdapter } from './types.js'
 
 // Re-export adapters for convenience (sub-path exports recommended)
-export { createCloudflareAdapter, CloudflareKVStore, CloudflareCryptoAdapter, ConsoleLogger as CloudflareConsoleLogger } from './cloudflare.js'
+export { createCloudflareAdapter, CloudflareKVStore, CloudflareCryptoAdapter } from './cloudflare.js'
 export { createNodeAdapter, MemoryKVStore, NodeCryptoAdapter, ConsoleLogger } from './node.js'
