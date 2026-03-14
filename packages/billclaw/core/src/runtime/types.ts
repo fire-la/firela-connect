@@ -7,6 +7,7 @@
 
 import type { Logger } from "../errors/errors.js"
 export type { Logger } from "../errors/errors.js"
+import { deepMerge } from "../utils/merge.js"
 
 /**
  * KVStore - Key-value storage for rate limiting, session, and caching
@@ -246,26 +247,6 @@ export class MemoryConfigProvider implements ConfigProvider {
 
   async updateConfig(updates: Partial<BillclawConfig>): Promise<void> {
     // Deep merge for nested objects
-    this.config = this.deepMerge(this.config, updates)
-  }
-
-  private deepMerge(base: any, source: any): any {
-    const result = { ...base }
-    for (const key of Object.keys(source)) {
-      if (
-        source[key] !== null &&
-        typeof source[key] === "object" &&
-        !Array.isArray(source[key]) &&
-        key in result &&
-        result[key] !== null &&
-        typeof result[key] === "object" &&
-        !Array.isArray(result[key])
-      ) {
-        result[key] = this.deepMerge(result[key], source[key])
-      } else {
-        result[key] = source[key]
-      }
-    }
-    return result
+    this.config = deepMerge(this.config, updates)
   }
 }

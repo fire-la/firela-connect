@@ -5,3 +5,4 @@
  */
 
 export { formatUserCode } from "./format.js"
+export { deepMerge } from "./merge.js"

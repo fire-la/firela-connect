@@ -22,6 +22,7 @@ import type { ConfigProvider, StorageConfig } from "../runtime/types.js"
 import { withLock } from "../storage/locking.js"
 import { MemoryCache } from "../storage/cache.js"
 import { loadEnvOverrides } from "./env-loader.js"
+import { deepMerge } from "../utils/merge.js"
 
 /**
  * ConfigManager options
@@ -175,7 +176,7 @@ export class ConfigManager implements ConfigProvider {
     if (cached && cached.mtime === currentMtime) {
       // Merge env overrides
       if (this.enableEnvOverrides && Object.keys(cached.envOverrides).length > 0) {
-        return this.deepMerge(cached.config, cached.envOverrides)
+        return deepMerge(cached.config, cached.envOverrides)
       }
       return cached.config
     }
@@ -188,7 +189,7 @@ export class ConfigManager implements ConfigProvider {
 
     // Return merged config
     if (Object.keys(envOverrides).length > 0) {
-      return this.deepMerge(config, envOverrides)
+      return deepMerge(config, envOverrides)
     }
     return config
   }
@@ -235,7 +236,7 @@ export class ConfigManager implements ConfigProvider {
    */
   async updateConfig(updates: Partial<BillclawConfig>): Promise<void> {
     const config = await this.getConfig()
-    const merged = this.deepMerge(config, updates)
+    const merged = deepMerge(config, updates)
     await this.saveConfig(merged)
   }
 
@@ -358,32 +359,5 @@ export class ConfigManager implements ConfigProvider {
       accounts: [],
       webhooks: [],
     })
-  }
-
-  /**
-   * Deep merge two objects
-   *
-   * Source values override base values.
-   */
-  private deepMerge(base: any, source: any): any {
-    const result = { ...base }
-
-    for (const key of Object.keys(source)) {
-      if (
-        source[key] !== null &&
-        typeof source[key] === "object" &&
-        !Array.isArray(source[key]) &&
-        key in result &&
-        result[key] !== null &&
-        typeof result[key] === "object" &&
-        !Array.isArray(result[key])
-      ) {
-        result[key] = this.deepMerge(result[key], source[key])
-      } else {
-        result[key] = source[key]
-      }
-    }
-
-    return result
   }
 }

@@ -7,6 +7,7 @@
 
 import { vi } from "vitest"
 import type { Logger, ConfigProvider, BillclawConfig, StorageConfig } from "@firela/billclaw-core"
+import { deepMerge } from "@firela/billclaw-core/utils"
 
 /**
  * Mock Logger implementation
@@ -137,7 +138,7 @@ export class MockConfigProvider implements ConfigProvider {
   }
 
   async updateConfig(updates: Partial<BillclawConfig>): Promise<void> {
-    this.config = this.deepMerge(this.config, updates)
+    this.config = deepMerge(this.config, updates)
   }
 
   /**
@@ -166,25 +167,5 @@ export class MockConfigProvider implements ConfigProvider {
    */
   removeAccount(accountId: string): void {
     this.config.accounts = this.config.accounts.filter((a) => a.id !== accountId)
-  }
-
-  private deepMerge(base: any, source: any): any {
-    const result = { ...base }
-    for (const key of Object.keys(source)) {
-      if (
-        source[key] !== null &&
-        typeof source[key] === "object" &&
-        !Array.isArray(source[key]) &&
-        key in result &&
-        result[key] !== null &&
-        typeof result[key] === "object" &&
-        !Array.isArray(result[key])
-      ) {
-        result[key] = this.deepMerge(result[key], source[key])
-      } else {
-        result[key] = source[key]
-      }
-    }
-    return result
   }
 }
