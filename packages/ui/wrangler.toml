@@ -14,16 +14,16 @@ compatibility_flags = ["nodejs_compat_v2"]
 directory = "dist"
 not_found_handling = "single-page-application"
 
-# D1 Database (for configuration storage)
+# D1 Database (shared with billclaw-worker)
 [[d1_databases]]
 binding = "DB"
-database_name = "billclaw-ui-data"
-database_id = "placeholder-replace-after-create"
+database_name = "billclaw-data"
+database_id = "ae67cab3-392b-4f46-b783-9a8e32b6250f"
 
-# KV Namespace (for config and rate limiting)
+# KV Namespace (shared with billclaw-worker)
 [[kv_namespaces]]
 binding = "CONFIG"
-id = "placeholder-replace-after-create"
+id = "59865e1e3cb34909ade239a6423f7fec"
 
 # Environment variables (non-sensitive defaults)
 [vars]
