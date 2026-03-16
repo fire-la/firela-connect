@@ -423,7 +423,7 @@ configRoutes.post("/webhooks/test", async (c) => {
     const { mode, publicUrl, healthCheckEnabled, healthCheckTimeout } = body
 
     // Validate connection mode
-    const validModes = ["auto", "direct", "relay", "polling"]
+    const validModes = ["auto", "direct", "polling"]
     if (mode && !validModes.includes(mode)) {
       return c.json(
         {
@@ -494,12 +494,6 @@ configRoutes.post("/webhooks/test", async (c) => {
           )
         }
       }
-    }
-
-    // For relay mode, validate relay service is available
-    if (mode === "relay") {
-      // Note: In production, you would check relay service health
-      // For now, we assume relay is always available
     }
 
     return c.json({

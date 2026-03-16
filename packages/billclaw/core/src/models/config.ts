@@ -15,12 +15,11 @@ import { InboundWebhookReceiverConfigSchema } from "../webhook/config.js"
  * - OAuth flow completion (Plaid Link, Gmail authorization)
  * - Webhook reception (Plaid, GoCardless, Gmail notifications)
  *
- * @see ADR-005 for architecture details
+ * @see ADR-006 for architecture details
  */
 export const ConnectionModeSchema = z.enum([
-  "auto", // Auto-detect optimal mode (Direct > Relay > Polling)
+  "auto", // Auto-detect optimal mode (Direct > Polling)
   "direct", // Force user's Connect service (requires publicUrl)
-  "relay", // Force Firela Relay service
   "polling", // Force API polling (webhooks only, not for OAuth)
 ])
 export type ConnectionMode = z.infer<typeof ConnectionModeSchema>

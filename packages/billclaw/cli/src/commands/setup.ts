@@ -59,7 +59,7 @@ interface GoCardlessAnswers {
  */
 interface WebhookAnswers {
   enableWebhook: boolean
-  mode: "auto" | "direct" | "relay" | "polling"
+  mode: "auto" | "direct" | "polling"
   publicUrl?: string
 }
 
@@ -329,7 +329,6 @@ async function setupWebhook(context: CliContext): Promise<void> {
   console.log("Available modes:")
   console.log("  • Auto    - Automatically detects the best mode")
   console.log("  • Direct  - Receives webhooks directly (requires public URL)")
-  console.log("  • Relay   - Uses Firela Relay service (no public URL needed)")
   console.log("  • Polling - Falls back to API polling")
   console.log("")
 
@@ -352,10 +351,6 @@ async function setupWebhook(context: CliContext): Promise<void> {
         {
           name: "Direct - For servers with public IP",
           value: "direct",
-        },
-        {
-          name: "Relay - For home/office without public IP",
-          value: "relay",
         },
         {
           name: "Polling - Fallback API polling mode",
@@ -419,7 +414,6 @@ async function setupWebhook(context: CliContext): Promise<void> {
     context.runtime,
     {
       publicUrl: answers.publicUrl,
-      oauthTimeout: 300000,
     },
   )
 
@@ -445,10 +439,6 @@ async function setupWebhook(context: CliContext): Promise<void> {
   } else {
     // Merge the setup result into config update
     Object.assign(configUpdate.connect.receiver, setupResult.config)
-
-    if (answers.mode === "relay") {
-      success("OAuth authorization completed successfully!")
-    }
   }
 
   // Save configuration
@@ -465,10 +455,6 @@ async function setupWebhook(context: CliContext): Promise<void> {
       case "direct":
         console.log("  1. Ensure Connect service is running")
         console.log(`  2. Configure webhooks to: ${answers.publicUrl}/webhook/plaid`)
-        break
-      case "relay":
-        console.log("  1. Webhook receiver is active via Firela Relay")
-        console.log("  2. Use 'bills webhook-receiver status' to verify connection")
         break
       case "polling":
         console.log("  1. Webhooks will be fetched via API polling")

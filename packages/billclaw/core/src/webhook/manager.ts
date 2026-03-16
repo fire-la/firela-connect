@@ -1,8 +1,8 @@
 /**
- * Unified webhook manager
+ * Webhook manager
  *
- * Orchestrates webhook reception across Direct/Relay/Polling modes with
- * automatic mode switching, health monitoring, and connection recovery.
+ * Orchestrates webhook reception across Direct/Polling modes with
+ * automatic mode switching and health monitoring.
  *
  * @packageDocumentation
  */
@@ -13,8 +13,6 @@ import type {
   ConnectionStatus,
   WebhookEvent,
 } from "./config.js"
-import type { ConnectionState } from "../relay/types.js"
-import { RelayWebSocketClient, createRelayClient } from "../relay/client.js"
 import {
   selectMode,
   getFallbackMode,
@@ -65,13 +63,12 @@ export interface ModeChangeEvent {
 /**
  * Webhook manager
  *
- * Manages webhook reception across three modes with automatic fallback and recovery.
+ * Manages webhook reception across two modes with automatic fallback and recovery.
  */
 export class WebhookManager {
   private context: RuntimeContext
   private options: Required<WebhookManagerOptions>
   private state: WebhookManagerState
-  private relayClient: RelayWebSocketClient | null = null
   private eventHandlers = new Set<(event: WebhookEvent) => void>()
   private modeChangeHandlers = new Set<(event: ModeChangeEvent) => void>()
   private isStarted = false
@@ -136,12 +133,6 @@ export class WebhookManager {
     if (this.state.healthCheckInterval) {
       clearInterval(this.state.healthCheckInterval)
       this.state.healthCheckInterval = undefined
-    }
-
-    // Disconnect relay client
-    if (this.relayClient) {
-      this.relayClient.disconnect()
-      this.relayClient = null
     }
 
     this.isStarted = false
@@ -217,15 +208,10 @@ export class WebhookManager {
 
     this.context.logger.info(`Switching mode: ${from} → ${mode}`, { reason })
 
-    // Disconnect current mode
-    await this.disconnectMode()
-
     // Update state
     this.state.currentMode = mode
     this.state.lastModeChange = Date.now()
-
-    // Connect new mode
-    await this.connectMode()
+    this.state.connectionStatus = "connected"
 
     // Notify handlers
     const event: ModeChangeEvent = {
@@ -244,134 +230,6 @@ export class WebhookManager {
 
     // Emit via RuntimeContext events
     this.context.events?.emit("webhook.mode_changed", event)
-  }
-
-  /**
-   * Connect current mode
-   */
-  private async connectMode(): Promise<void> {
-    const mode = this.state.currentMode
-
-    switch (mode) {
-      case "relay":
-        await this.connectRelay()
-        break
-
-      case "direct":
-        // Direct mode uses Connect service, no client needed here
-        this.state.connectionStatus = "connected"
-        break
-
-      case "polling":
-        // Polling mode uses sync service, no persistent connection
-        this.state.connectionStatus = "connected"
-        break
-    }
-  }
-
-  /**
-   * Disconnect current mode
-   */
-  private async disconnectMode(): Promise<void> {
-    if (this.relayClient) {
-      this.relayClient.offEvent(this.handleRelayEvent)
-      this.relayClient.offStateChange(this.handleRelayStateChange)
-      this.relayClient.offError(this.handleRelayError)
-      this.relayClient.disconnect()
-      this.relayClient = null
-    }
-
-    this.state.connectionStatus = "disconnected"
-  }
-
-  /**
-   * Connect relay client
-   */
-  private async connectRelay(): Promise<void> {
-    const client = await createRelayClient(this.context)
-
-    if (!client) {
-      this.context.logger.warn("Failed to create relay client")
-      this.state.connectionStatus = "failed"
-      return
-    }
-
-    // Register handlers
-    client.onEvent(this.handleRelayEvent)
-    client.onStateChange(this.handleRelayStateChange)
-    client.onError(this.handleRelayError)
-
-    try {
-      await client.connect()
-      this.relayClient = client
-      this.state.connectionStatus = "connected"
-    } catch (error) {
-      this.context.logger.error("Failed to connect relay client:", error)
-      this.state.connectionStatus = "failed"
-    }
-  }
-
-  /**
-   * Handle relay event
-   */
-  private handleRelayEvent = (event: WebhookEvent): void => {
-    // Notify all event handlers
-    for (const handler of this.eventHandlers) {
-      try {
-        handler(event)
-      } catch (error) {
-        this.context.logger.error("Event handler error:", error)
-      }
-    }
-
-    // Emit via RuntimeContext events
-    this.context.events?.emit("webhook.received", {
-      mode: "relay",
-      source: event.source,
-      timestamp: event.timestamp,
-    })
-  }
-
-  /**
-   * Handle relay state change
-   */
-  private handleRelayStateChange = (
-    state: ConnectionState,
-    reason?: string,
-  ): void => {
-    this.context.logger.debug(`Relay state: ${state}`, { reason })
-
-    const statusMap: Record<ConnectionState, ConnectionStatus> = {
-      disconnected: "disconnected",
-      connecting: "connecting",
-      connected: "connected",
-      reconnecting: "reconnecting",
-      failed: "failed",
-      closed: "disconnected",
-    }
-
-    this.state.connectionStatus = statusMap[state] || "disconnected"
-
-    // Auto-fallback on connection failure
-    if (
-      this.options.autoModeSwitching &&
-      (state === "failed" || state === "closed")
-    ) {
-      const fallbackMode = getFallbackMode(this.state.currentMode, "webhook")
-      if (fallbackMode !== this.state.currentMode) {
-        this.context.logger.warn(
-          `Relay connection failed, falling back to ${fallbackMode}`,
-        )
-        this.switchMode(fallbackMode, reason ?? "Connection failed")
-      }
-    }
-  }
-
-  /**
-   * Handle relay error
-   */
-  private handleRelayError = (error: Error): void => {
-    this.context.logger.error("Relay client error:", error)
   }
 
   /**
@@ -424,12 +282,6 @@ export class WebhookManager {
     switch (this.state.currentMode) {
       case "direct":
         return (await isDirectAvailable(this.context)).available
-
-      case "relay":
-        if (!this.relayClient) {
-          return false
-        }
-        return this.relayClient.isConnected()
 
       case "polling":
         // Polling is always healthy

@@ -86,9 +86,6 @@ export * from "./webhook/index.js"
 // Connection mode selector (unified OAuth + webhook mode selection)
 export * from "./connection/index.js"
 
-// Relay (WebSocket client for webhook relay service)
-export * from "./relay/index.js"
-
 // Upload (IGN Beancount SaaS integration)
 export * from "./upload/index.js"
 

@@ -2,7 +2,7 @@
  * Integration test for connection mode selection
  *
  * Tests the connection mode selector which determines how BillClaw
- * connects to external services (Direct, Relay, or Polling).
+ * connects to external services (Direct or Polling).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
@@ -10,7 +10,6 @@ import { IntegrationTestHelpers } from "./setup.js"
 import {
   selectConnectionMode,
   isDirectAvailable,
-  isRelayAvailable,
   getFallbackMode,
   canUpgradeMode,
   getBestAvailableMode,
@@ -91,116 +90,10 @@ describe("Connection Mode Integration", () => {
       expect(result.available).toBe(false)
       expect(result.error).toContain("503")
     })
-
-    it("should detect Relay mode unavailable without credentials", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          receiver: {
-            mode: "auto",
-            relay: {
-              enabled: true,
-              // No webhookId or apiKey
-            },
-          },
-        },
-      })
-
-      const result = await isRelayAvailable(context, 5000)
-
-      expect(result.available).toBe(false)
-      expect(result.error).toContain("No Relay credentials")
-    })
-
-    it("should detect Relay mode unavailable when disabled", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          receiver: {
-            mode: "auto",
-            relay: {
-              enabled: false,
-              webhookId: "test-webhook-id",
-              apiKey: "test-api-key",
-            },
-          },
-        },
-      })
-
-      const result = await isRelayAvailable(context, 5000)
-
-      expect(result.available).toBe(false)
-      expect(result.error).toContain("disabled")
-    })
-
-    it("should detect Relay mode available when configured and healthy", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          receiver: {
-            mode: "auto",
-            relay: {
-              enabled: true,
-              webhookId: "test-webhook-id",
-              apiKey: "test-api-key",
-            },
-          },
-        },
-      })
-
-      // Mock successful fetch response
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-      })
-      vi.stubGlobal("fetch", mockFetch)
-
-      const result = await isRelayAvailable(context, 5000)
-
-      expect(result.available).toBe(true)
-      expect(result.latency).toBeGreaterThanOrEqual(0)
-    })
   })
 
   describe("Mode Selection", () => {
-    it("should respect user-configured direct mode", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          connection: {
-            mode: "direct",
-          },
-        },
-      })
-
-      const result = await selectConnectionMode(context, "webhook")
-
-      expect(result.mode).toBe("direct")
-      expect(result.reason).toContain("User configured")
-    })
-
-    it("should respect user-configured relay mode", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          connection: {
-            mode: "relay",
-          },
-        },
-      })
-
-      const result = await selectConnectionMode(context, "webhook")
-
-      expect(result.mode).toBe("relay")
-      expect(result.reason).toContain("User configured")
-    })
-
-    it("should respect user-configured polling mode for webhooks", async () => {
+    it("should select polling mode when no publicUrl configured", async () => {
       const context = helpers.createMockContext({
         connect: {
           port: 4456,
@@ -217,24 +110,43 @@ describe("Connection Mode Integration", () => {
       expect(result.reason).toContain("User configured")
     })
 
-    it("should fallback from polling to relay for OAuth", async () => {
+    it("should fallback to polling for webhooks when direct unavailable", async () => {
       const context = helpers.createMockContext({
         connect: {
           port: 4456,
           host: "localhost",
+          // No publicUrl - Direct unavailable
           connection: {
-            mode: "polling",
+            mode: "auto",
           },
         },
       })
 
-      const result = await selectConnectionMode(context, "oauth")
+      const result = await selectConnectionMode(context, "webhook")
 
-      expect(result.mode).toBe("relay")
-      expect(result.reason).toContain("Polling mode not supported for OAuth")
+      expect(result.mode).toBe("polling")
+      expect(result.reason).toContain("Direct unavailable")
     })
 
-    it("should auto-select direct mode when available", async () => {
+    it("should return direct mode with error for OAuth when no publicUrl configured", async () => {
+      const context = helpers.createMockContext({
+        connect: {
+          port: 4456,
+          host: "localhost",
+          // No publicUrl - Direct unavailable
+          connection: {
+            mode: "auto",
+          },
+        },
+      })
+
+      // OAuth returns direct mode with error reason (not throw)
+      const result = await selectConnectionMode(context, "oauth")
+      expect(result.mode).toBe("direct")
+      expect(result.reason).toContain("Direct mode required for OAuth")
+    })
+
+    it("should auto-select Direct mode when available", async () => {
       const context = helpers.createMockContext({
         connect: {
           port: 4456,
@@ -246,124 +158,50 @@ describe("Connection Mode Integration", () => {
         },
       })
 
-      // Mock Direct mode available
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }))
 
       const result = await selectConnectionMode(context, "webhook")
-
       expect(result.mode).toBe("direct")
-      expect(result.reason).toContain("Direct mode available")
-    })
-
-    it("should auto-select relay mode when direct unavailable", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          // No publicUrl - Direct unavailable (returns early without fetch)
-          receiver: {
-            mode: "auto",
-            relay: {
-              enabled: true,
-              webhookId: "test-id",
-              apiKey: "test-key",
-            },
-          },
-          connection: {
-            mode: "auto",
-          },
-        },
-      })
-
-      // Mock: Only Relay health check will be called (Direct returns early)
-      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }))
-
-      const result = await selectConnectionMode(context, "webhook")
-
-      expect(result.mode).toBe("relay")
-      expect(result.reason).toContain("Relay mode available")
-    })
-
-    it("should fallback to polling for webhooks when both unavailable", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          // No publicUrl - Direct unavailable
-          // No relay config - Relay unavailable
-          connection: {
-            mode: "auto",
-          },
-        },
-      })
-
-      const result = await selectConnectionMode(context, "webhook")
-
-      expect(result.mode).toBe("polling")
-      expect(result.reason).toContain("Polling mode")
-    })
-
-    it("should fallback to relay for OAuth when both unavailable", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          // No publicUrl - Direct unavailable
-          // No relay config - Relay unavailable
-          connection: {
-            mode: "auto",
-          },
-        },
-      })
-
-      const result = await selectConnectionMode(context, "oauth")
-
-      // OAuth should use relay as last resort (not polling)
-      expect(result.mode).toBe("relay")
-      expect(result.reason).toContain("last resort")
     })
   })
 
   describe("Fallback Chain", () => {
     it("should get correct fallback mode for webhooks", () => {
-      expect(getFallbackMode("direct", "webhook")).toBe("relay")
-      expect(getFallbackMode("relay", "webhook")).toBe("polling")
+      expect(getFallbackMode("direct", "webhook")).toBe("polling")
       expect(getFallbackMode("polling", "webhook")).toBe("polling")
     })
 
-    it("should get correct fallback mode for OAuth", () => {
-      expect(getFallbackMode("direct", "oauth")).toBe("relay")
-      expect(getFallbackMode("relay", "oauth")).toBe("relay") // Can't fallback to polling
-      expect(getFallbackMode("polling", "oauth")).toBe("relay")
+    it("should throw error for OAuth fallback", () => {
+      expect(() => getFallbackMode("direct", "oauth")).toThrow(
+        "Direct mode required for OAuth"
+      )
     })
   })
 
   describe("Mode Upgrade", () => {
-    it("should detect upgrade from polling to relay", async () => {
+    it("should allow upgrade from polling to direct", async () => {
       const context = helpers.createMockContext({
         connect: {
           port: 4456,
           host: "localhost",
-          receiver: {
-            mode: "auto",
-            relay: {
-              enabled: true,
-              webhookId: "test-id",
-              apiKey: "test-key",
-            },
-          },
+          publicUrl: "https://billclaw.example.com",
         },
       })
 
-      // Mock Relay available
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }))
 
       const canUpgrade = await canUpgradeMode("polling", context)
       expect(canUpgrade).toBe(true)
     })
 
-    it("should detect no upgrade needed when at direct", async () => {
-      const context = helpers.createMockContext()
+    it("should not allow upgrade from direct", async () => {
+      const context = helpers.createMockContext({
+        connect: {
+          port: 4456,
+          host: "localhost",
+          publicUrl: "https://billclaw.example.com",
+        },
+      })
 
       const canUpgrade = await canUpgradeMode("direct", context)
       expect(canUpgrade).toBe(false)
@@ -386,36 +224,12 @@ describe("Connection Mode Integration", () => {
       expect(best).toBe("direct")
     })
 
-    it("should return relay when direct unavailable", async () => {
+    it("should return polling for webhooks when direct unavailable", async () => {
       const context = helpers.createMockContext({
         connect: {
           port: 4456,
           host: "localhost",
-          // No publicUrl - Direct returns early without fetch
-          receiver: {
-            mode: "auto",
-            relay: {
-              enabled: true,
-              webhookId: "test-id",
-              apiKey: "test-key",
-            },
-          },
-        },
-      })
-
-      // Mock: Only Relay health check will be called (Direct returns early)
-      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }))
-
-      const best = await getBestAvailableMode(context, "webhook")
-      expect(best).toBe("relay")
-    })
-
-    it("should return polling for webhooks when all unavailable", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          // No publicUrl, no relay
+          // No publicUrl
         },
       })
 
@@ -423,17 +237,33 @@ describe("Connection Mode Integration", () => {
       expect(best).toBe("polling")
     })
 
-    it("should return relay for OAuth when all unavailable", async () => {
+    it("should return direct for OAuth when available", async () => {
       const context = helpers.createMockContext({
         connect: {
           port: 4456,
           host: "localhost",
-          // No publicUrl, no relay
+          publicUrl: "https://billclaw.example.com",
         },
       })
 
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }))
+
       const best = await getBestAvailableMode(context, "oauth")
-      expect(best).toBe("relay") // Can't use polling for OAuth
+      expect(best).toBe("direct")
+    })
+
+    it("should return direct for OAuth when direct unavailable", async () => {
+      const context = helpers.createMockContext({
+        connect: {
+          port: 4456,
+          host: "localhost",
+          // No publicUrl
+        },
+      })
+
+      // getBestAvailableMode returns 'direct' even when unavailable for OAuth
+      const best = await getBestAvailableMode(context, "oauth")
+      expect(best).toBe("direct")
     })
   })
 
@@ -480,30 +310,10 @@ describe("Connection Mode Integration", () => {
       const webhookMode = await selectConnectionMode(context, "webhook")
       expect(webhookMode.mode).toBe("polling") // Fallback
 
+      // OAuth returns direct mode with error reason
       const oauthMode = await selectConnectionMode(context, "oauth")
-      expect(oauthMode.mode).toBe("relay") // Can't use polling for OAuth
-    })
-
-    it("should handle relay-only config", async () => {
-      const context = helpers.createMockContext({
-        connect: {
-          port: 4456,
-          host: "localhost",
-          // No publicUrl
-          receiver: {
-            mode: "relay",
-            relay: {
-              enabled: true,
-              webhookId: "relay-webhook-id",
-              apiKey: "relay-api-key",
-            },
-          },
-        },
-      })
-
-      const webhookMode = await selectConnectionMode(context, "webhook")
-      expect(webhookMode.mode).toBe("relay")
-      expect(webhookMode.purpose).toBe("webhook")
+      expect(oauthMode.mode).toBe("direct")
+      expect(oauthMode.reason).toContain("Direct mode required for OAuth")
     })
   })
 })

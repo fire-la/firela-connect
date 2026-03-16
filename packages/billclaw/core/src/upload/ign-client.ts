@@ -9,7 +9,7 @@
 
 import type { Logger } from "../errors/errors.js"
 import type { IgnRegion } from "../models/config.js"
-import { calculateBackoffDelay } from "../relay/backoff.js"
+import { calculateBackoffDelay } from "../utils/backoff.js"
 import { parseIgnError } from "../errors/errors.js"
 
 /**

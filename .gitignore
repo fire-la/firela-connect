@@ -54,9 +54,6 @@ playwright/.cache/
 tmp
 .backup
 
-# Local scripts (user-specific automation)
-scripts/run-tick.sh
-
 # ClawHub
 .clawhub/
 

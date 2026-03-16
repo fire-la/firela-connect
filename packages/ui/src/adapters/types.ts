@@ -84,7 +84,7 @@ export interface BillclawConfig {
   connect?: {
     publicUrl?: string
     connection?: {
-      mode?: "auto" | "direct" | "relay" | "polling"
+      mode?: "auto" | "direct" | "polling"
       healthCheck?: {
         enabled?: boolean
         timeout?: number

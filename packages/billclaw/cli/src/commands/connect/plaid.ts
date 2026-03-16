@@ -2,7 +2,7 @@
  * Plaid connect command
  *
  * Connect a bank account via Plaid OAuth flow.
- * Supports Direct and Relay modes for OAuth completion.
+ * Supports Direct mode for OAuth completion (requires publicUrl).
  */
 
 import type { CliCommand, CliContext } from "../registry.js"
@@ -14,22 +14,10 @@ import {
 import type { AccountConfig } from "@firela/billclaw-core"
 import { randomUUID } from "crypto"
 import { parseOauthError, formatOauthError } from "@firela/billclaw-core/errors"
-import {
-  generatePKCEPair,
-  initConnectSession,
-  retrieveCredential,
-  confirmCredentialDeletion,
-} from "@firela/billclaw-core/oauth"
-import { RELAY_URL } from "@firela/billclaw-core/connection"
 /**
  * Default OAuth timeout in milliseconds (10 minutes)
  */
 const DEFAULT_OAUTH_TIMEOUT = 10 * 60 * 1000
-
-/**
- * Long-polling timeout in seconds (for Relay mode)
- */
-const LONG_POLL_TIMEOUT = 30
 
 /**
  * Run Plaid connect command
@@ -52,44 +40,29 @@ export async function runPlaidConnect(
   const modeSelection = await selectConnectionMode(runtime, "oauth")
   modeSpinner.succeed(`Using ${modeSelection.mode} mode`)
 
-  if (modeSelection.mode === "polling") {
+  // Get connection details
+  const config = await runtime.config.getConfig()
+  const publicUrl = config.connect?.publicUrl
+
+  if (!publicUrl) {
     const error = parseOauthError(
-      { message: "Polling mode is not supported for OAuth connections" },
-      { provider: "generic", operation: "polling" },
+      { message: "Direct mode required. Configure connect.publicUrl." },
+      { provider: "plaid", operation: "config" },
     )
     logError(runtime.logger, error, { operation: "plaid_connect" })
     console.error("")
     console.error(formatOauthError(error))
     console.error("")
-    console.error("Options:")
-    console.error("  1. Set connect.publicUrl in your config for Direct mode")
-    console.error("  2. Configure Relay credentials for Relay mode")
+    console.error("Please add the following to your config:")
+    console.error("  connect:")
+    console.error("    publicUrl: https://your-domain.com")
     process.exit(1)
   }
 
-  // Get connection details based on mode
-  const config = await runtime.config.getConfig()
-  const publicUrl = config.connect?.publicUrl
-
-  // Determine session and URL based on mode
-  let sessionId: string
-  let connectUrl: string
-  let pkceCodeVerifier: string | undefined
-
-  if (modeSelection.mode === "direct" && publicUrl) {
-    // Direct mode: Use local Connect service (no PKCE needed)
-    sessionId = randomUUID()
-    connectUrl = `${publicUrl}/oauth/plaid/link?session=${sessionId}`
-    console.log("Opening Plaid Link via your Connect service...")
-  } else {
-    // Relay mode: Use Firela Relay with PKCE
-    const pkcePair = await generatePKCEPair("S256", 128)
-    pkceCodeVerifier = pkcePair.codeVerifier
-
-    sessionId = await initConnectSession(RELAY_URL, pkcePair)
-    connectUrl = `https://connect.firela.io/plaid?session=${sessionId}`
-    console.log("Opening Plaid Link via Firela Relay (PKCE enabled)...")
-  }
+  // Direct mode: Use local Connect service
+  const sessionId = randomUUID()
+  const connectUrl = `${publicUrl}/oauth/plaid/link?session=${sessionId}`
+  console.log("Opening Plaid Link via your Connect service...")
 
   console.log(`Session ID: ${sessionId}`)
   console.log("")
@@ -130,8 +103,6 @@ export async function runPlaidConnect(
     const credential = await pollForCredential(
       context,
       sessionId,
-      pkceCodeVerifier, // undefined for Direct mode, string for Relay mode
-      modeSelection.mode,
       publicUrl,
       timeoutMs,
     )
@@ -180,137 +151,79 @@ export async function runPlaidConnect(
 }
 
 /**
- * Poll for credential completion
+ * Poll for credential completion via Direct mode
  *
  * @param context - CLI context
  * @param sessionId - Session ID
- * @param codeVerifier - PKCE code verifier (undefined for Direct mode, string for Relay mode)
- * @param mode - Connection mode
  * @param publicUrl - Public URL for Direct mode
  * @param timeout - Timeout in milliseconds
  */
 async function pollForCredential(
   context: CliContext,
   sessionId: string,
-  codeVerifier: string | undefined,
-  mode: string,
-  publicUrl?: string,
+  publicUrl: string,
   timeout: number = DEFAULT_OAUTH_TIMEOUT,
 ): Promise<{ accessToken: string; itemId?: string }> {
   const { runtime } = context
 
-  // Direct mode: Poll local Connect service
-  if (mode === "direct" && publicUrl) {
-    const startTime = Date.now()
-    const pollUrl = `${publicUrl}/api/connect/credentials/${sessionId}`
-
-    runtime.logger.debug(`Direct mode polling: ${pollUrl}`)
-
-    while (Date.now() - startTime < timeout) {
-      try {
-        const response = await fetch(pollUrl, {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-          },
-        })
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            // Session not found - this is unexpected, throw error
-            throw new Error("Session not found or expired")
-          }
-          // Other errors: continue polling
-          runtime.logger.debug(`Poll error: ${response.status}`)
-          await sleep(2000)
-          continue
-        }
-
-        const data = (await response.json()) as {
-          success: boolean
-          data?: {
-            public_token: string
-            metadata?: string
-          }
-        }
-
-        if (data.success && data.data) {
-          // Credential ready
-          return {
-            accessToken: data.data.public_token,
-            itemId: data.data.metadata,
-          }
-        }
-
-        // Credential not ready yet, continue polling
-        runtime.logger.debug(`Credential not ready, waiting...`)
-        await sleep(2000)
-      } catch (error) {
-        const errorMessage = String(error)
-
-        // Terminal errors
-        if (
-          errorMessage.includes("Session not found") ||
-          errorMessage.includes("expired")
-        ) {
-          throw error
-        }
-
-        // Transient errors: continue polling
-        runtime.logger.debug(`Transient error polling for ${sessionId}: ${errorMessage}`)
-        await sleep(2000)
-      }
-    }
-
-    const timeoutError = parseOauthError(
-      { message: "OAuth timed out" },
-      { provider: "plaid", operation: "polling", sessionId, timeout },
-    )
-    logError(runtime.logger, timeoutError, { operation: "plaid_oauth_timeout" })
-    throw timeoutError
-  }
-
-  // Relay mode: Use PKCE-enabled retrieval
-  if (!codeVerifier) {
-    throw new Error("code_verifier required for Relay mode")
-  }
-
   const startTime = Date.now()
+  const pollUrl = `${publicUrl}/api/connect/credentials/${sessionId}`
+
+  runtime.logger.debug(`Direct mode polling: ${pollUrl}`)
 
   while (Date.now() - startTime < timeout) {
     try {
-      const credential = await retrieveCredential(RELAY_URL, {
-        sessionId,
-        codeVerifier,
-        wait: true,
-        timeout: LONG_POLL_TIMEOUT,
+      const response = await fetch(pollUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+        },
       })
 
-      if (credential?.public_token) {
-        // Confirm deletion (optional cleanup)
-        await confirmCredentialDeletion(RELAY_URL, sessionId).catch(() => {
-          // Ignore deletion errors
-        })
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Session not found - this is unexpected, throw error
+          throw new Error("Session not found or expired")
+        }
+        // Other errors: continue polling
+        runtime.logger.debug(`Poll error: ${response.status}`)
+        await sleep(2000)
+        continue
+      }
 
-        return {
-          accessToken: credential.public_token,
-          itemId: credential.metadata,
+      const data = (await response.json()) as {
+        success: boolean
+        data?: {
+          public_token: string
+          metadata?: string
         }
       }
+
+      if (data.success && data.data) {
+        // Credential ready
+        return {
+          accessToken: data.data.public_token,
+          itemId: data.data.metadata,
+        }
+      }
+
+      // Credential not ready yet, continue polling
+      runtime.logger.debug(`Credential not ready, waiting...`)
+      await sleep(2000)
     } catch (error) {
       const errorMessage = String(error)
 
-      // Check for terminal errors (don't retry)
+      // Terminal errors
       if (
-        errorMessage.includes("expired") ||
-        errorMessage.includes("invalid code_verifier") ||
-        errorMessage.includes("maximum retrieval")
+        errorMessage.includes("Session not found") ||
+        errorMessage.includes("expired")
       ) {
         throw error
       }
 
-      // Log transient errors
+      // Transient errors: continue polling
       runtime.logger.debug(`Transient error polling for ${sessionId}: ${errorMessage}`)
+      await sleep(2000)
     }
   }
 

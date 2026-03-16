@@ -2,7 +2,6 @@
  * Gmail connect command
  *
  * Connect Gmail account via OAuth.
- * Default: Relay mode (browser-based via toykit)
  * Direct mode: Use local Connect service
  * Use --direct-gmail for Device Code Flow (requires own credentials)
  */
@@ -11,20 +10,9 @@ import type { CliCommand, CliContext } from "../registry.js"
 import { success } from "../../utils/format.js"
 import { Spinner } from "../../utils/progress.js"
 import type { AccountConfig } from "@firela/billclaw-core"
-import {
-  generatePKCEPair,
-  initConnectSession,
-  retrieveCredential,
-  confirmCredentialDeletion,
-} from "@firela/billclaw-core/oauth"
 import { formatUserCode } from "@firela/billclaw-core/utils"
-import { RELAY_URL, selectConnectionMode } from "@firela/billclaw-core/connection"
+import { selectConnectionMode } from "@firela/billclaw-core/connection"
 import { randomUUID } from "crypto"
-
-/**
- * Long-polling timeout in seconds
- */
-const LONG_POLL_TIMEOUT = 30
 
 /**
  * Default OAuth timeout in milliseconds (10 minutes)
@@ -62,12 +50,8 @@ export async function runGmailConnect(
   const modeSelection = await selectConnectionMode(runtime, "oauth")
   modeSpinner.succeed(`Using ${modeSelection.mode} mode`)
 
-  if (modeSelection.mode === "direct") {
-    return runDirectConnectMode(context, email, timeoutMs)
-  }
-
-  // Default: Relay mode
-  return runRelayMode(context, email, timeoutMs)
+  // Direct mode is required for OAuth
+  return runDirectConnectMode(context, email, timeoutMs)
 }
 
 /**
@@ -91,7 +75,7 @@ async function runDirectConnectMode(
     console.error("  connect:")
     console.error("    publicUrl: http://your-connect-server:4456")
     console.error("")
-    console.error("Or run without Direct mode to use Relay mode.")
+    console.error("Or use --direct-gmail with your own Gmail OAuth credentials.")
     process.exit(1)
   }
 
@@ -215,121 +199,6 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Run relay mode OAuth flow
- */
-async function runRelayMode(
-  context: CliContext,
-  email?: string,
-  timeoutMs: number = DEFAULT_OAUTH_TIMEOUT,
-): Promise<void> {
-  const { runtime } = context
-
-  console.log("Mode: Relay (Firela Relay service)")
-  console.log("")
-
-  // Generate PKCE pair
-  const pkceSpinner = new Spinner({ text: "Generating PKCE challenge..." }).start()
-  const pkcePair = await generatePKCEPair("S256", 128)
-
-  // Initialize session with relay
-  let sessionId: string
-  try {
-    sessionId = await initConnectSession(RELAY_URL, pkcePair)
-    pkceSpinner.succeed(`Session initialized: ${sessionId.slice(0, 8)}...`)
-  } catch (err) {
-    pkceSpinner.fail("Failed to initialize session")
-    throw err
-  }
-
-  // Build authorize URL
-  const authorizeUrl = `${RELAY_URL}/api/oauth/gmail/authorize/${sessionId}`
-
-  console.log("")
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-  console.log("")
-  console.log(`Visit ${authorizeUrl} to authenticate`)
-  console.log("")
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-  console.log("")
-
-  // Open browser
-  const shouldOpenBrowser = process.env.BILLCLAW_OPEN_BROWSER !== "false"
-  if (shouldOpenBrowser) {
-    try {
-      const { default: open } = await import("open")
-      await open(authorizeUrl)
-    } catch {
-      // Browser open failed, user will see URL above
-    }
-  }
-
-  console.log(`Waiting for authorization (timeout: ${Math.floor(timeoutMs / 60000)} minutes)...`)
-  console.log("Press Ctrl+C to cancel")
-  console.log("")
-
-  // Poll for credential
-  const pollSpinner = new Spinner({ text: "Waiting for authorization..." }).start()
-  const startTime = Date.now()
-
-  let tokenData: {
-    access_token: string
-    refresh_token: string
-    expires_in: number
-  } | null = null
-
-  while (Date.now() - startTime < timeoutMs) {
-    try {
-      const credential = await retrieveCredential(RELAY_URL, {
-        sessionId,
-        codeVerifier: pkcePair.codeVerifier,
-        wait: true,
-        timeout: LONG_POLL_TIMEOUT,
-      })
-
-      if (credential?.public_token) {
-        // Parse the token JSON stored by relay
-        tokenData = JSON.parse(credential.public_token) as {
-          access_token: string
-          refresh_token: string
-          expires_in: number
-        }
-
-        // Confirm deletion
-        await confirmCredentialDeletion(RELAY_URL, sessionId).catch(() => {})
-        break
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err)
-      if (errorMessage.includes("not yet stored")) {
-        // Expected, continue polling
-      } else {
-        // Unexpected error, wait and retry
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-      }
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-  }
-
-  if (!tokenData) {
-    pollSpinner.fail("Authorization timed out")
-    throw new Error("Authorization timed out. Please try again.")
-  }
-
-  pollSpinner.succeed("Authorization completed!")
-
-  // Save account
-  await saveGmailAccount(runtime, tokenData, email)
-
-  console.log("")
-  success(`Gmail account connected successfully!`)
-  console.log("")
-  console.log("Next steps:")
-  console.log("  billclaw sync --type gmail  - Fetch bills from Gmail")
-  console.log("  billclaw status             - View all accounts")
-}
-
-/**
  * Run direct mode OAuth flow (Device Code Flow)
  */
 async function runDirectMode(
@@ -358,8 +227,6 @@ async function runDirectMode(
     console.log("")
     console.log("You can obtain these from the Google Cloud Console:")
     console.log("  https://console.cloud.google.com/apis/credentials")
-    console.log("")
-    console.log("Or run without --direct-gmail to use relay mode (no config needed).")
     process.exit(1)
   }
 
@@ -585,7 +452,7 @@ async function saveGmailAccount(
  */
 export const gmailConnectCommand: CliCommand = {
   name: "connect-gmail",
-  description: "Connect Gmail account for bill extraction (default: relay mode)",
+  description: "Connect Gmail account for bill extraction",
   aliases: ["gmail"],
   options: [
     {

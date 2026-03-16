@@ -3,7 +3,6 @@
  *
  * Provides automatic mode selection based on environment availability:
  * - Direct: Checks if Connect service is reachable via health check
- * - Relay: Checks if Firela Relay is reachable and credentials are present
  * - Polling: Always available as fallback (webhook only)
  *
  * This module supports both:
@@ -72,58 +71,6 @@ export async function isDirectAvailable(
 }
 
 /**
- * Check if Relay mode is available
- *
- * Relay mode requires:
- * 1. Relay credentials (webhookId and apiKey) to be present
- * 2. Firela Relay service to be reachable
- */
-export async function isRelayAvailable(
-  context: RuntimeContext,
-  timeout: number = DEFAULT_HEALTH_CHECK_TIMEOUT,
-): Promise<HealthCheckResult> {
-  try {
-    const config = await context.config.getConfig()
-    // Check for credentials in connection config first (new unified config)
-    // Then fall back to receiver.relay (legacy config)
-    const legacyCreds = config.connect?.receiver?.relay
-
-    if (!legacyCreds?.webhookId || !legacyCreds?.apiKey) {
-      return {
-        available: false,
-        error: "No Relay credentials configured",
-      }
-    }
-
-    if (!legacyCreds.enabled) {
-      return {
-        available: false,
-        error: "Relay mode is disabled",
-      }
-    }
-
-    const startTime = Date.now()
-    const apiUrl = legacyCreds.apiUrl || "https://relay.firela.io/api/webhook-relay"
-    const response = await fetch(`${apiUrl}/health`, {
-      method: "GET",
-      signal: AbortSignal.timeout(timeout),
-    })
-    const latency = Date.now() - startTime
-
-    return {
-      available: response.ok,
-      latency,
-      error: response.ok ? undefined : `Health check returned ${response.status}`,
-    }
-  } catch (err) {
-    return {
-      available: false,
-      error: err instanceof Error ? err.message : "Unknown error",
-    }
-  }
-}
-
-/**
  * Get connection mode configuration
  *
  * Supports both new unified 'connection' config and legacy 'receiver' config.
@@ -171,8 +118,8 @@ async function getConnectionModeConfig(
  * Select optimal connection mode based on configuration and availability
  *
  * Selection priority:
- * 1. User configured mode (direct/relay/polling)
- * 2. Auto-detection: Try Direct → Try Relay → Fallback to Polling
+ * 1. User configured mode (direct/polling)
+ * 2. Auto-detection: Try Direct → Fallback to Polling
  *
  * @param context - Runtime context for config access and logging
  * @param purpose - Whether this is for 'webhook' or 'oauth' connection
@@ -200,11 +147,11 @@ export async function selectConnectionMode(
     // Validate that polling mode is only used for webhooks
     if (configuredMode === "polling" && purpose === "oauth") {
       context.logger.warn(
-        "Polling mode is not supported for OAuth, falling back to relay",
+        "Polling mode is not supported for OAuth. Please configure connect.publicUrl for Direct mode.",
       )
       return {
-        mode: "relay",
-        reason: "Polling mode not supported for OAuth, using relay fallback",
+        mode: "direct",
+        reason: "Polling mode not supported for OAuth, Direct mode required. Configure connect.publicUrl.",
         purpose,
       }
     }
@@ -216,7 +163,7 @@ export async function selectConnectionMode(
     }
   }
 
-  // Auto-detection: Try Direct → Try Relay → Fallback to Polling
+  // Auto-detection: Try Direct → Fallback to Polling
   context.logger.debug(`Connection mode selector: auto-detection started for ${purpose}`)
 
   const timeout = healthCheck?.timeout ?? DEFAULT_HEALTH_CHECK_TIMEOUT
@@ -233,24 +180,12 @@ export async function selectConnectionMode(
     }
   }
 
-  // Check Relay mode
-  context.logger.debug("Connection mode selector: checking Relay mode availability")
-  const relayResult = await isRelayAvailable(context, timeout)
-  if (relayResult.available) {
-    context.logger.info("Connection mode selector: Relay mode selected")
-    return {
-      mode: "relay",
-      reason: `Relay mode available (latency: ${relayResult.latency}ms)`,
-      purpose,
-    }
-  }
-
   // Fallback to Polling (webhook only) or error (OAuth)
   if (purpose === "oauth") {
-    context.logger.error("Connection mode selector: No OAuth-compatible mode available")
+    context.logger.error("Connection mode selector: Direct mode required for OAuth but not available")
     return {
-      mode: "relay",
-      reason: "No mode available, attempting relay as last resort",
+      mode: "direct",
+      reason: `Direct mode required for OAuth. Configure connect.publicUrl. Error: ${directResult.error}`,
       purpose,
     }
   }
@@ -258,7 +193,7 @@ export async function selectConnectionMode(
   context.logger.info("Connection mode selector: Polling mode selected (fallback)")
   return {
     mode: "polling",
-    reason: `Polling mode (Direct: ${directResult.error}, Relay: ${relayResult.error})`,
+    reason: `Polling mode (Direct unavailable: ${directResult.error})`,
     purpose,
   }
 }
@@ -267,8 +202,7 @@ export async function selectConnectionMode(
  * Get fallback mode for current mode
  *
  * Fallback chain:
- * - Direct → Relay → Polling
- * - Relay → Polling
+ * - Direct → Polling (webhook only)
  * - Polling → Polling (no further fallback)
  */
 export function getFallbackMode(
@@ -277,14 +211,12 @@ export function getFallbackMode(
 ): ConnectionMode {
   // Polling is not a valid fallback for OAuth
   if (purpose === "oauth") {
-    if (currentMode === "direct") return "relay"
-    return "relay" // Stay on relay as only OAuth-compatible fallback
+    // OAuth requires Direct mode - no fallback available
+    throw new Error("Direct mode required for OAuth. Please configure connect.publicUrl.")
   }
 
   switch (currentMode) {
     case "direct":
-      return "relay"
-    case "relay":
       return "polling"
     case "polling":
       return "polling" // No further fallback
@@ -297,7 +229,7 @@ export function getFallbackMode(
  * Check if mode can be upgraded to a better mode
  *
  * Upgrade path:
- * - Polling → Relay → Direct (if available)
+ * - Polling → Direct (if available)
  */
 export async function canUpgradeMode(
   currentMode: ConnectionMode,
@@ -306,17 +238,6 @@ export async function canUpgradeMode(
 ): Promise<boolean> {
   switch (currentMode) {
     case "polling":
-      // Can upgrade to relay if available
-      if ((await isRelayAvailable(context)).available) {
-        return true
-      }
-      // Can upgrade to direct if available
-      if ((await isDirectAvailable(context)).available) {
-        return true
-      }
-      return false
-
-    case "relay":
       // Can upgrade to direct if available
       return (await isDirectAvailable(context)).available
 
@@ -339,14 +260,9 @@ export async function getBestAvailableMode(
     return "direct"
   }
 
-  // Check Relay second
-  if ((await isRelayAvailable(context)).available) {
-    return "relay"
-  }
-
-  // For OAuth, prefer relay over error
+  // For OAuth, Direct is required
   if (purpose === "oauth") {
-    return "relay"
+    return "direct"
   }
 
   // Fallback to Polling (webhook only)

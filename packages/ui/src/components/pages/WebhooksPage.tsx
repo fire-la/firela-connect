@@ -15,14 +15,13 @@ import {
   Activity,
   Shield,
   Radio,
-  Cloud,
   Clock,
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
 import "@/styles/firela-theme.css"
 import type { WebhookResultResponse } from "@/types/api"
 
-type ConnectionMode = "auto" | "direct" | "relay" | "polling"
+type ConnectionMode = "auto" | "direct" | "polling"
 
 interface WebhookFormData {
   mode: ConnectionMode
@@ -40,18 +39,13 @@ interface TestResult {
 const MODE_DESCRIPTIONS: Record<ConnectionMode, { title: string; description: string; icon: React.ReactNode }> = {
   auto: {
     title: "Auto",
-    description: "Automatically select best available mode (Direct > Relay > Polling)",
+    description: "Automatically select best available mode (Direct > Polling)",
     icon: <Radio className="w-5 h-5" />,
   },
   direct: {
     title: "Direct",
     description: "Receive webhooks directly. Best performance, requires public URL",
     icon: <Link className="w-5 h-5" />,
-  },
-  relay: {
-    title: "Relay",
-    description: "Use Firela Relay service. No public IP needed, uses Firela infrastructure",
-    icon: <Cloud className="w-5 h-5" />,
   },
   polling: {
     title: "Polling",
