@@ -4,7 +4,6 @@
  * Provides in-memory session storage for OAuth credentials,
  * enabling CLI to poll for credentials after OAuth completion.
  *
- * API compatible with Relay service for seamless mode switching.
  * Migrated from Express (packages/connect/src/routes/credentials.ts)
  *
  * IMPORTANT: In Workers, this in-memory store won't persist across invocations.
@@ -128,7 +127,7 @@ const storeCredentialSchema = z.object({
  * POST /api/connect/session
  *
  * Initialize a new credential session.
- * Optional PKCE parameters for API compatibility with Relay.
+ * Optional PKCE parameters for secure credential transfer.
  *
  * Request body:
  * - code_challenge: Optional PKCE challenge
