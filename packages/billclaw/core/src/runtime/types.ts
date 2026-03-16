@@ -82,7 +82,7 @@ export interface ConfigProvider {
    * Update configuration
    *
    * Merges updates with existing config and saves atomically.
-   * This is needed for updating nested configuration like connect.receiver.relay credentials.
+   * This is needed for updating nested configuration like connect.connection settings.
    */
   updateConfig(updates: Partial<BillclawConfig>): Promise<void>
 }

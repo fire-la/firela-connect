@@ -28,15 +28,8 @@ export {
   generateCodeChallenge,
   generatePKCEPair,
   verifyPKCE,
-  initConnectSession,
-  retrieveCredential,
-  confirmCredentialDeletion,
   type PKCEPair,
   type CodeChallengeMethod,
-  type InitSessionRequest,
-  type InitSessionResponse,
-  type RetrieveCredentialRequest,
-  type RetrieveCredentialResponse,
 } from "./pkce.js"
 
 // Plaid

@@ -189,7 +189,7 @@ export class IgnClient {
    * Make HTTP request with retry logic
    *
    * Retries on transient errors (5xx, 429) with exponential backoff.
-   * Uses calculateBackoffDelay from relay module for Full Jitter algorithm.
+   * Uses calculateBackoffDelay from utils module for Full Jitter algorithm.
    *
    * @param endpoint - API endpoint (without base URL)
    * @param options - Fetch options

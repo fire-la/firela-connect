@@ -61,7 +61,6 @@
     "modes": {
       "auto": "Auto (recommended)",
       "direct": "Direct",
-      "relay": "Relay",
       "polling": "Polling"
     },
     "publicUrl": "Public URL",

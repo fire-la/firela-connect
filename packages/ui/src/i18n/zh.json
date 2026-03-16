@@ -61,7 +61,6 @@
     "modes": {
       "auto": "自动（推荐）",
       "direct": "直连",
-      "relay": "中继",
       "polling": "轮询"
     },
     "publicUrl": "公网地址",

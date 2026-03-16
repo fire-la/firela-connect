@@ -30,9 +30,6 @@ export enum ErrorCategory {
   STORAGE = "storage",
   FILE_SYSTEM = "file_system",
 
-  // Relay errors (webhook relay service)
-  RELAY = "relay",
-
   // Webhook errors (inbound webhook receiver)
   WEBHOOK = "webhook",
 
@@ -97,15 +94,6 @@ export const ERROR_CODES = {
   CONFIG_INVALID: "CONFIG_INVALID",
   CONFIG_MISSING: "CONFIG_MISSING",
   CONFIG_PARSE_FAILED: "CONFIG_PARSE_FAILED",
-
-  // Relay errors
-  RELAY_OAUTH_FAILED: "RELAY_OAUTH_FAILED",
-  RELAY_CONNECTION_FAILED: "RELAY_CONNECTION_FAILED",
-  RELAY_AUTH_FAILED: "RELAY_AUTH_FAILED",
-  RELAY_WEBSOCKET_ERROR: "RELAY_WEBSOCKET_ERROR",
-  RELAY_HEARTBEAT_TIMEOUT: "RELAY_HEARTBEAT_TIMEOUT",
-  RELAY_RECONNECT_FAILED: "RELAY_RECONNECT_FAILED",
-  RELAY_API_ERROR: "RELAY_API_ERROR",
 
   // Webhook errors
   WEBHOOK_START_FAILED: "WEBHOOK_START_FAILED",
@@ -353,7 +341,6 @@ function getCategoryEmoji(category: ErrorCategory): string {
     [ErrorCategory.GMAIL_AUTH]: "🔐",
     [ErrorCategory.STORAGE]: "💾",
     [ErrorCategory.FILE_SYSTEM]: "📁",
-    [ErrorCategory.RELAY]: "🔌",
     [ErrorCategory.WEBHOOK]: "🪝",
     [ErrorCategory.OAUTH]: "🔑",
     [ErrorCategory.IGN]: "📤",
@@ -997,278 +984,6 @@ export function parseFileSystemError(
 }
 
 /**
- * Parse Relay service errors (OAuth, WebSocket, API errors)
- *
- * @param error - Error from Relay service
- * @param context - Additional context (relayUrl, webhookId, apiKey, mode)
- * @returns UserError with appropriate relay error code
- */
-export function parseRelayError(
-  error: Error | { code?: string; message?: string; statusCode?: number },
-  context?: {
-    relayUrl?: string
-    webhookId?: string
-    apiKey?: string
-    mode?: string
-  },
-): UserError {
-  const message = error.message || String(error)
-  const code = (error as any).code
-  const statusCode = (error as any).statusCode
-
-  // Convert context to ErrorEntities format
-  const entities: ErrorEntities = {}
-  if (context?.relayUrl) entities.relayUrl = context.relayUrl
-  if (context?.webhookId) entities.webhookId = context.webhookId
-  if (context?.apiKey) entities.apiKey = context.apiKey
-  if (context?.mode) entities.mode = context.mode
-
-  // OAuth authorization failed
-  if (
-    message.includes("authorization") ||
-    message.includes("OAuth") ||
-    statusCode === 401
-  ) {
-    return createUserError(
-      ERROR_CODES.RELAY_OAUTH_FAILED,
-      ErrorCategory.RELAY,
-      "error",
-      true,
-      {
-        title: "Relay OAuth Authorization Failed",
-        message:
-          "OAuth authorization with Firela Relay service failed. This is required for relay mode.",
-        suggestions: [
-          "Ensure you have a Firela account",
-          "Try running the OAuth authorization again",
-          "Check that the OAuth callback URL (localhost:34567) is accessible",
-          "Consider using direct or polling mode instead",
-        ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/user-guide.md#webhook-configuration",
-      },
-      [
-        {
-          type: "retry",
-          description: "Retry OAuth authorization",
-        },
-        {
-          type: "config_change",
-          params: { mode: "polling" },
-          description: "Switch to polling mode",
-        },
-      ],
-      entities,
-      error instanceof Error ? error : undefined,
-    )
-  }
-
-  // Authentication failed (invalid API key)
-  if (
-    message.includes("authentication") ||
-    message.includes("unauthorized") ||
-    message.includes("invalid") ||
-    code === "AUTH_FAILED" ||
-    statusCode === 403
-  ) {
-    return createUserError(
-      ERROR_CODES.RELAY_AUTH_FAILED,
-      ErrorCategory.RELAY,
-      "error",
-      true,
-      {
-        title: "Relay Authentication Failed",
-        message:
-          "Authentication with Firela Relay service failed. Your API key or credentials may be invalid.",
-        suggestions: [
-          "Re-run OAuth authorization to refresh credentials",
-          "Check that your Firela account is active",
-          "Verify the relay service URL is correct",
-        ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/user-guide.md#relay-mode-setup",
-      },
-      [
-        {
-          type: "oauth_reauth",
-          tool: "webhook_connect",
-          params: { mode: "relay" },
-          description: "Re-authenticate with relay service",
-        },
-      ],
-      context,
-      error instanceof Error ? error : undefined,
-    )
-  }
-
-  // WebSocket connection failed
-  if (
-    message.includes("WebSocket") ||
-    message.includes("ws connection") ||
-    message.includes("ECONNREFUSED") ||
-    code === "WS_ERROR" ||
-    code === "CONNECTION_FAILED"
-  ) {
-    return createUserError(
-      ERROR_CODES.RELAY_CONNECTION_FAILED,
-      ErrorCategory.RELAY,
-      "warning",
-      true,
-      {
-        title: "Relay Connection Failed",
-        message:
-          "Could not connect to Firela Relay WebSocket. The service may be unavailable or network issues may exist.",
-        suggestions: [
-          "Check your internet connection",
-          "Verify the relay service URL is correct",
-          "Check if the relay service is operational",
-          "Webhook receiver will fall back to polling mode",
-        ],
-      },
-      [
-        {
-          type: "retry",
-          delayMs: 5000,
-          description: "Retry connection in 5 seconds",
-        },
-        {
-          type: "config_change",
-          params: { mode: "polling" },
-          description: "Switch to polling mode",
-        },
-      ],
-      context,
-      error instanceof Error ? error : undefined,
-    )
-  }
-
-  // WebSocket error during operation
-  if (code === "WEBSOCKET_ERROR" || message.includes("WebSocket error")) {
-    return createUserError(
-      ERROR_CODES.RELAY_WEBSOCKET_ERROR,
-      ErrorCategory.RELAY,
-      "warning",
-      true,
-      {
-        title: "Relay WebSocket Error",
-        message:
-          "A WebSocket error occurred while communicating with the relay service.",
-        suggestions: [
-          "The connection will be automatically re-established",
-          "Check your network connection stability",
-          "Webhooks will be queued until connection is restored",
-        ],
-      },
-      [
-        {
-          type: "wait",
-          delayMs: 3000,
-          description: "Wait for automatic reconnection",
-        },
-      ],
-      context,
-      error instanceof Error ? error : undefined,
-    )
-  }
-
-  // Heartbeat timeout
-  if (
-    message.includes("heartbeat") ||
-    message.includes("timeout") ||
-    code === "HEARTBEAT_TIMEOUT"
-  ) {
-    return createUserError(
-      ERROR_CODES.RELAY_HEARTBEAT_TIMEOUT,
-      ErrorCategory.RELAY,
-      "warning",
-      true,
-      {
-        title: "Relay Heartbeat Timeout",
-        message:
-          "No heartbeat received from relay service. Connection may be stale.",
-        suggestions: [
-          "The connection will be automatically re-established",
-          "Check your network connection",
-          "Verify the relay service is running",
-        ],
-      },
-      [
-        {
-          type: "wait",
-          delayMs: 3000,
-          description: "Wait for automatic reconnection",
-        },
-      ],
-      context,
-      error instanceof Error ? error : undefined,
-    )
-  }
-
-  // Reconnect failed
-  if (
-    message.includes("reconnect") ||
-    message.includes("max reconnect") ||
-    code === "RECONNECT_FAILED"
-  ) {
-    return createUserError(
-      ERROR_CODES.RELAY_RECONNECT_FAILED,
-      ErrorCategory.RELAY,
-      "warning",
-      true,
-      {
-        title: "Relay Reconnection Failed",
-        message:
-          "Failed to reconnect to relay service after multiple attempts.",
-        suggestions: [
-          "Check your network connection",
-          "Verify the relay service is operational",
-          "Consider restarting the webhook receiver",
-          "Webhook receiver will fall back to polling mode",
-        ],
-      },
-      [
-        {
-          type: "retry",
-          delayMs: 10000,
-          description: "Retry reconnection in 10 seconds",
-        },
-        {
-          type: "config_change",
-          params: { mode: "polling" },
-          description: "Switch to polling mode",
-        },
-      ],
-      entities,
-      error instanceof Error ? error : undefined,
-    )
-  }
-
-  // Generic Relay API error
-  return createUserError(
-    ERROR_CODES.RELAY_API_ERROR,
-    ErrorCategory.RELAY,
-    "error",
-    true,
-    {
-      title: "Relay API Error",
-      message: `An error occurred while communicating with the relay service: ${message}`,
-      suggestions: [
-        "Check your network connection",
-        "Verify the relay service URL is correct",
-        "Try again later",
-      ],
-    },
-    [
-      {
-        type: "retry",
-        delayMs: 5000,
-        description: "Retry the operation",
-      },
-    ],
-    entities,
-    error instanceof Error ? error : undefined,
-  )
-}
-
-/**
  * Parse webhook manager errors (start, stop, config, health check)
  *
  * @param error - Error from webhook manager
@@ -1443,7 +1158,7 @@ export function parseWebhookError(
           "The webhook receiver is not configured. Please run setup to enable it.",
         suggestions: [
           "Run 'bills setup' to configure the webhook receiver",
-          "Select a mode (auto, direct, relay, or polling)",
+          "Select a mode (auto, direct, or polling)",
         ],
         docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/user-guide.md#webhook-configuration",
       },
@@ -1507,17 +1222,11 @@ export function parseWebhookError(
           "Direct webhook mode requires a public URL but none is configured or accessible.",
         suggestions: [
           "Configure a public URL in settings",
-          "Consider using relay mode instead",
           "Use polling mode as a fallback",
         ],
         docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/user-guide.md#webhook-modes",
       },
       [
-        {
-          type: "config_change",
-          params: { mode: "relay" },
-          description: "Switch to relay mode",
-        },
         {
           type: "config_change",
           params: { mode: "polling" },
@@ -1889,8 +1598,7 @@ export function getTroubleshootingUrl(category: ErrorCategory): string {
     [ErrorCategory.GMAIL_AUTH]: `${baseUrl}#credentials--authentication`,
     [ErrorCategory.STORAGE]: `${baseUrl}#storage-issues`,
     [ErrorCategory.FILE_SYSTEM]: `${baseUrl}#storage-issues`,
-    [ErrorCategory.RELAY]: `${baseUrl}#webhook-relay-issues`,
-    [ErrorCategory.WEBHOOK]: `${baseUrl}#webhook-relay-issues`,
+    [ErrorCategory.WEBHOOK]: `${baseUrl}#webhook-issues`,
     [ErrorCategory.IGN]: `${baseUrl}#ign-integration`,
   }
 

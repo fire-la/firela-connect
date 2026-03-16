@@ -32,6 +32,7 @@ export interface OAuthErrorContext {
     | "auth_url" // Authorization URL generation (Gmail)
     | "code_exchange" // Device code exchange (Gmail)
     | "polling" // Credential polling (both providers)
+    | "config" // Configuration errors (missing publicUrl, etc.)
   /**
    * Session identifier for OAuth flows
    */
@@ -354,6 +355,33 @@ export function parseOauthError(
     )
   }
 
+  // Configuration errors (missing publicUrl, etc.)
+  if (operation === "config") {
+    return createUserError(
+      ERROR_CODES.CONFIG_MISSING,
+      ErrorCategory.CONFIG,
+      "error",
+      false,
+      {
+        title: "OAuth Configuration Missing",
+        message: errorMessage || "Required OAuth configuration is missing.",
+        suggestions: [
+          "Configure connect.publicUrl in your config file",
+          "Run 'billclaw setup' to configure OAuth settings",
+          "Ensure all required credentials are set",
+        ],
+      },
+      [
+        {
+          type: "config_change",
+          description: "Configure OAuth settings",
+        },
+      ],
+      { ...(context?.sessionId ? { sessionId: context.sessionId } : {}) },
+      isError ? error : undefined,
+    )
+  }
+
   // Generic fallback (unknown provider or operation)
   return createUserError(
     ERROR_CODES.OAUTH_FAILED,
@@ -504,7 +532,6 @@ function getCategoryEmoji(category: string): string {
     gmail_auth: "🔐",
     storage: "💾",
     file_system: "📁",
-    relay: "🔌",
     webhook: "🪝",
     unknown: "❓",
   }

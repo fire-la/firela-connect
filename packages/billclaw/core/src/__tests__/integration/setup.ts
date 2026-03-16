@@ -289,24 +289,3 @@ export const GmailFixtures = {
     },
   }),
 }
-
-/**
- * Relay API mock fixtures
- */
-export const RelayFixtures = {
-  /**
-   * Mock health check response (success)
-   */
-  healthCheckSuccess: () => ({
-    status: "ok",
-    version: "1.0.0",
-  }),
-
-  /**
-   * Mock credential storage response
-   */
-  credentialStoredResponse: () => ({
-    success: true,
-    sessionId: "session-123",
-  }),
-}

@@ -292,7 +292,7 @@ export const ConnectConfigSchema = z.object({
    *
    * @deprecated Use 'connection' instead for unified OAuth + webhook control
    *
-   * Unified webhook receiver supporting Direct/Relay/Polling modes for
+   * Unified webhook receiver supporting Direct/Polling modes for
    * receiving real-time notifications from external services (Plaid, GoCardless, Gmail).
    */
   receiver: InboundWebhookReceiverConfigSchema.optional(),
