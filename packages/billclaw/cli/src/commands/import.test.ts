@@ -6,7 +6,6 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { importCommand } from "./import.js"
-import type { CliCommand } from "./registry.js"
 import type { CliRuntimeContext } from "../runtime/context.js"
 
 // Mock dependencies
