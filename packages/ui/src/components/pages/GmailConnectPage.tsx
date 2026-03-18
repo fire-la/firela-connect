@@ -6,8 +6,10 @@
  */
 import { useEffect, useState, useCallback } from "react"
 import { Loader2, CheckCircle, XCircle } from "lucide-react"
-import "@/styles/firela-theme.css"
 import type { GmailAuthorizeResponse, OAuthExchangeResponse } from "@/types/api"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type PageStatus = "ready" | "authorizing" | "exchanging" | "success" | "error"
 
@@ -104,58 +106,62 @@ export function GmailConnectPage() {
   return (
     <div
       data-testid="gmail-connect-page"
-      className="min-h-screen flex items-center justify-center p-5"
-      style={{ background: "var(--firela-gradient-gmail)" }}
+      className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-br from-red-500 to-yellow-500 to-green-500"
     >
-      <div className="firela-card" data-testid="gmail-card">
-        <div className="text-5xl mb-5">📧</div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Connect Gmail</h1>
-        <p className="text-gray-600 text-sm mb-8">
-          BillClaw Connect - Gmail Integration
-        </p>
+      <Card className="w-full max-w-md text-center" data-testid="gmail-card">
+        <CardHeader>
+          <div className="text-5xl mb-4">📧</div>
+          <CardTitle className="text-2xl">Connect Gmail</CardTitle>
+          <CardDescription>BillClaw Connect - Gmail Integration</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(status === "authorizing" || status === "exchanging") && (
+            <div data-testid="gmail-status" className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>
+                {status === "authorizing"
+                  ? "Preparing authorization..."
+                  : "Exchanging authorization code..."}
+              </span>
+            </div>
+          )}
 
-        {(status === "authorizing" || status === "exchanging") && (
-          <div data-testid="gmail-status" className="status-badge loading flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>
-              {status === "authorizing"
-                ? "Preparing authorization..."
-                : "Exchanging authorization code..."}
-            </span>
+          {status === "success" && (
+            <div data-testid="gmail-status" className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+              <CheckCircle className="w-5 h-5" />
+              <span>Gmail connected successfully!</span>
+            </div>
+          )}
+
+          {status === "error" && (
+            <div data-testid="gmail-status" className="flex items-center justify-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
+              <XCircle className="w-5 h-5" />
+              <span>{error || "An error occurred"}</span>
+            </div>
+          )}
+
+          {status === "ready" && !code && !state && (
+            <>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Authorize BillClaw to access your Gmail for automatic bill
+                extraction. We only read emails with bills and invoices - your
+                personal emails remain private.
+              </p>
+              <Button
+                data-testid="gmail-connect-btn"
+                className="w-full bg-gradient-to-r from-red-500 to-yellow-500 hover:from-red-600 hover:to-yellow-600"
+                onClick={handleAuthorize}
+              >
+                Authorize Gmail
+              </Button>
+            </>
+          )}
+
+          <div className="pt-4 text-xs text-muted-foreground">
+            OAuth 2.0 + PKCE for secure authentication
           </div>
-        )}
-
-        {status === "success" && (
-          <div data-testid="gmail-status" className="status-badge success flex items-center justify-center gap-2">
-            <CheckCircle className="w-5 h-5" />
-            <span>Gmail connected successfully!</span>
-          </div>
-        )}
-
-        {status === "error" && (
-          <div data-testid="gmail-status" className="status-badge error flex items-center justify-center gap-2">
-            <XCircle className="w-5 h-5" />
-            <span>{error || "An error occurred"}</span>
-          </div>
-        )}
-
-        {status === "ready" && !code && !state && (
-          <>
-            <p className="text-gray-500 leading-relaxed mb-8">
-              Authorize BillClaw to access your Gmail for automatic bill
-              extraction. We only read emails with bills and invoices - your
-              personal emails remain private.
-            </p>
-            <button data-testid="gmail-connect-btn" className="btn-firela btn-gmail" onClick={handleAuthorize}>
-              Authorize Gmail
-            </button>
-          </>
-        )}
-
-        <div className="mt-8 text-xs text-gray-400">
-          OAuth 2.0 + PKCE for secure authentication
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
