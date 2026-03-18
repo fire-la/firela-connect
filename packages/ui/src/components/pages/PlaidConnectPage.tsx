@@ -6,8 +6,10 @@
  */
 import { useEffect, useState, useCallback } from "react"
 import { Loader2, CheckCircle, XCircle } from "lucide-react"
-import "@/styles/firela-theme.css"
 import type { LinkTokenResponse, OAuthExchangeResponse } from "@/types/api"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Type for Plaid Link handler
 declare global {
@@ -140,70 +142,75 @@ export function PlaidConnectPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-5"
-      style={{ background: "var(--firela-gradient-plaid)" }}
+      className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-br from-violet-500 to-purple-600"
     >
-      <div className="firela-card" data-testid="plaid-connect-page">
-        <div className="text-5xl mb-5">🏦</div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          Connect Your Bank
-        </h1>
-        <p className="text-gray-600 text-sm mb-8">
-          BillClaw Connect - Plaid Integration
-        </p>
-
-        {status === "initializing" && (
-          <div className="status-badge loading" data-testid="plaid-status">Initializing...</div>
-        )}
-
-        {status === "ready" && (
-          <>
-            <p className="text-gray-500 leading-relaxed mb-8">
-              Securely connect your bank account using Plaid to automatically
-              import transactions. Your credentials are encrypted and never
-              stored on our servers.
-            </p>
-            <button
-              data-testid="plaid-connect-btn"
-              className="btn-firela btn-plaid"
-              onClick={handleConnect}
-              disabled={!plaidLoaded}
-            >
-              {plaidLoaded ? "Connect Bank Account" : "Loading..."}
-            </button>
-          </>
-        )}
-
-        {status === "connecting" && (
-          <div data-testid="plaid-status" className="status-badge loading flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Connecting...</span>
-          </div>
-        )}
-
-        {status === "success" && (
-          <div data-testid="plaid-status" className="status-badge success flex items-center justify-center gap-2">
-            <CheckCircle className="w-5 h-5" />
-            <span>Bank account connected successfully!</span>
-          </div>
-        )}
-
-        {status === "error" && (
-          <>
-            <div data-testid="plaid-status" className="status-badge error flex items-center justify-center gap-2">
-              <XCircle className="w-5 h-5" />
-              <span>{error || "An error occurred"}</span>
+      <Card className="w-full max-w-md text-center" data-testid="plaid-connect-page">
+        <CardHeader>
+          <div className="text-5xl mb-4">🏦</div>
+          <CardTitle className="text-2xl">Connect Your Bank</CardTitle>
+          <CardDescription>BillClaw Connect - Plaid Integration</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {status === "initializing" && (
+            <div className="flex items-center justify-center gap-2 text-muted-foreground" data-testid="plaid-status">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Initializing...</span>
             </div>
-            <button className="btn-firela btn-plaid mt-4" onClick={handleRetry}>
-              Retry
-            </button>
-          </>
-        )}
+          )}
 
-        <div className="mt-8 text-xs text-gray-400">
-          Powered by Plaid • Bank-level security (256-bit encryption)
-        </div>
-      </div>
+          {status === "ready" && (
+            <>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Securely connect your bank account using Plaid to automatically
+                import transactions. Your credentials are encrypted and never
+                stored on our servers.
+              </p>
+              <Button
+                data-testid="plaid-connect-btn"
+                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+                onClick={handleConnect}
+                disabled={!plaidLoaded}
+              >
+                {plaidLoaded ? "Connect Bank Account" : "Loading..."}
+              </Button>
+            </>
+          )}
+
+          {status === "connecting" && (
+            <div data-testid="plaid-status" className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Connecting...</span>
+            </div>
+          )}
+
+          {status === "success" && (
+            <div data-testid="plaid-status" className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+              <CheckCircle className="w-5 h-5" />
+              <span>Bank account connected successfully!</span>
+            </div>
+          )}
+
+          {status === "error" && (
+            <>
+              <Alert variant="destructive" data-testid="plaid-status">
+                <XCircle className="w-4 h-4" />
+                <AlertDescription>{error || "An error occurred"}</AlertDescription>
+              </Alert>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleRetry}
+              >
+                Retry
+              </Button>
+            </>
+          )}
+
+          <div className="pt-4 text-xs text-muted-foreground">
+            Powered by Plaid • Bank-level security (256-bit encryption)
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
