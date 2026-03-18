@@ -49,7 +49,7 @@ RELAY_URL = "https://napi-dev.firela.io"
 
 # Development settings
 [dev]
-port = 8787
+port = 8788
 local_protocol = "http"
 
 # Production settings (configure after first deploy)
