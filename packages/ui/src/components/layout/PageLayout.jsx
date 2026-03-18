@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar } from './AppSidebar';
-import { HeaderBar } from './HeaderBar';
+import HeaderBar from './headerbar';
 
 /**
  * PageLayout - Main layout component with responsive sidebar
@@ -44,8 +44,8 @@ const PageLayout = ({
         />
         <SidebarInset>
           <HeaderBar
-            systemName={systemName}
-            onMenuClick={() => setDrawerOpen((prev) => !prev)}
+            onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
+            drawerOpen={drawerOpen}
           />
           <main className='flex-1 relative overflow-auto'>
             {/* Inner container with responsive padding */}
