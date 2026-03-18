@@ -19,7 +19,10 @@ import {
 import { useConfigStore } from "@/stores/configStore"
 import { createAdapter } from "@/adapters"
 import type { Account } from "@/adapters/types"
-import "@/styles/firela-theme.css"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function ConnectPage() {
   const navigate = useNavigate()
@@ -69,25 +72,25 @@ export function ConnectPage() {
     }
   }
 
-  const getStatusIcon = (status: Account["status"]) => {
+  const getStatusBadgeVariant = (status: Account["status"]): "default" | "secondary" | "destructive" => {
     switch (status) {
       case "connected":
-        return <CheckCircle className="w-4 h-4 text-green-500" />
+        return "default"
       case "disconnected":
-        return <XCircle className="w-4 h-4 text-gray-400" />
+        return "secondary"
       case "error":
-        return <XCircle className="w-4 h-4 text-red-500" />
+        return "destructive"
     }
   }
 
-  const getStatusColor = (status: Account["status"]) => {
+  const getStatusIcon = (status: Account["status"]) => {
     switch (status) {
       case "connected":
-        return "text-green-600"
+        return <CheckCircle className="w-3 h-3" />
       case "disconnected":
-        return "text-gray-500"
+        return <XCircle className="w-3 h-3" />
       case "error":
-        return "text-red-600"
+        return <XCircle className="w-3 h-3" />
     }
   }
 
@@ -101,100 +104,106 @@ export function ConnectPage() {
   }
 
   return (
-    <div className="connect-page">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <Toaster position="top-right" />
 
-      <div className="connect-header">
-        <h1 className="text-2xl font-bold text-gray-800">Connected Accounts</h1>
-        <p className="text-gray-600 text-sm mt-1">
-          Manage your Plaid and Gmail account connections
-        </p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Connected Accounts</CardTitle>
+          <CardDescription>
+            Manage your Plaid and Gmail account connections
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
       {/* Loading state */}
       {loading && accounts.length === 0 && (
-        <div className="firela-card">
-          <div className="flex items-center justify-center gap-2 text-gray-500">
+        <Card>
+          <CardContent className="flex items-center justify-center gap-2 text-muted-foreground py-8">
             <Loader2 className="w-5 h-5 animate-spin" />
             <span>Loading accounts...</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error state */}
       {error && (
-        <div className="status-badge error">
-          <XCircle className="w-4 h-4 inline mr-2" />
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <XCircle className="w-4 h-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Account list */}
       {!loading && accounts.length > 0 && (
-        <div className="account-list">
+        <div className="space-y-3">
           {accounts.map((account) => (
-            <div key={account.id} className="account-card">
-              <div className="account-info">
-                <div className="account-type-icon">{getTypeIcon(account.type)}</div>
-                <div className="account-details">
-                  <h3 className="font-semibold text-gray-800">{account.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getStatusIcon(account.status)}
-                    <span className={`text-sm ${getStatusColor(account.status)}`}>
-                      {account.status}
-                    </span>
-                    {account.lastSync && (
-                      <span className="text-xs text-gray-400">
-                        Last sync: {new Date(account.lastSync).toLocaleDateString()}
-                      </span>
-                    )}
+            <Card key={account.id}>
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                    {getTypeIcon(account.type)}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{account.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant={getStatusBadgeVariant(account.status)} className="flex items-center gap-1">
+                        {getStatusIcon(account.status)}
+                        {account.status}
+                      </Badge>
+                      {account.lastSync && (
+                        <span className="text-xs text-muted-foreground">
+                          Last sync: {new Date(account.lastSync).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="account-actions">
-                <button
-                  className="btn-disconnect"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleDisconnect(account.id)}
                   disabled={disconnecting === account.id}
+                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
                   {disconnecting === account.id ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Unlink className="w-4 h-4" />
                   )}
-                  <span>Disconnect</span>
-                </button>
-              </div>
-            </div>
+                  <span className="ml-2">Disconnect</span>
+                </Button>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
 
       {/* Empty state */}
       {!loading && accounts.length === 0 && !error && (
-        <div className="firela-card">
-          <div className="text-gray-500 mb-4">
+        <Card>
+          <CardContent className="text-center text-muted-foreground py-8">
             No accounts connected yet. Connect your first account to get started.
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Connect buttons */}
-      <div className="connect-actions">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          Connect New Account
-        </h2>
-        <div className="connect-buttons">
-          <button className="btn-connect btn-plaid" onClick={handleConnectPlaid}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Connect New Account</CardTitle>
+        </CardHeader>
+        <CardContent className="flex gap-3 flex-wrap">
+          <Button onClick={handleConnectPlaid} className="gap-2">
             <Link className="w-4 h-4" />
-            <span>Connect Plaid</span>
-          </button>
-          <button className="btn-connect btn-gmail" onClick={handleConnectGmail}>
+            Connect Plaid
+          </Button>
+          <Button variant="outline" onClick={handleConnectGmail} className="gap-2">
             <Link className="w-4 h-4" />
-            <span>Connect Gmail</span>
-          </button>
-        </div>
-      </div>
+            Connect Gmail
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }
