@@ -92,6 +92,10 @@
   },
   "dependencies": {
     "@firela/api-types": "0.0.0-canary.a7bda42",
+    "@firela/parser-cn": "0.0.4-canary.4305a42",
+    "@firela/parser-core": "0.0.4-canary.4305a42",
+    "@firela/parser-eu": "0.0.4-canary.4305a42",
+    "@firela/parser-hk": "0.0.4-canary.4305a42",
     "plaid": "^32.0.0",
     "proper-lockfile": "^4.1.2",
     "ws": "^8.19.0",
