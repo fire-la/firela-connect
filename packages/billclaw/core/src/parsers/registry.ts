@@ -8,14 +8,22 @@
  */
 
 import type { Parser, RawTransaction } from '@firela/parser-core';
-import {
+// Import using namespace imports for CommonJS compatibility
+import parserCn from '@firela/parser-cn';
+import parserHk from '@firela/parser-hk';
+import parserEu from '@firela/parser-eu';
+
+// Extract parsers from namespace imports
+const {
   AlipayWebParser,
   AlipayMobileParser,
   CmbcCreditParser,
   CcbDebitParser,
-} from '@firela/parser-cn';
-import { HsbcHkParser } from '@firela/parser-hk';
-import { DegiroParser, InteractiveBrokersParser } from '@firela/parser-eu';
+} = parserCn as typeof import('@firela/parser-cn');
+
+const { HsbcHkParser } = parserHk as typeof import('@firela/parser-hk');
+
+const { DegiroParser, InteractiveBrokersParser } = parserEu as typeof import('@firela/parser-eu');
 
 /**
  * Supported parser names.
