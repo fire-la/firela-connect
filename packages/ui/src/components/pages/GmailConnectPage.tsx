@@ -9,7 +9,6 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react"
 import type { GmailAuthorizeResponse, OAuthExchangeResponse } from "@/types/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type PageStatus = "ready" | "authorizing" | "exchanging" | "success" | "error"
 
