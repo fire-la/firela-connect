@@ -44,42 +44,6 @@ describe("importCommand", () => {
 })
 
 describe("runImport", () => {
-  let mockContext: { runtime: CliRuntimeContext; program: unknown }
-  let mockRuntime: Partial<CliRuntimeContext>
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    mockRuntime = {
-      config: {
-        getConfig: vi.fn().mockResolvedValue({
-          ign: {
-            accessToken: "test-token",
-            apiUrl: "http://localhost:3000",
-            region: "us",
-            upload: {
-              sourceAccount: "Assets:Bank",
-              defaultCurrency: "USD",
-              defaultExpenseAccount: "Expenses:Unknown",
-              defaultIncomeAccount: "Income:Unknown",
-            },
-          },
-        }),
-        getStorageConfig: vi.fn().mockResolvedValue({ storagePath: "/tmp/test" }),
-      },
-      logger: {
-        info: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn(),
-      },
-    }
-
-    mockContext = {
-      runtime: mockRuntime as CliRuntimeContext,
-      program: {} as unknown,
-    }
-  })
-
   it("should validate command structure", () => {
     // Check command structure is correct
     expect(importCommand).toMatchObject({
