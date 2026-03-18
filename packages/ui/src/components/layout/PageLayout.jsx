@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar } from './AppSidebar';
-import { TopBar } from './TopBar';
+import { HeaderBar } from './HeaderBar';
 
 /**
  * PageLayout - Main layout component with responsive sidebar
@@ -22,7 +22,7 @@ const PageLayout = ({
   menuItems = [],
   user,
   onLogout,
-  systemName = 'firela',
+  systemName = 'BillClaw',
   logo,
 }) => {
   const isMobile = useIsMobile();
@@ -43,15 +43,10 @@ const PageLayout = ({
           }}
         />
         <SidebarInset>
-          <header className='sticky top-0 z-50'>
-            <TopBar
-              user={user}
-              onLogout={onLogout}
-              onMenuClick={() => setDrawerOpen((prev) => !prev)}
-              isMobileMenuOpen={drawerOpen}
-              systemName={systemName}
-            />
-          </header>
+          <HeaderBar
+            systemName={systemName}
+            onMenuClick={() => setDrawerOpen((prev) => !prev)}
+          />
           <main className='flex-1 relative overflow-auto'>
             {/* Inner container with responsive padding */}
             <div className='mx-auto max-w-[2000px] w-full pt-6 pb-4 px-6 md:px-8 lg:px-10'>
