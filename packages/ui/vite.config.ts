@@ -22,14 +22,25 @@ export default defineConfig({
     // Hono dev server for API routes
     devServer({
       entry: "src/server/index.ts",
-      injectClientScript: true,
-      // Exclude static assets from Hono server
+      injectClientScript: false, // Disable auto-injection to avoid invalid HTML
+      // Exclude static assets and SPA routes from Hono server
+      // Vite handles these directly with proper HMR
       exclude: [
+        // Static assets
         /^\/assets\/.+/,
         /^\/src\/.+$/,
         /\?html-proxy$/,
         /^\/@.+$/,
         /^\/node_modules\/.+$/,
+        // SPA routes - let Vite serve index.html for these
+        /^\/$/,
+        /^\/connect/,
+        /^\/sync/,
+        /^\/export/,
+        /^\/ign/,
+        /^\/webhooks/,
+        /^\/settings/,
+        /^\/gmail-callback/,
       ],
     }),
   ],
