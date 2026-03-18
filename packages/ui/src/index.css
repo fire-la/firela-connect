@@ -1,11 +1,324 @@
+/* ==================== Tailwind CSS v3 Configuration ==================== */
+
+@custom-variant dark (&:is(.dark *));
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base styles */
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-    Ubuntu, Cantarell, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ==================== Shadcn UI Design Tokens (synced with Pencil templates) ==================== */
+/* HEX color values exported from Pencil design file user-ui.pen */
+
+/* ==================== Typography System (synced with Pencil design) ==================== */
+/*
+ * Pencil doesn't support font variables, these variables maintain consistency in code
+ * Pencil hardcoded values: Inter font, 12/14/16/18/24px font sizes
+ */
+:root {
+  /* Font family */
+  --font-sans:
+    'Inter Variable', 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+
+  /* Font sizes (px → rem) */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
+
+  /* Line heights */
+  --leading-xs: 1.333; /* 12px / 16px */
+  --leading-sm: 1.429; /* 14px / 20px */
+  --leading-base: 1.5; /* 16px / 24px */
+  --leading-lg: 1.5; /* 18px / 27px */
+  --leading-xl: 1.4; /* 20px / 28px */
+  --leading-2xl: 1.333; /* 24px / 32px */
+
+  /* Font weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Font weight aliases (backward compatibility) */
+  --font-normal: var(--font-weight-normal);
+  --font-medium: var(--font-weight-medium);
+  --font-semibold: var(--font-weight-semibold);
+  --font-bold: var(--font-weight-bold);
+
+  /* Text color variables */
+  --text-primary: #18181b; /* Primary text - headings, emphasized */
+  --text-secondary: #71717a; /* Secondary text - body, labels, descriptions */
+  --text-tertiary: #a1a1aa; /* Tertiary text - subtle hints, placeholders */
+
+  /* Spacing system (synced with Pencil) */
+  --spacing-1: 4px;
+  --spacing-1.5: 6px;
+  --spacing-2: 8px;
+  --spacing-2.5: 10px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+}
+
+/* ==================== Light Theme (default) ==================== */
+:root {
+  /* Border radius system (synced with Pencil) */
+  --radius: 0.625rem; /* Shadcn default 10px */
+  --radius-sm: 0.25rem; /* 4px */
+  --radius-md: 0.375rem; /* 6px */
+  --radius-lg: 0.5rem; /* 8px - Tailwind standard */
+  --radius-xl: 0.75rem; /* 12px */
+  --radius-2xl: 1rem; /* 16px */
+  --radius-3xl: 1.25rem; /* 20px */
+  --radius-full: 9999px; /* Full circle */
+
+  /* Base colors */
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* Firela brand orange */
+  --primary: #e6662a;
+  --primary-foreground: #fafafa;
+
+  /* Secondary colors */
+  --secondary: #ffffff;
+  --secondary-foreground: #171717;
+
+  /* Muted colors */
+  --muted: #f5f5f5;
+  --muted-foreground: #777371;
+
+  /* Accent colors */
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+
+  /* Destructive colors (Firela orange for alerts) */
+  --destructive: #e6662a;
+  --destructive-foreground: #fafafa;
+
+  /* Border and input */
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #a3a3a3;
+
+  /* Sidebar - Light */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3d3d3d; /* darker text for better contrast */
+  --sidebar-primary: #18181b;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f4f4f4;
+  --sidebar-accent-foreground: #3d3d3d; /* matches sidebar-foreground for consistency */
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #71717a;
+
+  /* Semantic colors */
+  --success: #22c55e;
+  --warning: #eab308;
+  --info: #3b82f6;
+
+  /* Others */
+  --overlay: rgba(0, 0, 0, 0.5);
+  --white: #ffffff;
+  --black: #000000;
+
+  /* Chart colors */
+  --chart-1: #f97316;
+  --chart-2: #22c55e;
+  --chart-3: #3b82f6;
+  --chart-4: #eab308;
+  --chart-5: #8b5cf6;
+}
+
+/* ==================== Dark Theme ==================== */
+.dark {
+  /* Base colors */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+
+  /* Firela brand orange - Dark mode (brighter) */
+  --primary: #f0804d;
+  --primary-foreground: #171717;
+
+  /* Secondary colors */
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+
+  /* Muted colors */
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+
+  /* Accent colors */
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+
+  /* Destructive colors - Dark mode (Firela orange for alerts) */
+  --destructive: #e6662a;
+  --destructive-foreground: #fafafa;
+
+  /* Border and input */
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #737373;
+
+  /* Sidebar - Dark */
+  --sidebar: #18181b;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #1447e6;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #2a2a30;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #71717a;
+
+  /* Chart colors - Dark */
+  --chart-1: #f97316;
+  --chart-2: #22c55e;
+  --chart-3: #3b82f6;
+  --chart-4: #eab308;
+  --chart-5: #8b5cf6;
+}
+
+/* ==================== Base Styles ==================== */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Font weight system */
+  h1 {
+    font-weight: 600;
+  }
+  h2 {
+    font-weight: 700;
+  }
+  h3 {
+    font-weight: 600;
+  }
+  h4 {
+    font-weight: 600;
+  }
+  h5 {
+    font-weight: 600;
+  }
+  h6 {
+    font-weight: 600;
+  }
+}
+
+/* Focus ring - only apply to specific interactive elements, not all */
+a:focus-visible,
+button:focus-visible:not(
+    [data-slot='dropdown-menu-trigger'],
+    [data-slot='dropdown-menu-item'],
+    [data-slot='sidebar-menu-button']
+  ),
+[role='button']:focus-visible:not([data-slot='dropdown-menu-trigger']),
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Dropdown menu trigger - no focus ring (uses background highlight instead) */
+[data-slot='dropdown-menu-trigger']:focus-visible {
+  outline: none;
+}
+
+/* Dropdown menu items - no focus ring */
+[data-slot='dropdown-menu-item']:focus-visible {
+  outline: none;
+}
+
+/* Sidebar menu buttons - no focus ring */
+[data-slot='sidebar-menu-button']:focus-visible {
+  outline: none;
+}
+
+/* ==================== Layout Variables ==================== */
+:root {
+  /* Sidebar layout - synced with Pencil */
+  --sidebar-width: 259px;
+  --sidebar-width-collapsed: 56px;
+  --sidebar-current-width: var(--sidebar-width);
+
+  /* Sidebar menu items */
+  --sidebar-menu-button-height: 34px;
+  --sidebar-menu-button-font-size: 13px;
+  --sidebar-menu-button-padding-x: 24px;
+  --sidebar-menu-button-gap: 20px;
+
+  /* Sidebar secondary menu */
+  --sidebar-submenu-button-height: 24px;
+  --sidebar-submenu-padding-x: 6px;
+
+  /* Sidebar group labels */
+  --sidebar-group-label-height: 16px;
+  --sidebar-group-label-letter-spacing: -0.01em;
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Text color variables */
+  --color-text-primary: #18181b;
+  --color-text-secondary: #71717a;
+  --color-text-tertiary: #a1a1aa;
+}
+
+/* ==================== Sidebar Scrollbar Styles ==================== */
+/* Hide scrollbar by default */
+[data-sidebar='content'] {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+[data-sidebar='content']::-webkit-scrollbar {
+  width: 8px;
+}
+
+[data-sidebar='content']::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-sidebar='content']::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 4px;
+}
+
+/* Show scrollbar on hover - use border color (consistent with ScrollArea component) */
+[data-slot='sidebar-inner']:hover [data-sidebar='content'],
+[data-sidebar='content']:hover {
+  scrollbar-color: var(--border) transparent;
+}
+
+[data-slot='sidebar-inner']:hover
+  [data-sidebar='content']::-webkit-scrollbar-thumb,
+[data-sidebar='content']:hover::-webkit-scrollbar-thumb {
+  background-color: var(--border);
 }
