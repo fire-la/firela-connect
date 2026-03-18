@@ -107,9 +107,10 @@ app.notFound(async (c) => {
     )
   }
 
-  // For SPA routes, let Cloudflare Workers handle it (returns dist/index.html)
-  // This is triggered when the route doesn't match any API or static file
-  return c.notFound()
+  // For SPA routes in Vite dev server, let Vite handle it by not responding
+  // This allows @hono/vite-dev-server to pass through to Vite's HTML serving
+  // In Cloudflare Workers, the [assets] config handles SPA routing automatically
+  // Note: We must NOT call c.notFound() here as it causes infinite recursion in dev mode
 })
 
 // Global error handler
