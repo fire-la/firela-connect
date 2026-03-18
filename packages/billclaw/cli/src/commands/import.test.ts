@@ -6,7 +6,6 @@
 
 import { describe, it, expect, vi } from "vitest"
 import { importCommand } from "./import.js"
-import type { CliRuntimeContext } from "../runtime/context.js"
 
 // Mock dependencies
 vi.mock("node:fs")
