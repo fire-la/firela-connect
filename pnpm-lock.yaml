@@ -81,6 +81,18 @@ importers:
       '@firela/api-types':
         specifier: 0.0.0-canary.a7bda42
         version: 0.0.0-canary.a7bda42
+      '@firela/parser-cn':
+        specifier: 0.0.4-canary.4305a42
+        version: 0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)
+      '@firela/parser-core':
+        specifier: 0.0.4-canary.4305a42
+        version: 0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)
+      '@firela/parser-eu':
+        specifier: 0.0.4-canary.4305a42
+        version: 0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)
+      '@firela/parser-hk':
+        specifier: 0.0.4-canary.4305a42
+        version: 0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)
       plaid:
         specifier: ^32.0.0
         version: 32.0.0
@@ -250,6 +262,9 @@ importers:
       lucide-react:
         specifier: ^0.511.0
         version: 0.511.0(react@18.3.1)
+      marked:
+        specifier: ^17.0.4
+        version: 17.0.4
       radix-ui:
         specifier: ^1.4.3
         version: 1.4.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1298,6 +1313,34 @@ packages:
 
   '@firela/api-types@0.0.0-canary.a7bda42':
     resolution: {integrity: sha512-c4wdyQk0iUH/grrgUBzXI02tMLyH0YOcQ3NDdgt4zYItuUv2/A4IVYG99wKyskES+ebJelqR/OVr3kVB7VZukQ==}
+
+  '@firela/parser-cn@0.0.4-canary.4305a42':
+    resolution: {integrity: sha512-RSZMcPx5TIN258WgR8nqxBcumGMuD4RqJQy1XE5NzC3xFEr1T4LbgUB1QQHpS9dpbbDZUSpHNDe03plm2a5kDg==}
+    peerDependencies:
+      chrono-node: ^2.7.0
+      csv-parse: ^5.5.0
+      iconv-lite: ^0.6.0
+      jschardet: ^3.0.0
+
+  '@firela/parser-core@0.0.4-canary.4305a42':
+    resolution: {integrity: sha512-OZOjaKhPkTVaIhrJ+VxuT9Z/TzyeFsNccOBDKsXqh6XdpTj2L+Mk5qguG5FpoGgcPDPHHVoqT5zYtxFDBDbfTA==}
+    peerDependencies:
+      chrono-node: ^2.7.0
+      csv-parse: ^5.5.0
+      iconv-lite: ^0.6.0
+      jschardet: ^3.0.0
+
+  '@firela/parser-eu@0.0.4-canary.4305a42':
+    resolution: {integrity: sha512-OL6epOYfLDURsD2zF9vGckRu+IytcCH9F5RoKamv5QuQ0rvoR2PtaOKWJHTwXz8witbpVFV9StR/21BH1tLHcA==}
+    peerDependencies:
+      chrono-node: ^2.7.0
+      csv-parse: ^5.5.0
+
+  '@firela/parser-hk@0.0.4-canary.4305a42':
+    resolution: {integrity: sha512-r4108NeuQq8fe8iitLySH0ISsOuqOGApdv8UQG2F8BrcoRFFmpdMoZ9M5Ne2ZHU80UzENOT1ECi2ZnXqUd+sWg==}
+    peerDependencies:
+      chrono-node: ^2.7.0
+      csv-parse: ^5.5.0
 
   '@floating-ui/core@1.7.5':
     resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
@@ -2723,6 +2766,9 @@ packages:
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
 
+  '@swc/helpers@0.5.19':
+    resolution: {integrity: sha512-QamiFeIK3txNjgUTNppE6MiG3p7TdninpZu0E0PbqVh1a9FNLT2FRhisaa4NcaX52XVhA5l7Pk58Ft7Sqi/2sA==}
+
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
     engines: {node: '>=18'}
@@ -3112,6 +3158,10 @@ packages:
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
+  chrono-node@2.9.0:
+    resolution: {integrity: sha512-glI4YY2Jy6JII5l3d5FN6rcrIbKSQqKPhWsIRYPK2IK8Mm4Q1ZZFdYIaDqglUNf7gNwG+kWIzTn0omzzE0VkvQ==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
   ci-info@3.9.0:
     resolution: {integrity: sha512-NIxF55hv4nSqQswkAeiOi1r83xy8JldOFDTWiug55KBu9Jnblncd2U6ViHmYgHf01TPZS77NJBhBMKdWj9HQMQ==}
     engines: {node: '>=8'}
@@ -3218,6 +3268,9 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  csv-parse@5.6.0:
+    resolution: {integrity: sha512-l3nz3euub2QMg5ouu5U09Ew9Wf6/wQ8I++ch1loQ0ljmzhmfZYrH9fflS22i/PQEvsPvxCwxgz5q7UB8K1JO4Q==}
 
   data-uri-to-buffer@2.0.2:
     resolution: {integrity: sha512-ND9qDTLc6diwj+Xe5cdAgVTbLVdXbtxTJRXRhli8Mowuaan+0EJOtdqJ0QCHNSSPyoXGx9HX2/VMnKeC34AChA==}
@@ -3805,6 +3858,10 @@ packages:
     resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
     hasBin: true
 
+  jschardet@3.1.4:
+    resolution: {integrity: sha512-/kmVISmrwVwtyYU40iQUOp3SUPk2dhNCMsZBQX0R1/jZ8maaXJ/oZIzUOiyOqcgtLnETFKYChbJ5iDC/eWmFHg==}
+    engines: {node: '>=0.1.90'}
+
   jsdom@26.1.0:
     resolution: {integrity: sha512-Cvc9WUhxSMEo4McES3P7oK3QaXldCfNWp7pl2NNeiIFlCoLr3kfq9kb1fxftiwk1FLV7CvpvDfonxtzUDeSOPg==}
     engines: {node: '>=18'}
@@ -3900,6 +3957,11 @@ packages:
   make-dir@4.0.0:
     resolution: {integrity: sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==}
     engines: {node: '>=10'}
+
+  marked@17.0.4:
+    resolution: {integrity: sha512-NOmVMM+KAokHMvjWmC5N/ZOvgmSWuqJB8FoYI019j4ogb/PeRMKoKIjReZ2w3376kkA8dSJIP8uD993Kxc0iRQ==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -5884,6 +5946,51 @@ snapshots:
 
   '@firela/api-types@0.0.0-canary.a7bda42': {}
 
+  '@firela/parser-cn@0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)':
+    dependencies:
+      '@firela/parser-core': 0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)
+      '@swc/helpers': 0.5.19
+      chrono-node: 2.9.0
+      csv-parse: 5.6.0
+      decimal.js: 10.6.0
+      iconv-lite: 0.7.2
+      jschardet: 3.1.4
+      tslib: 2.8.1
+
+  '@firela/parser-core@0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)':
+    dependencies:
+      '@swc/helpers': 0.5.19
+      chrono-node: 2.9.0
+      csv-parse: 5.6.0
+      decimal.js: 10.6.0
+      iconv-lite: 0.7.2
+      jschardet: 3.1.4
+      tslib: 2.8.1
+
+  '@firela/parser-eu@0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)':
+    dependencies:
+      '@firela/parser-core': 0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)
+      '@swc/helpers': 0.5.19
+      chrono-node: 2.9.0
+      csv-parse: 5.6.0
+      decimal.js: 10.6.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - iconv-lite
+      - jschardet
+
+  '@firela/parser-hk@0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)':
+    dependencies:
+      '@firela/parser-core': 0.0.4-canary.4305a42(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.7.2)(jschardet@3.1.4)
+      '@swc/helpers': 0.5.19
+      chrono-node: 2.9.0
+      csv-parse: 5.6.0
+      decimal.js: 10.6.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - iconv-lite
+      - jschardet
+
   '@floating-ui/core@1.7.5':
     dependencies:
       '@floating-ui/utils': 0.2.11
@@ -7205,6 +7312,10 @@ snapshots:
 
   '@standard-schema/utils@0.3.0': {}
 
+  '@swc/helpers@0.5.19':
+    dependencies:
+      tslib: 2.8.1
+
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.0
@@ -7668,6 +7779,8 @@ snapshots:
   chownr@1.1.4:
     optional: true
 
+  chrono-node@2.9.0: {}
+
   ci-info@3.9.0: {}
 
   cjs-module-lexer@1.4.3: {}
@@ -7763,6 +7876,8 @@ snapshots:
       rrweb-cssom: 0.8.0
 
   csstype@3.2.3: {}
+
+  csv-parse@5.6.0: {}
 
   data-uri-to-buffer@2.0.2: {}
 
@@ -8371,6 +8486,8 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
+  jschardet@3.1.4: {}
+
   jsdom@26.1.0:
     dependencies:
       cssstyle: 4.6.0
@@ -8478,6 +8595,8 @@ snapshots:
   make-dir@4.0.0:
     dependencies:
       semver: 7.7.4
+
+  marked@17.0.4: {}
 
   math-intrinsics@1.1.0: {}
 

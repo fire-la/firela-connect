@@ -7,6 +7,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { Link2, RefreshCw, Download, Cloud, Webhook, Settings } from "lucide-react"
 import { ServiceStateProvider } from "@/contexts/ServiceStateContext"
+import { ThemeProvider } from "@/context/Theme"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { ConnectPage } from "@/components/pages/ConnectPage"
@@ -48,8 +49,9 @@ const billclawMenuItems = [
 export function App() {
   return (
     <BrowserRouter>
-      <ServiceStateProvider>
-        <Routes>
+      <ThemeProvider>
+        <ServiceStateProvider>
+          <Routes>
           {/* Main configuration routes with layout */}
           <Route
             path="/"
@@ -123,7 +125,8 @@ export function App() {
           <Route path="/connect/gmail" element={<GmailConnectPage />} />
           <Route path="/gmail-callback" element={<GmailConnectPage />} />
         </Routes>
-      </ServiceStateProvider>
+        </ServiceStateProvider>
+      </ThemeProvider>
     </BrowserRouter>
   )
 }

@@ -24,6 +24,7 @@ export {
 } from "./webhook-receiver.js"
 export { uploadCommand } from "./upload.js"
 export { uiCommand } from "./ui.js"
+export { importCommand } from "./import.js"
 /**
  * All commands to register
  */
@@ -40,4 +41,5 @@ export const allCommands = [
   { "webhook-receiver-disable": () => import("./webhook-receiver.js").then((m) => m.webhookReceiverDisableCommand) },
   { upload: () => import("./upload.js").then((m) => m.uploadCommand) },
   { ui: () => import("./ui.js").then((m) => m.uiCommand) },
+  { import: () => import("./import.js").then((m) => m.importCommand) },
 ]

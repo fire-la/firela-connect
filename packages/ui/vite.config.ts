@@ -49,6 +49,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ["zod"],
+  },
   server: {
     port: parseInt(process.env.PORT || "5173", 10),
     // No proxy needed - Hono handles API routes directly

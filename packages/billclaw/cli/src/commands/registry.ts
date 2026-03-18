@@ -98,7 +98,28 @@ export class CommandRegistry {
         const options = (
           args.length > 0 ? args[args.length - 1] : {}
         ) as Record<string, unknown>
-        await command.handler(context, options)
+
+        // Extract positional arguments if defined
+        // Commander passes positional args before the options object
+        const mergedOptions = { ...options }
+        if (command.arguments) {
+          // Parse argument names from the arguments string (e.g., "<file>" -> "file")
+          const argNames = command.arguments
+            .split(/\s+/)
+            .map((arg) => arg.replace(/[<>[\]]/g, ""))
+
+          // Map positional args to their names
+          // args = [positional1, positional2, ..., options]
+          const positionalCount = args.length - 1
+          for (let i = 0; i < Math.min(argNames.length, positionalCount); i++) {
+            const argValue = args[i]
+            if (argValue !== undefined && argValue !== options) {
+              mergedOptions[argNames[i]] = argValue
+            }
+          }
+        }
+
+        await command.handler(context, mergedOptions)
       } catch (error) {
         runtime.logger.error("Command failed:", error)
         process.exit(1)
