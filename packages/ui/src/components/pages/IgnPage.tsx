@@ -6,7 +6,6 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast, Toaster } from "sonner"
-import { z } from "zod"
 import {
   Globe,
   Key,
@@ -16,9 +15,15 @@ import {
   XCircle,
   Play,
 } from "lucide-react"
+import { z } from "zod"
 import { useConfigStore } from "@/stores/configStore"
 import { createAdapter } from "@/adapters"
-import "@/styles/firela-theme.css"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { ApiResultResponse } from "@/types/api"
 
 // Form schema for IGN settings
@@ -55,6 +60,7 @@ export function IgnPage() {
     formState: { errors },
     watch,
     getValues,
+    setValue,
   } = useForm<IgnSettings>({
     defaultValues: {
       apiUrl: config?.ign?.apiUrl || "https://ign-dev.firela.io/api/v1",
@@ -140,211 +146,208 @@ export function IgnPage() {
   }
 
   return (
-    <div className="ign-page">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <Toaster position="top-right" />
 
-      <div className="connect-header">
-        <h1 className="text-2xl font-bold text-gray-800">IGN Integration</h1>
-        <p className="text-gray-600 text-sm mt-1">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">IGN Integration</h1>
+        <p className="text-muted-foreground text-sm">
           Configure IGN Beancount SaaS upload settings
         </p>
       </div>
 
       {/* Loading state */}
       {loading && !testResult && (
-        <div className="firela-card">
-          <div className="flex items-center justify-center gap-2 text-gray-500">
+        <Card>
+          <CardContent className="flex items-center justify-center gap-2 text-muted-foreground py-8">
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span>Loading configuration...</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error state */}
       {error && (
-        <div className="status-badge error">
-          <AlertCircle className="w-4 h-4 inline mr-2" />
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Test result */}
       {testResult && (
-        <div
-          className={`status-badge ${
-            testResult.success ? "success" : "error"
-          }`}
-        >
+        <Alert variant={testResult.success ? "default" : "destructive"}>
           {testResult.success ? (
-            <CheckCircle className="w-4 h-4 inline mr-1 text-green-600" />
+            <CheckCircle className="w-4 h-4 text-green-600" />
           ) : (
-            <XCircle className="w-4 h-4 inline mr-1 text-red-600" />
+            <XCircle className="w-4 h-4 text-red-600" />
           )}
-          <span className="text-sm">{testResult.message}</span>
-        </div>
+          <AlertDescription>{testResult.message}</AlertDescription>
+        </Alert>
       )}
 
       {/* IGN settings form */}
-      <form onSubmit={handleSubmit(handleSave)} className="ign-form">
-        <div className="form-group">
-          <label htmlFor="apiUrl">API URL</label>
-          <div className="relative">
-            <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="url"
-              id="apiUrl"
-              {...register("apiUrl")}
-              className="form-input pl-10"
-              placeholder="https://ign-dev.firela.io/api/v1"
-            />
-          </div>
-          {errors.apiUrl && (
-            <p className="text-red-500 text-sm">{errors.apiUrl.message}</p>
-          )}
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="accessToken">Access Token</label>
-          <div className="relative">
-            <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="password"
-              id="accessToken"
-              {...register("accessToken")}
-              className="form-input pl-10"
-              placeholder="Enter your access token"
-            />
-          </div>
-          {errors.accessToken && (
-            <p className="text-red-500 text-sm">{errors.accessToken.message}</p>
-          )}
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="region">Region</label>
-          <select id="region" {...register("region")} className="form-input">
-            <option value="cn">China</option>
-            <option value="us">United States</option>
-            <option value="eu-core">EU Core</option>
-            <option value="de">Germany</option>
-          </select>
-          {errors.region && (
-            <p className="text-red-500 text-sm">{errors.region.message}</p>
-          )}
-        </div>
-
-        <div className="form-group">
-          <h3 className="text-lg font-semibold text-gray-800">Upload Settings</h3>
-
-          <div className="form-group">
-            <label htmlFor="uploadMode">Upload Mode</label>
-            <select
-              id="uploadMode"
-              {...register("uploadMode")}
-              className="form-input"
-            >
-              <option value="disabled">Disabled</option>
-              <option value="auto">Automatic</option>
-              <option value="manual">Manual</option>
-            </select>
-            {errors.uploadMode && (
-              <p className="text-red-500 text-sm">{errors.uploadMode.message}</p>
-            )}
-          </div>
-
-          {watch("uploadMode") !== "disabled" && (
-            <>
-              <div className="form-group">
-                <label htmlFor="sourceAccount">Source Account</label>
-                <select
-                  id="sourceAccount"
-                  {...register("sourceAccount")}
-                  className="form-input"
-                >
-                  <option value="">Select an account</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.sourceAccount && (
-                  <p className="text-red-500 text-sm">{errors.sourceAccount.message}</p>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="defaultCurrency">Default Currency</label>
-                <input
-                  type="text"
-                  id="defaultCurrency"
-                  {...register("defaultCurrency")}
-                  className="form-input"
-                  placeholder="USD"
+      <form onSubmit={handleSubmit(handleSave)} className="space-y-6">
+        <Card>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="apiUrl">API URL</Label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="url"
+                  id="apiUrl"
+                  {...register("apiUrl")}
+                  placeholder="https://ign-dev.firela.io/api/v1"
+                  className="pl-10"
                 />
-                {errors.defaultCurrency && (
-                  <p className="text-red-500 text-sm">{errors.defaultCurrency.message}</p>
-                )}
               </div>
+              {errors.apiUrl && (
+                <p className="text-sm text-destructive">{errors.apiUrl.message}</p>
+              )}
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="defaultExpenseAccount">Default Expense Account</label>
-                <input
-                  type="text"
-                  id="defaultExpenseAccount"
-                  {...register("defaultExpenseAccount")}
-                  className="form-input"
-                  placeholder="Expenses:Unknown"
+            <div className="space-y-2">
+              <Label htmlFor="accessToken">Access Token</Label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="password"
+                  id="accessToken"
+                  {...register("accessToken")}
+                  placeholder="Enter your access token"
+                  className="pl-10"
                 />
-                {errors.defaultExpenseAccount && (
-                  <p className="text-red-500 text-sm">{errors.defaultExpenseAccount.message}</p>
-                )}
               </div>
+              {errors.accessToken && (
+                <p className="text-sm text-destructive">{errors.accessToken.message}</p>
+              )}
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="defaultIncomeAccount">Default Income Account</label>
-                <input
-                  type="text"
-                  id="defaultIncomeAccount"
-                  {...register("defaultIncomeAccount")}
-                  className="form-input"
-                  placeholder="Income:Unknown"
-                />
-                {errors.defaultIncomeAccount && (
-                  <p className="text-red-500 text-sm">{errors.defaultIncomeAccount.message}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="region">Region</Label>
+              <select
+                id="region"
+                {...register("region")}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring"
+              >
+                <option value="cn">China</option>
+                <option value="us">United States</option>
+                <option value="eu-core">EU Core</option>
+                <option value="de">Germany</option>
+              </select>
+              {errors.region && (
+                <p className="text-sm text-destructive">{errors.region.message}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="form-group">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="filterPending"
-                    {...register("filterPending")}
-                    className="form-checkbox"
+        <Card>
+          <CardContent className="space-y-4">
+            <h3 className="text-lg font-semibold">Upload Settings</h3>
+
+            <div className="space-y-2">
+              <Label htmlFor="uploadMode">Upload Mode</Label>
+              <select
+                id="uploadMode"
+                {...register("uploadMode")}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring"
+              >
+                <option value="disabled">Disabled</option>
+                <option value="auto">Automatic</option>
+                <option value="manual">Manual</option>
+              </select>
+              {errors.uploadMode && (
+                <p className="text-sm text-destructive">{errors.uploadMode.message}</p>
+              )}
+            </div>
+
+            {watch("uploadMode") !== "disabled" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="sourceAccount">Source Account</Label>
+                  <select
+                    id="sourceAccount"
+                    {...register("sourceAccount")}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring"
+                  >
+                    <option value="">Select an account</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.sourceAccount && (
+                    <p className="text-sm text-destructive">{errors.sourceAccount.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="defaultCurrency">Default Currency</Label>
+                  <Input
+                    type="text"
+                    id="defaultCurrency"
+                    {...register("defaultCurrency")}
+                    placeholder="USD"
                   />
-                  <span>Filter pending transactions</span>
-                </label>
-              </div>
-            </>
-          )}
-        </div>
+                  {errors.defaultCurrency && (
+                    <p className="text-sm text-destructive">{errors.defaultCurrency.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="defaultExpenseAccount">Default Expense Account</Label>
+                  <Input
+                    type="text"
+                    id="defaultExpenseAccount"
+                    {...register("defaultExpenseAccount")}
+                    placeholder="Expenses:Unknown"
+                  />
+                  {errors.defaultExpenseAccount && (
+                    <p className="text-sm text-destructive">{errors.defaultExpenseAccount.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="defaultIncomeAccount">Default Income Account</Label>
+                  <Input
+                    type="text"
+                    id="defaultIncomeAccount"
+                    {...register("defaultIncomeAccount")}
+                    placeholder="Income:Unknown"
+                  />
+                  {errors.defaultIncomeAccount && (
+                    <p className="text-sm text-destructive">{errors.defaultIncomeAccount.message}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="filterPending"
+                    checked={watch("filterPending")}
+                    onCheckedChange={(checked) => setValue("filterPending", checked)}
+                  />
+                  <Label htmlFor="filterPending" className="cursor-pointer">
+                    Filter pending transactions
+                  </Label>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Save and Test buttons */}
-        <div className="form-actions">
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+        <div className="flex gap-3">
+          <Button type="submit" disabled={loading}>
+            {loading && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
             Save Settings
-          </button>
-          <button
-            type="button"
-            onClick={handleTest}
-            disabled={loading}
-            className="btn-secondary"
-          >
-            <Play className="w-4 h-4" />
+          </Button>
+          <Button type="button" variant="outline" onClick={handleTest} disabled={loading}>
+            <Play className="w-4 h-4 mr-2" />
             Test Configuration
-          </button>
+          </Button>
         </div>
       </form>
     </div>

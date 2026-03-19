@@ -16,9 +16,15 @@ import {
   Shield,
   Radio,
   Clock,
+  Play,
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
-import "@/styles/firela-theme.css"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { WebhookResultResponse } from "@/types/api"
 
 type ConnectionMode = "auto" | "direct" | "polling"
@@ -157,16 +163,16 @@ export function WebhooksPage() {
   const requiresPublicUrl = formData.mode === "direct"
 
   return (
-    <div className="webhooks-page">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <Toaster position="top-right" />
 
       {/* Header */}
-      <div className="connect-header">
+      <div className="space-y-1">
         <div className="flex items-center gap-3">
-          <Webhook className="w-6 h-6 text-gray-700" />
+          <Webhook className="w-6 h-6 text-muted-foreground" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Webhook Settings</h1>
-            <p className="text-gray-600 text-sm mt-1">
+            <h1 className="text-2xl font-bold">Webhook Settings</h1>
+            <p className="text-muted-foreground text-sm">
               Configure how BillClaw receives webhooks from external services
             </p>
           </div>
@@ -175,174 +181,182 @@ export function WebhooksPage() {
 
       {/* Loading state */}
       {loading && !config && (
-        <div className="firela-card">
-          <div className="flex items-center justify-center gap-2 text-gray-500">
+        <Card>
+          <CardContent className="flex items-center justify-center gap-2 text-muted-foreground py-8">
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span>Loading configuration...</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error state */}
       {error && (
-        <div className="status-badge error">
-          <AlertCircle className="w-4 h-4 inline mr-2" />
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Test result */}
       {testResult && (
-        <div
-          className={`status-badge ${
-            testResult.success ? "success" : "error"
-          }`}
-        >
+        <Alert variant={testResult.success ? "default" : "destructive"}>
           {testResult.success ? (
-            <CheckCircle className="w-4 h-4 inline mr-1 text-green-600" />
+            <CheckCircle className="w-4 h-4 text-green-600" />
           ) : (
-            <XCircle className="w-4 h-4 inline mr-1 text-red-600" />
+            <XCircle className="w-4 h-4 text-red-600" />
           )}
-          <span className="text-sm">{testResult.message}</span>
-        </div>
+          <AlertDescription>{testResult.message}</AlertDescription>
+        </Alert>
       )}
 
       {/* Connection mode section */}
-      <div className="firela-card">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Shield className="w-5 h-5" />
-          Connection Mode
-        </h3>
-
-        <div className="space-y-3">
-          {(Object.keys(MODE_DESCRIPTIONS) as ConnectionMode[]).map((mode) => (
-            <label
-              key={mode}
-              className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                formData.mode === mode
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <input
-                type="radio"
-                name="connectionMode"
-                value={mode}
-                checked={formData.mode === mode}
-                onChange={() => updateField("mode", mode)}
-                className="mt-1"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500">
-                    {MODE_DESCRIPTIONS[mode].icon}
-                  </span>
-                  <span className="font-medium text-gray-800">
-                    {MODE_DESCRIPTIONS[mode].title}
-                  </span>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Connection Mode
+          </CardTitle>
+          <CardDescription>
+            Choose how BillClaw connects to external services
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {(Object.keys(MODE_DESCRIPTIONS) as ConnectionMode[]).map((mode) => (
+              <label
+                key={mode}
+                className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                  formData.mode === mode
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="connectionMode"
+                  value={mode}
+                  checked={formData.mode === mode}
+                  onChange={() => updateField("mode", mode)}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">
+                      {MODE_DESCRIPTIONS[mode].icon}
+                    </span>
+                    <span className="font-medium">
+                      {MODE_DESCRIPTIONS[mode].title}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {MODE_DESCRIPTIONS[mode].description}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  {MODE_DESCRIPTIONS[mode].description}
-                </p>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
+              </label>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Public URL section (for direct mode) */}
       {requiresPublicUrl && (
-        <div className="firela-card">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Link className="w-5 h-5" />
-            Public URL
-          </h3>
-          <p className="text-sm text-gray-600 mb-3">
-            Required for Direct mode. Enter the public URL where your Connect
-            service is accessible.
-          </p>
-          <div className="form-group">
-            <label htmlFor="publicUrl">Public URL</label>
-            <input
-              type="url"
-              id="publicUrl"
-              value={formData.publicUrl}
-              onChange={(e) => updateField("publicUrl", e.target.value)}
-              className="form-input"
-              placeholder="https://billclaw.yourdomain.com"
-              required={requiresPublicUrl}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Example: https://billclaw-worker.your-subdomain.workers.dev
-            </p>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Link className="w-5 h-5" />
+              Public URL
+            </CardTitle>
+            <CardDescription>
+              Required for Direct mode. Enter the public URL where your Connect
+              service is accessible.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="publicUrl">Public URL</Label>
+              <Input
+                type="url"
+                id="publicUrl"
+                value={formData.publicUrl}
+                onChange={(e) => updateField("publicUrl", e.target.value)}
+                placeholder="https://billclaw.yourdomain.com"
+                required={requiresPublicUrl}
+              />
+              <p className="text-xs text-muted-foreground">
+                Example: https://billclaw-worker.your-subdomain.workers.dev
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Health check section */}
-      <div className="firela-card">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Activity className="w-5 h-5" />
-          Health Check
-        </h3>
-
-        <div className="space-y-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            Health Check
+          </CardTitle>
+          <CardDescription>
+            Configure connection health monitoring settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
               id="healthCheckEnabled"
               checked={formData.healthCheckEnabled}
-              onChange={(e) => updateField("healthCheckEnabled", e.target.checked)}
-              className="form-checkbox"
+              onCheckedChange={(checked) => updateField("healthCheckEnabled", checked === true)}
             />
-            <span className="text-sm text-gray-700">
+            <Label htmlFor="healthCheckEnabled" className="cursor-pointer">
               Enable health checks for connection mode
-            </span>
-          </label>
+            </Label>
+          </div>
 
           {formData.healthCheckEnabled && (
-            <div className="form-group">
-              <label htmlFor="healthCheckTimeout">Timeout (ms)</label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="healthCheckTimeout">Timeout (ms)</Label>
+              <Input
                 type="number"
                 id="healthCheckTimeout"
                 value={formData.healthCheckTimeout}
                 onChange={(e) =>
                   updateField("healthCheckTimeout", parseInt(e.target.value) || 5000)
                 }
-                className="form-input"
-                min="1000"
-                max="30000"
-                step="1000"
+                min={1000}
+                max={30000}
+                step={1000}
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground">
                 Maximum time to wait for health check response (1000-30000 ms)
               </p>
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Save and Test buttons */}
-      <div className="form-actions">
-        <button
-          type="button"
+      <div className="flex gap-3">
+        <Button
           onClick={handleSave}
           disabled={saving || loading || (requiresPublicUrl && !formData.publicUrl)}
-          className="btn-primary"
         >
-          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+          {saving && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
           Save Settings
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           onClick={handleTest}
           disabled={testing || loading || (requiresPublicUrl && !formData.publicUrl)}
-          className="btn-secondary"
         >
-          {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+          {testing ? (
+            <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+          ) : (
+            <Play className="w-4 h-4 mr-2" />
+          )}
           Test Configuration
-        </button>
+        </Button>
       </div>
     </div>
   )

@@ -17,7 +17,12 @@ import {
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
 import { createAdapter } from "@/adapters"
-import "@/styles/firela-theme.css"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { ApiResultResponse } from "@/types/api"
 
 // Export config type
@@ -137,162 +142,138 @@ export function ExportPage() {
   }
 
   return (
-    <div className="export-page">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <Toaster position="top-right" />
 
-      <div className="connect-header">
-        <h1 className="text-2xl font-bold text-gray-800">Export Settings</h1>
-        <p className="text-gray-600 text-sm mt-1">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">Export Settings</h1>
+        <p className="text-muted-foreground text-sm">
           Configure Beancount or Ledger export format and output location
         </p>
       </div>
 
       {/* Loading state */}
       {loading && !testResult && (
-        <div className="firela-card">
-          <div className="flex items-center justify-center gap-2 text-gray-500">
+        <Card>
+          <CardContent className="flex items-center justify-center gap-2 text-muted-foreground py-8">
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span>Loading configuration...</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error state */}
       {error && (
-        <div className="status-badge error">
-          <AlertCircle className="w-4 h-4 inline mr-2" />
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Test result */}
       {testResult && (
-        <div
-          className={`status-badge ${
-            testResult.success ? "success" : "error"
-          }`}
-        >
+        <Alert variant={testResult.success ? "default" : "destructive"}>
           {testResult.success ? (
-            <CheckCircle className="w-4 h-4 inline mr-1 text-green-600" />
+            <CheckCircle className="w-4 h-4 text-green-600" />
           ) : (
-            <XCircle className="w-4 h-4 inline mr-1 text-red-600" />
+            <XCircle className="w-4 h-4" />
           )}
-          <span className="text-sm">{testResult.message}</span>
-        </div>
+          <AlertDescription>{testResult.message}</AlertDescription>
+        </Alert>
       )}
 
       {/* Export settings form */}
-      <form onSubmit={handleSubmit(handleSave)} className="export-form">
-        <div className="form-group">
-          <label htmlFor="format">Export Format</label>
-          <select id="format" {...register("format")} className="form-input">
-            <option value="beancount">Beancount</option>
-            <option value="ledger">Ledger</option>
-          </select>
-          {errors.format && (
-            <p className="text-red-500 text-sm">{errors.format.message}</p>
-          )}
-        </div>
+      <form onSubmit={handleSubmit(handleSave)} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Format Settings</CardTitle>
+            <CardDescription>Choose your preferred export format</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="format">Export Format</Label>
+              <select
+                id="format"
+                {...register("format")}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring md:text-sm"
+              >
+                <option value="beancount">Beancount</option>
+                <option value="ledger">Ledger</option>
+              </select>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="outputPath">Output Path</label>
-          <div className="relative">
-            <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              id="outputPath"
-              {...register("outputPath")}
-              className="form-input pl-10"
-              placeholder="~/.firela/billclaw/exports"
-            />
-          </div>
-          {errors.outputPath && (
-            <p className="text-red-500 text-sm">{errors.outputPath.message}</p>
-          )}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="outputPath">Output Path</Label>
+              <div className="relative">
+                <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  type="text"
+                  id="outputPath"
+                  {...register("outputPath")}
+                  className="pl-10"
+                  placeholder="~/.firela/billclaw/exports"
+                />
+              </div>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="filePrefix">File Prefix</label>
-          <input
-            type="text"
-            id="filePrefix"
-            {...register("filePrefix")}
-            className="form-input"
-            placeholder="transactions"
-          />
-          {errors.filePrefix && (
-            <p className="text-red-500 text-sm">{errors.filePrefix.message}</p>
-          )}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="filePrefix">File Prefix</Label>
+              <Input
+                type="text"
+                id="filePrefix"
+                {...register("filePrefix")}
+                placeholder="transactions"
+              />
+            </div>
 
-        <div className="form-group">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="includePending"
-              {...register("includePending")}
-              className="form-checkbox"
-            />
-            <span>Include pending transactions</span>
-          </label>
-          {errors.includePending && (
-            <p className="text-red-500 text-sm">
- {errors.includePending.message}</p>
-          )}
-        </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="includePending" {...register("includePending")} />
+              <Label htmlFor="includePending" className="font-normal cursor-pointer">
+                Include pending transactions
+              </Label>
+            </div>
 
-        <div className="form-group">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="currencyColumn"
-              {...register("currencyColumn")}
-              className="form-checkbox"
-            />
-            <span>Add currency column</span>
-          </label>
-          {errors.currencyColumn && (
-            <p className="text-red-500 text-sm">{errors.currencyColumn.message}</p>
-          )}
-        </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="currencyColumn" {...register("currencyColumn")} />
+              <Label htmlFor="currencyColumn" className="font-normal cursor-pointer">
+                Add currency column
+              </Label>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Preview section */}
-        <div className="preview-section mt-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Eye className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-800">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+                <Eye className="w-5 h-5" />
                 Output Preview ({previewFormat})
-              </h3>
-            </div>
-          </div>
-
-          <div className="firela-card">
-            <pre className="text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto">
+              </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-sm bg-muted p-4 rounded-lg overflow-x-auto">
               {previewFormat === "beancount"
                 ? sampleBeancountTransaction
                 : sampleLedgerTransaction}
             </pre>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Save and Test buttons */}
-        <div className="form-actions">
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : null}
+        <div className="flex gap-3">
+          <Button type="submit" disabled={loading}>
+            {loading && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
             Save Settings
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={handleTest}
             disabled={loading}
-            className="btn-secondary"
           >
-            <Play className="w-4 h-4" />
+            <Play className="w-4 h-4 mr-2" />
             Test Configuration
-          </button>
+          </Button>
         </div>
       </form>
     </div>

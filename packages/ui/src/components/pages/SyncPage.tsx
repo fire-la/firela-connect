@@ -12,9 +12,14 @@ import {
   XCircle,
   CreditCard,
   Mail,
+  Play,
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
-import "@/styles/firela-theme.css"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Label } from "@/components/ui/label"
 
 export function SyncPage() {
   const { loading, error, loadConfig, accounts, loadAccounts } =
@@ -128,132 +133,132 @@ export function SyncPage() {
   }
 
   return (
-    <div className="sync-page">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <Toaster position="top-right" />
 
-      <div className="connect-header">
-        <h1 className="text-2xl font-bold text-gray-800">Sync Settings</h1>
-        <p className="text-gray-600 text-sm mt-1">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">Sync Settings</h1>
+        <p className="text-muted-foreground text-sm">
           Configure sync frequency and select accounts for synchronization
         </p>
       </div>
 
       {/* Loading state */}
       {loading && accounts.length === 0 && (
-        <div className="firela-card">
-          <div className="flex items-center justify-center gap-2 text-gray-500">
+        <Card>
+          <CardContent className="flex items-center justify-center gap-2 text-muted-foreground py-8">
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span>Loading accounts...</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error state */}
       {error && (
-        <div className="status-badge error">
-          <AlertCircle className="w-4 h-4 inline mr-2" />
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Test result */}
       {testResult && (
-        <div
-          className={`status-badge ${
-            testResult.success ? "success" : "error"
-          }`}
-        >
+        <Alert variant={testResult.success ? "default" : "destructive"}>
           {testResult.success ? (
-            <CheckCircle className="w-4 h-4 inline mr-1 text-green-600" />
+            <CheckCircle className="w-4 h-4 text-green-600" />
           ) : (
-            <XCircle className="w-4 h-4 inline mr-1 text-red-600" />
+            <XCircle className="w-4 h-4 text-red-600" />
           )}
-          <span className="text-sm">{testResult.message}</span>
-        </div>
+          <AlertDescription>{testResult.message}</AlertDescription>
+        </Alert>
       )}
 
       {/* Account list */}
-      <div className="firela-card">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Accounts</h3>
-
-        {accounts.length === 0 ? (
-          <p className="text-gray-500 text-sm">
-            No accounts found. Connect an account first to enable sync.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {accounts.map((account) => {
-              const isEnabled = enabledAccounts.has(account.id)
-              return (
-                <div
-                  key={account.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-gray-500">
-                      {getTypeIcon(account.type)}
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-800">
-                        {account.name}
+      <Card>
+        <CardHeader>
+          <CardTitle>Accounts</CardTitle>
+          <CardDescription>
+            Select which accounts to include in synchronization
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {accounts.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No accounts found. Connect an account first to enable sync.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {accounts.map((account) => {
+                const isEnabled = enabledAccounts.has(account.id)
+                return (
+                  <div
+                    key={account.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-muted-foreground">
+                        {getTypeIcon(account.type)}
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        {getStatusIcon(account.status)}
-                        <span
-                          className={
-                            account.status === "connected"
-                              ? "text-green-600"
-                              : "text-gray-500"
-                          }
-                        >
-                          {account.status}
-                        </span>
-                        {account.lastSync && (
-                          <span className="text-xs text-gray-400">
-                            Last sync:{" "}
-                            {new Date(account.lastSync).toLocaleDateString()}
+                      <div>
+                        <div className="font-medium">
+                          {account.name}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          {getStatusIcon(account.status)}
+                          <span
+                            className={
+                              account.status === "connected"
+                                ? "text-green-600"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {account.status}
                           </span>
-                        )}
+                          {account.lastSync && (
+                            <span className="text-xs text-muted-foreground">
+                              Last sync:{" "}
+                              {new Date(account.lastSync).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`account-${account.id}`}
+                        checked={isEnabled}
+                        onCheckedChange={() => toggleAccount(account.id)}
+                      />
+                      <Label
+                        htmlFor={`account-${account.id}`}
+                        className="text-sm text-muted-foreground cursor-pointer"
+                      >
+                        Enable sync
+                      </Label>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isEnabled}
-                      onChange={() => toggleAccount(account.id)}
-                      className="form-checkbox"
-                    />
-                    <span className="text-sm text-gray-600">Enable sync</span>
-                  </label>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Save and Test buttons */}
-      <div className="form-actions">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || loading}
-          className="btn-primary"
-        >
-          {saving ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : null}
+      <div className="flex gap-3">
+        <Button onClick={handleSave} disabled={saving || loading}>
+          {saving && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
           Save Settings
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           onClick={handleTest}
           disabled={saving || loading || accounts.length === 0}
-          className="btn-secondary"
         >
+          <Play className="w-4 h-4 mr-2" />
           Test Configuration
-        </button>
+        </Button>
       </div>
     </div>
   )
