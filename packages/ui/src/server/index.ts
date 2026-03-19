@@ -80,6 +80,10 @@ app.route("/api/connect", credentialsRoutes)
 import { serviceRoutes } from "./routes/services.js"
 app.route("/api/services", serviceRoutes)
 
+// Sync status routes (Plan 13.3.1-01)
+import { syncRoutes } from "./routes/sync.js"
+app.route("/api/sync", syncRoutes)
+
 // ============================================================================
 // SPA Fallback - handled by Cloudflare Workers Assets
 // ============================================================================
@@ -107,10 +111,24 @@ app.notFound(async (c) => {
     )
   }
 
-  // For SPA routes in Vite dev server, let Vite handle it by not responding
-  // This allows @hono/vite-dev-server to pass through to Vite's HTML serving
-  // In Cloudflare Workers, the [assets] config handles SPA routing automatically
-  // Note: We must NOT call c.notFound() here as it causes infinite recursion in dev mode
+  // For SPA routes in Vite dev server, return HTML with root element and main.tsx script
+  // Vite dev server will inject its HMR client script automatically
+  return c.html(`<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>connect</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`, {
+    headers: {
+      "Content-Type": "text/html; charset=UTF-8",
+    },
+  })
 })
 
 // Global error handler
