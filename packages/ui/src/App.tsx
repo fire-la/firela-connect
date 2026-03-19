@@ -6,6 +6,7 @@
  */
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { Link2, RefreshCw, Download, Cloud, Webhook, Settings } from "lucide-react"
+import { getLogo } from "@/helpers"
 import { ServiceStateProvider } from "@/contexts/ServiceStateContext"
 import { ThemeProvider } from "@/context/Theme"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
@@ -56,7 +57,7 @@ export function App() {
           <Route
             path="/"
             element={
-              <PageLayout menuItems={billclawMenuItems} systemName="BillClaw">
+              <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
                 <HomePage />
               </PageLayout>
             }
@@ -65,7 +66,7 @@ export function App() {
             path="/connect"
             element={
               <ProtectedRoute serviceId="billclaw">
-                <PageLayout menuItems={billclawMenuItems} systemName="BillClaw">
+                <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
                   <ConnectPage />
                 </PageLayout>
               </ProtectedRoute>
@@ -75,7 +76,7 @@ export function App() {
             path="/sync"
             element={
               <ProtectedRoute serviceId="billclaw">
-                <PageLayout menuItems={billclawMenuItems} systemName="BillClaw">
+                <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
                   <SyncPage />
                 </PageLayout>
               </ProtectedRoute>
@@ -85,7 +86,7 @@ export function App() {
             path="/export"
             element={
               <ProtectedRoute serviceId="billclaw">
-                <PageLayout menuItems={billclawMenuItems} systemName="BillClaw">
+                <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
                   <ExportPage />
                 </PageLayout>
               </ProtectedRoute>
@@ -95,7 +96,7 @@ export function App() {
             path="/ign"
             element={
               <ProtectedRoute serviceId="billclaw">
-                <PageLayout menuItems={billclawMenuItems} systemName="BillClaw">
+                <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
                   <IgnPage />
                 </PageLayout>
               </ProtectedRoute>
@@ -105,7 +106,7 @@ export function App() {
             path="/webhooks"
             element={
               <ProtectedRoute serviceId="billclaw">
-                <PageLayout menuItems={billclawMenuItems} systemName="BillClaw">
+                <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
                   <WebhooksPage />
                 </PageLayout>
               </ProtectedRoute>
@@ -114,7 +115,7 @@ export function App() {
           <Route
             path="/settings"
             element={
-              <PageLayout menuItems={billclawMenuItems} systemName="BillClaw">
+              <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
                 <SettingsPage />
               </PageLayout>
             }

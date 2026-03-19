@@ -22,7 +22,7 @@ const PageLayout = ({
   menuItems = [],
   user,
   onLogout,
-  systemName = 'BillClaw',
+  systemName = 'connect',
   logo,
 }) => {
   const isMobile = useIsMobile();
