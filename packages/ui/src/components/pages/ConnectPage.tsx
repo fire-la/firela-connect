@@ -23,12 +23,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export function ConnectPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { accounts, loading, error, loadAccounts } = useConfigStore()
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
+  const [confirmDisconnect, setConfirmDisconnect] = useState<Account | null>(null)
 
   // Load accounts on mount
   useEffect(() => {
@@ -162,7 +171,7 @@ export function ConnectPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDisconnect(account.id)}
+                  onClick={() => setConfirmDisconnect(account)}
                   disabled={disconnecting === account.id}
                   className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
@@ -204,6 +213,34 @@ export function ConnectPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Disconnect confirmation dialog */}
+      <Dialog open={!!confirmDisconnect} onOpenChange={() => setConfirmDisconnect(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disconnect Account</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to disconnect "{confirmDisconnect?.name}"?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDisconnect(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (confirmDisconnect) {
+                  handleDisconnect(confirmDisconnect.id)
+                }
+              }}
+            >
+              Disconnect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
