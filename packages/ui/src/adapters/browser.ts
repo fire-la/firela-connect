@@ -92,4 +92,20 @@ export class BrowserAdapter implements UIAdapter {
     if (!json.data) throw new Error("No system status returned")
     return json.data
   }
+
+  async refreshGmailToken(accountId: string): Promise<{
+    success: boolean
+    accessToken?: string
+    expiresIn?: number
+    error?: string
+  }> {
+    const res = await fetch(`${this.baseUrl}/oauth/gmail/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ accountId }),
+    })
+    return res.json()
+  }
 }

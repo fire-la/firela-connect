@@ -145,4 +145,15 @@ export interface UIAdapter {
    * Get system status information
    */
   getSystemStatus(): Promise<SystemStatus>
+
+  /**
+   * Refresh Gmail OAuth token for an account
+   * Used when access token expires during sync operations
+   */
+  refreshGmailToken(accountId: string): Promise<{
+    success: boolean
+    accessToken?: string
+    expiresIn?: number
+    error?: string
+  }>
 }
