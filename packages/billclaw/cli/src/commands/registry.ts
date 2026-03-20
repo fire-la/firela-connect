@@ -93,10 +93,14 @@ export class CommandRegistry {
       }
 
       try {
-        // Commander passes args and options as separate parameters
-        // The last parameter is always the options object
+        // Commander 13+ passes: [positional1, positional2, ..., options, command]
+        // The last parameter is Command object, second to last is options
+        const hasCommand = args.length > 0 && args[args.length - 1] instanceof Command
+        const optionsIndex = hasCommand ? args.length - 2 : args.length - 1
         const options = (
-          args.length > 0 ? args[args.length - 1] : {}
+          args.length > 0 && args[optionsIndex] && typeof args[optionsIndex] === 'object'
+            ? args[optionsIndex]
+            : {}
         ) as Record<string, unknown>
 
         // Extract positional arguments if defined
@@ -109,8 +113,8 @@ export class CommandRegistry {
             .map((arg) => arg.replace(/[<>[\]]/g, ""))
 
           // Map positional args to their names
-          // args = [positional1, positional2, ..., options]
-          const positionalCount = args.length - 1
+          // args = [positional1, positional2, ..., options, command]
+          const positionalCount = optionsIndex
           for (let i = 0; i < Math.min(argNames.length, positionalCount); i++) {
             const argValue = args[i]
             if (argValue !== undefined && argValue !== options) {

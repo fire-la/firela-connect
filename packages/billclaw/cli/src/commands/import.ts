@@ -14,10 +14,8 @@ import {
   transformParsedTransactions,
 } from "@firela/billclaw-core"
 import {
-  formatError,
   uploadTransactions,
   type PlaidTransactionUpload,
-  type IgnUploadResult,
   type ProviderSyncConfig,
 } from "@firela/billclaw-core"
 import { IgnAuthManager } from "@firela/billclaw-core"
@@ -35,7 +33,6 @@ async function runImport(
     dryRun?: boolean
   },
 ): Promise<void> {
-  const { runtime } = context
   const filePath = args.file
   const parserName = args.parser as ParserName | undefined
   const accountId = args.account
@@ -157,7 +154,7 @@ async function runImport(
 async function handleUpload(
   context: CliContext,
   transactions: PlaidTransactionUpload[],
-  accountId: string,
+  _accountId: string,
 ): Promise<void> {
   const { runtime } = context
   const config = await runtime.config.getConfig()
