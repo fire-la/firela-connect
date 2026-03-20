@@ -260,7 +260,7 @@ export const ConnectConfigSchema = z.object({
    *
    * Examples:
    * - https://billclaw.yourdomain.com
-   * - https://billclaw-worker.your-subdomain.workers.dev (Cloudflare Worker)
+   * - https://billclaw-ui.your-subdomain.workers.dev (Cloudflare Workers)
    *
    * If not set, defaults to http://localhost:{port} for local development.
    */

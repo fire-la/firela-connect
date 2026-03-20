@@ -12,7 +12,6 @@
   "references": [
     { "path": "./packages/runtime-adapters" },
     { "path": "./packages/billclaw/core" },
-    { "path": "./packages/billclaw/cli" },
-    { "path": "./packages/billclaw/worker" }
+    { "path": "./packages/billclaw/cli" }
   ]
 }

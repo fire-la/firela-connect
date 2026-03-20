@@ -283,7 +283,7 @@ export function WebhooksPage() {
                 required={requiresPublicUrl}
               />
               <p className="text-xs text-muted-foreground">
-                Example: https://billclaw-worker.your-subdomain.workers.dev
+                Example: https://billclaw-ui.your-subdomain.workers.dev
               </p>
             </div>
           </CardContent>
