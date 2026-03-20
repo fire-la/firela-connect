@@ -39,11 +39,10 @@ These are intentional design decisions, not alignment gaps:
   - **Implementation**: `packages/ui/src/server/routes/oauth/gmail.ts`
   - **UI Support**: Added `refreshGmailToken` method to `UIAdapter` interface and `BrowserAdapter`
 
-- [ ] **Account update API (PUT /api/accounts/:id)**
-  - **Issue**: Cannot enable/disable individual accounts from UI
-  - **Impact**: SyncPage cannot save account-level settings
-  - **Location**: `packages/ui/src/components/pages/SyncPage.tsx:117`
-  - **Recommended Action**: Add PUT endpoint for account updates
+- [x] **Account update API (PUT /api/accounts/:id)** — **COMPLETED in Phase 13.3.3**
+  - **Fixed**: Added `PUT /api/accounts/:id` endpoint
+  - **Implementation**: `packages/ui/src/server/routes/accounts.ts`
+  - **UI Support**: Added `updateAccount` method to `UIAdapter` interface and `BrowserAdapter`
 
 ### Medium Priority
 
