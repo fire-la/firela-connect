@@ -31,6 +31,7 @@ export interface OAuthErrorContext {
     | "public_token_exchange" // Plaid public token exchange
     | "auth_url" // Authorization URL generation (Gmail)
     | "code_exchange" // Device code exchange (Gmail)
+    | "token_refresh" // Token refresh (Gmail)
     | "polling" // Credential polling (both providers)
     | "config" // Configuration errors (missing publicUrl, etc.)
   /**

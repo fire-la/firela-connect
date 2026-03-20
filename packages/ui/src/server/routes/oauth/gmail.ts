@@ -16,7 +16,7 @@ import {
 import {
   gmailOAuthHandler,
   refreshGmailToken,
-  type GmailOAuthConfig,
+  type GmailOAuthConfig
 } from "@firela/billclaw-core/oauth"
 import { storeCredential } from "./credentials.js"
 
@@ -44,6 +44,10 @@ const exchangeTokenSchema = z.object({
   state: z.string().min(1, "state is required"),
   redirectUri: z.string().optional(),
   sessionId: z.string().optional(),
+})
+
+const refreshRequestSchema = z.object({
+  accountId: z.string().min(1, "Account ID is required"),
 })
 
 /**
@@ -150,6 +154,124 @@ gmailRoutes.post(
           success: false,
           error: exchangeError.humanReadable.message,
           errorCode: exchangeError.errorCode,
+        },
+        500,
+      )
+    }
+  },
+)
+
+/**
+ * POST /api/oauth/gmail/refresh
+ *
+ * Refresh a Gmail OAuth access token using a stored refresh token.
+ *
+ * Request body:
+ * - accountId: Account ID to refresh token for (required)
+ *
+ * Response:
+ * - success: boolean
+ * - accessToken: string - New Gmail access token
+ * - refreshToken: string - Gmail refresh token (may be unchanged)
+ * - expiresIn: number - Token expiration time in seconds
+ */
+gmailRoutes.post(
+  "/refresh",
+  zValidator("json", refreshRequestSchema),
+  async (c) => {
+    try {
+      const { accountId } = c.req.valid("json")
+
+      // Get stored credential from KV
+      const credentialKey = `credential:${accountId}`
+      const storedCredential = await c.env.CONFIG.get(credentialKey, { type: "json" })
+
+      if (!storedCredential) {
+        return c.json(
+          {
+            success: false,
+            error: "Credential not found for account",
+            errorCode: "CREDENTIAL_NOT_FOUND",
+          },
+          404,
+        )
+      }
+
+      const credential = storedCredential as {
+        provider: string
+        refreshToken?: string
+        metadata?: string
+      }
+
+      // Validate this is a Gmail credential
+      if (credential.provider !== "gmail") {
+        return c.json(
+          {
+            success: false,
+            error: "Account is not a Gmail account",
+            errorCode: "INVALID_PROVIDER",
+          },
+          400,
+        )
+      }
+
+      // Get refresh token from stored credential
+      const refreshToken = credential.refreshToken || credential.metadata
+      if (!refreshToken) {
+        return c.json(
+          {
+            success: false,
+            error: "No refresh token available for this account",
+            errorCode: "NO_REFRESH_TOKEN",
+          },
+          400,
+        )
+      }
+
+      // Refresh the token using core OAuth module
+      const config = getGmailConfig(c.env)
+      const result = await refreshGmailToken(config, refreshToken)
+
+      if (!result) {
+        return c.json(
+          {
+            success: false,
+            error: "Failed to refresh token",
+            errorCode: "REFRESH_FAILED",
+          },
+          500,
+        )
+      }
+
+      // Update stored credential with new tokens
+      const updatedCredential = {
+        ...credential,
+        accessToken: result.accessToken,
+        expiresAt: Date.now() + result.expiresIn * 1000,
+      }
+      await c.env.CONFIG.put(credentialKey, JSON.stringify(updatedCredential))
+
+      return c.json({
+        success: true,
+        accessToken: result.accessToken,
+        refreshToken: refreshToken, // Return original refresh token (unchanged)
+        expiresIn: result.expiresIn,
+      })
+    } catch (error) {
+      const refreshError = parseOauthError(
+        error as Error | { code?: string; message?: string; status?: number },
+        {
+          provider: "gmail",
+          operation: "code_exchange" as const,
+        },
+      )
+      console.error("[gmail_refresh]", refreshError)
+
+      return c.json(
+        {
+          success: false,
+          error: refreshError.humanReadable.message,
+          errorCode: refreshError.errorCode,
         },
         500,
       )
