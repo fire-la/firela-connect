@@ -28,11 +28,10 @@
     "src"
   ],
   "scripts": {
-    "dev": "vite",
+    "dev": "wrangler dev",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "start": "wrangler dev",
-    "deploy": "wrangler pages deploy dist",
+    "deploy": "wrangler deploy",
     "lint": "oxlint",
     "format": "oxfmt",
     "test": "vitest run",
@@ -42,6 +41,7 @@
   "dependencies": {
     "@firela/billclaw-core": "workspace:*",
     "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-switch": "^1.2.6",
     "axios": "^1.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -64,8 +64,7 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250214.0",
-    "@hono/vite-dev-server": "^0.25.1",
+    "@cloudflare/workers-types": "^4.20260312.0",
     "@hono/zod-validator": "^0.4.3",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.2.0",
