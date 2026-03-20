@@ -1,8 +1,18 @@
 #!/bin/sh
 
+commit_msg=$(cat "$1")
+
+# Check for Chinese characters in commit message
+if echo "$commit_msg" | perl -C -ne 'exit 1 if /\p{Han}/'; then
+  : # no Chinese
+else
+  echo "Error: Chinese characters are not allowed in commit messages."
+  echo "Please write your commit message in English."
+  exit 1
+fi
+
 # Check commit message format
 # Require conventional commits: feat:, fix:, docs:, etc.
-commit_msg=$(cat "$1")
 pattern="^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert|BREAKING)(\\(.+\\))?: .+"
 
 if ! echo "$commit_msg" | grep -qE "$pattern"; then

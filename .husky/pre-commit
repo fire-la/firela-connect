@@ -1,5 +1,34 @@
 #!/bin/sh
 
+# Check for Chinese characters in staged code files
+echo "Checking for Chinese characters in code..."
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|json|yaml|yml)$' || true)
+
+if [ -n "$staged_files" ]; then
+  chinese_files=""
+  for file in $staged_files; do
+    if [ -f "$file" ]; then
+      if perl -C -ne 'exit 1 if /\p{Han}/' "$file" 2>/dev/null; then
+        : # no Chinese
+      else
+        chinese_files="$chinese_files
+  $file"
+      fi
+    fi
+  done
+
+  if [ -n "$chinese_files" ]; then
+    echo "Error: Chinese characters detected in code files:"
+    echo "$chinese_files"
+    echo ""
+    echo "Code comments, variable names, and strings must be in English."
+    echo "User-facing text should use i18n framework for localization."
+    exit 1
+  fi
+fi
+
+echo "No Chinese characters in code files"
+
 # Run lint on all packages
 echo "Running linter..."
 pnpm -r --filter './packages/**' run lint || exit 1
