@@ -47,23 +47,23 @@ BillClaw uses a **Framework-Agnostic Core + Adapter Pattern** architecture:
 │    │  Adapter     │              │   Adapter    │       │
 │    └──────────────┘              └──────────────┘       │
 │           │                                 │             │
-│           └──────────┬──────────────────────────┘             │
-│                      ▼                                        │
-│           ┌────────────────────┐                             │
-│           │  @firela/            │                             │
-│           │  billclaw-connect    │                             │
-│           │  (OAuth Service)      │                             │
-│           │  └─ Web UI           │                             │
-│           │  └─ HTTP Endpoints   │                             │
-│           └────────────────────┘                             │
-│                                                             │
+│           └──────────┬──────────────────────────┘        │
+│                      ▼                                   │
+│           ┌────────────────────┐                        │
+│           │  @firela/billclaw-ui  │                      │
+│           │  (Unified UI + API)   │                      │
+│           │  └─ React SPA        │                        │
+│           │  └─ Hono API Server  │                        │
+│           │  └─ Cloudflare Workers │                     │
+│           └────────────────────┘                        │
+│                                                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Changes (Phase 0 - 2026-02-08)**:
-- ✅ Extracted OAuth core logic to `@firela/billclaw-core`
-- ✅ Added `@firela/billclaw-connect` OAuth service
-- ✅ Implemented adapter pattern for OpenClaw/CLI/Connect
+**Key Changes (Phase 13 - 2026-03)**:
+- ✅ Unified UI + API service in `@firela/billclaw-ui`
+- ✅ Single port (8787) for both UI and API
+- ✅ Cloudflare Workers deployment with Hono
 - ✅ Complete OAuth flow with web UI
 
 For detailed architecture documentation, see [docs/architecture.md](./docs/architecture.md).
@@ -89,7 +89,7 @@ OpenClaw plugin adapter. Integrates BillClaw with the OpenClaw AI framework.
 - 2 OAuth providers (Plaid, Gmail)
 - 2 background services (sync, webhook)
 
-### [@firela/billclaw-cli](./packages/cli)
+### [@firela/billclaw-cli](./packages/billclaw/cli)
 
 Standalone command-line interface. Use BillClaw without any AI framework.
 
@@ -99,83 +99,44 @@ Standalone command-line interface. Use BillClaw without any AI framework.
 - Export to Beancount/Ledger
 - Import from CSV/OFX/QFX
 
-### [@firela/billclaw-connect](./packages/connect)
+### [@firela/billclaw-ui](./packages/ui)
 
-OAuth service for financial data provider authentication.
+Unified UI + API service for BillClaw configuration and OAuth flows.
 
-- Express web server (localhost:4456)
+- React SPA with Tailwind CSS
+- Hono API server on Cloudflare Workers
 - Plaid Link web interface
 - Gmail OAuth web interface
-- Framework-agnostic OAuth handlers
-- Local-first deployment
+- Single port for UI and API (default: 8787)
 
 **Usage**:
 ```bash
-cd packages/connect
-pnpm build
-# Configure .env with PLAID_CLIENT_ID and PLAID_SECRET
-node dist/server.js
-# Visit http://localhost:4456
+# Start UI server
+billclaw ui
+
+# Or with custom port
+billclaw ui --port 8787
+
+# Visit http://localhost:8787
 ```
 
 ## Quick Start
 
-### Using Connect OAuth Service (Recommended)
+### Using UI Service (Recommended)
 
 The easiest way to connect your financial accounts:
 
-**Option 1: Using config file** (Recommended for persistence)
-
 ```bash
-# 1. Build the Connect service
-cd packages/connect
-pnpm build
+# 1. Clone and build
+git clone https://github.com/fire-la/billclaw.git
+cd billclaw
+pnpm install && pnpm build
 
-# 2. Create config directory and config file
-mkdir -p ~/.firela/billclaw
-cat > ~/.firela/billclaw/config.json << EOF
-{
-  "version": 1,
-  "connect": {
-    "port": 4456,
-    "host": "localhost"
-  },
-  "plaid": {
-    "clientId": "your_client_id",
-    "secret": "your_secret",
-    "environment": "sandbox"
-  }
-}
-EOF
+# 2. Start the UI service
+billclaw ui
 
-# 3. Start the service
-node dist/server.js
-
-# 4. Open your browser
-open http://localhost:4456
-```
-
-**Option 2: Using environment variables** (For quick testing)
-
-```bash
-# 1. Build the Connect service
-cd packages/connect
-pnpm build
-
-# 2. Configure your Plaid credentials
-cat > .env << EOF
-PLAID_CLIENT_ID=your_client_id
-PLAID_SECRET=your_secret
-PLAID_ENVIRONMENT=sandbox
-PORT=4456
-HOST=localhost
-EOF
-
-# 3. Start the service
-source .env && node dist/server.js
-
-# 4. Open your browser
-open http://localhost:4456
+# 3. Open your browser
+# Visit http://localhost:8787
 ```
 
 ## Production Deployment
@@ -199,7 +160,7 @@ See the [Cloudflare Deployment Guide](./billclaw-docs/docs/guide/cloudflare-depl
 
 ### VPS Deployment with HTTPS (Advanced)
 
-For production use with a custom domain:
+For production use with a custom domain, we recommend using Caddy as a reverse proxy:
 
 ```bash
 # 1. Purchase VPS and domain (e.g., DigitalOcean, $5-20/month)
@@ -222,43 +183,34 @@ cd billclaw
 pnpm install
 pnpm build
 
-# 4. Get SSL certificate (Let's Encrypt)
-apt-get install -y certbot
-certbot certonly --standalone -d billclaw.yourdomain.com
+# 4. Install Caddy (automatic HTTPS)
+apt install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+apt update
+apt install caddy
 
-# 5. Configure production settings
-cat > ~/.firela/billclaw/config.json << EOF
-{
-  "version": 1,
-  "connect": {
-    "port": 4456,
-    "host": "0.0.0.0",
-    "publicUrl": "https://billclaw.yourdomain.com",
-    "tls": {
-      "enabled": true,
-      "keyPath": "/etc/letsencrypt/live/billclaw.yourdomain.com/privkey.pem",
-      "certPath": "/etc/letsencrypt/live/billclaw.yourdomain.com/fullchain.pem"
-    }
-  },
-  "plaid": {
-    "clientId": "your_production_client_id",
-    "secret": "your_production_secret",
-    "environment": "production"
-  }
+# 5. Configure Caddy reverse proxy
+cat > /etc/caddy/Caddyfile << EOF
+billclaw.yourdomain.com {
+    reverse_proxy localhost:8787
 }
 EOF
+systemctl restart caddy
 
-# 6. Setup systemd service
-cat > /etc/systemd/system/billclaw-connect.service << 'EOF'
+# 6. Setup systemd service for BillClaw UI
+cat > /etc/systemd/system/billclaw-ui.service << 'EOF'
 [Unit]
-Description=BillClaw Connect Service
+Description=BillClaw UI Service
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/billclaw/packages/connect
-ExecStart=/usr/bin/node dist/server.js
+WorkingDirectory=/root/billclaw
+Environment=PLAID_CLIENT_ID=your_production_client_id
+Environment=PLAID_SECRET=your_production_secret
+ExecStart=/usr/local/bin/pnpm --filter @firela/billclaw-ui run wrangler dev --port 8787 --local
 Restart=always
 RestartSec=10
 
@@ -266,40 +218,16 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-systemctl enable billclaw-connect
-systemctl start billclaw-connect
+systemctl enable billclaw-ui
+systemctl start billclaw-ui
 
 # 7. Verify
 curl https://billclaw.yourdomain.com/health
-# Should return: {"status":"ok","service":"billclaw-connect"}
+# Should return: {"status":"ok"}
 ```
 
 **Important**: Add your production URL to Plaid Dashboard as a redirect URI:
 - `https://billclaw.yourdomain.com/oauth/plaid/callback`
-
-### Configuration Reference
-
-```json
-{
-  "connect": {
-    "port": 4456,
-    "host": "0.0.0.0",
-    "publicUrl": "https://billclaw.yourdomain.com",
-    "tls": {
-      "enabled": true,
-      "keyPath": "/path/to/key.pem",
-      "certPath": "/path/to/cert.pem"
-    }
-  }
-}
-```
-
-- **port**: Server port (default: 4456)
-- **host**: Bind address (0.0.0.0 for all interfaces, localhost for local only)
-- **publicUrl**: External URL for OAuth callbacks (required for production)
-- **tls.enabled**: Enable HTTPS (required for production)
-- **tls.keyPath**: Path to TLS private key
-- **tls.certPath**: Path to TLS certificate
 
 For more deployment scenarios, see [docs/architecture.md](./docs/architecture.md).
 
@@ -372,9 +300,15 @@ pnpm clean           # Clean build artifacts
 ```
 billclaw/
 ├── packages/
-│   ├── core/          # Framework-agnostic core
-│   ├── openclaw/      # OpenClaw plugin adapter
-│   └── cli/           # Standalone CLI
+│   ├── billclaw/
+│   │   ├── core/      # Framework-agnostic core
+│   │   └── cli/       # Standalone CLI
+│   ├── ui/            # Unified UI + API service
+│   ├── firela-bot/    # Discord bot
+│   └── runtime-adapters/ # Runtime adapters
+├── billclaw-docs/
+│   ├── docs/          # Documentation
+│   └── testing/       # E2E tests
 ├── .github/
 │   └── workflows/     # CI/CD pipelines
 ├── .husky/            # Pre-commit hooks

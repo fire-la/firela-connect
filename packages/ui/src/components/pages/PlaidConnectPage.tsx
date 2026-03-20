@@ -46,8 +46,8 @@ export function PlaidConnectPage() {
     async function fetchLinkToken() {
       try {
         const url = sessionId
-          ? `/oauth/plaid/link-token?session=${sessionId}`
-          : "/oauth/plaid/link-token"
+          ? `/api/oauth/plaid/link-token?session=${sessionId}`
+          : "/api/oauth/plaid/link-token"
         const res = await fetch(url)
         const data: LinkTokenResponse = await res.json()
 
@@ -101,7 +101,7 @@ export function PlaidConnectPage() {
             requestBody.sessionId = sessionId
           }
 
-          const res = await fetch("/oauth/plaid/exchange", {
+          const res = await fetch("/api/oauth/plaid/exchange", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody),

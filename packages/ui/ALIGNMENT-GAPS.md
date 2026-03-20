@@ -44,12 +44,16 @@ These are intentional design decisions, not alignment gaps:
   - **Implementation**: `packages/ui/src/server/routes/accounts.ts`
   - **UI Support**: Added `updateAccount` method to `UIAdapter` interface and `BrowserAdapter`
 
-### Medium Priority
+## Won't Fix
 
-- [ ] **Transaction viewer UI**
-  - **Issue**: No backend API to fetch transactions
-  - **Impact**: Users cannot view downloaded transactions in UI
-  - **Recommended Action**: Add `GET /api/transactions` endpoint with filtering
+These features are intentionally excluded from the UI:
+
+### Transaction viewer UI
+- **Issue**: No backend API to fetch transactions
+- **Reason**: Transaction data is stored locally and intended for export to Beancount/Ledger formats, not for viewing in UI
+- **Alternative**: Users can view transactions in their accounting software after export
+
+### Medium Priority
 
 - [ ] **Firela Bot management UI**
   - **Issue**: Only toggle exists, no detailed management

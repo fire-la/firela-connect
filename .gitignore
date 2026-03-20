@@ -49,6 +49,9 @@ playwright/.cache/
 /specs
 /playwright.config.ts
 
+# Packages
+packages/firela-bot/
+
 # Misc
 .cache
 .temp
