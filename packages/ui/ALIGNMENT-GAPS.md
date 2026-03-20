@@ -34,11 +34,10 @@ These are intentional design decisions, not alignment gaps:
 
 ### High Priority
 
-- [ ] **Gmail token refresh flow**
-  - **Issue**: No backend endpoint for refreshing Gmail OAuth tokens
-  - **Impact**: Gmail connections may expire without refresh
-  - **Location**: `packages/ui/src/adapters/browser.ts` (assumes refresh capability)
-  - **Recommended Action**: Add `POST /api/oauth/gmail/refresh` endpoint
+- [x] **Gmail token refresh flow** — **COMPLETED in Phase 13.3.3**
+  - **Fixed**: Added `POST /api/oauth/gmail/refresh` endpoint
+  - **Implementation**: `packages/ui/src/server/routes/oauth/gmail.ts`
+  - **UI Support**: Added `refreshGmailToken` method to `UIAdapter` interface and `BrowserAdapter`
 
 - [ ] **Account update API (PUT /api/accounts/:id)**
   - **Issue**: Cannot enable/disable individual accounts from UI
