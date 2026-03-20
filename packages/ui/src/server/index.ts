@@ -10,6 +10,7 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
+import { authMiddleware } from "./middleware/auth.js"
 
 /**
  * Environment bindings for Cloudflare Workers
@@ -22,6 +23,7 @@ export type Env = {
   PLAID_ENV: string
   PLAID_WEBHOOK_SECRET: string
   JWT_SECRET: string
+  SETUP_PASSWORD?: string // Required for initial JWT setup (Phase 13.2-05)
   GMAIL_CLIENT_ID?: string
   GMAIL_CLIENT_SECRET?: string
   // Service toggles (from wrangler.toml vars)
@@ -61,6 +63,25 @@ app.get("/health", (c) => {
     version: "0.0.1",
   })
 })
+
+// ============================================================================
+// Public Routes (no authentication required)
+// ============================================================================
+
+// Auth routes (including /auth/setup for initial token)
+import { authRoutes } from "./routes/auth.js"
+app.route("/auth", authRoutes)
+
+// Webhook routes (no JWT auth - uses HMAC signature verification)
+import { webhookRoutes } from "./routes/webhooks.js"
+app.route("/webhook", webhookRoutes)
+
+// ============================================================================
+// Protected Routes (JWT authentication required)
+// ============================================================================
+
+// Apply JWT authentication middleware to all /api/* routes
+app.use("/api/*", authMiddleware)
 
 // ============================================================================
 // API Routes
