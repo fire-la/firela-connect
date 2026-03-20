@@ -1,0 +1,170 @@
+/**
+ * JWT Authentication Middleware
+ *
+ * Protects API routes using stateless JWT authentication.
+ * Webhook routes are excluded (they use HMAC signature verification).
+ *
+ * Migrated from packages/billclaw/worker/src/middleware/auth.ts
+ *
+ * @packageDocumentation
+ */
+
+import { createMiddleware } from "hono/factory"
+import type { Env } from "../index.js"
+
+/**
+ * Paths that should be excluded from JWT authentication
+ */
+const PUBLIC_PATHS = [
+  "/health",
+  "/",
+  "/auth", // Auth routes (including /auth/setup)
+  "/webhook", // Webhook routes (use HMAC verification)
+]
+
+/**
+ * Check if a path should be excluded from JWT authentication
+ */
+function isPublicPath(path: string): boolean {
+  return PUBLIC_PATHS.some((publicPath) => path.startsWith(publicPath))
+}
+
+/**
+ * Verify a JWT token using Web Crypto API
+ */
+async function verifyToken(
+  token: string,
+  secret: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) {
+      return null
+    }
+
+    const [headerB64, payloadB64, signatureB64] = parts
+
+    // Decode header and payload
+    const header = JSON.parse(atob(headerB64))
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")))
+
+    // Check algorithm
+    if (header.alg !== "HS256") {
+      return null
+    }
+
+    // Check expiration
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return null
+    }
+
+    // Verify signature using Web Crypto API
+    const encoder = new TextEncoder()
+    const keyData = encoder.encode(secret)
+    const messageData = encoder.encode(`${headerB64}.${payloadB64}`)
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    )
+
+    // Decode base64url signature
+    const signature = Uint8Array.from(atob(signatureB64.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+      c.charCodeAt(0),
+    )
+
+    const isValid = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      signature,
+      messageData,
+    )
+
+    return isValid ? payload : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * JWT authentication middleware
+ *
+ * This middleware:
+ * 1. Skips authentication for public paths (health, auth, webhooks)
+ * 2. Validates JWT token for protected paths
+ * 3. Returns 401 for invalid or missing tokens
+ *
+ * Usage:
+ * ```typescript
+ * app.use('/api/*', authMiddleware)
+ * ```
+ */
+export const authMiddleware = createMiddleware<{ Bindings: Env }>(
+  async (c, next) => {
+    const path = c.req.path
+
+    // Skip authentication for public paths
+    if (isPublicPath(path)) {
+      return next()
+    }
+
+    // Check for Authorization header
+    const authHeader = c.req.header("Authorization")
+    if (!authHeader?.startsWith("Bearer ")) {
+      return c.json(
+        {
+          success: false,
+          error: "Missing or invalid Authorization header",
+          errorCode: "AUTH_MISSING",
+        },
+        401,
+      )
+    }
+
+    const token = authHeader.slice(7)
+    const payload = await verifyToken(token, c.env.JWT_SECRET)
+
+    if (!payload) {
+      return c.json(
+        {
+          success: false,
+          error: "Invalid or expired token",
+          errorCode: "AUTH_INVALID",
+        },
+        401,
+      )
+    }
+
+    // Store payload in context for route handlers
+    c.set("jwtPayload", payload)
+
+    return next()
+  },
+)
+
+/**
+ * Extract user ID from JWT payload
+ *
+ * This helper can be used in route handlers to get the authenticated user.
+ */
+export function getUserId(c: {
+  get: (key: string) => Record<string, unknown> | undefined
+}): string | null {
+  const payload = c.get("jwtPayload")
+  return (payload?.sub as string) || null
+}
+
+/**
+ * Check if user has owner role
+ *
+ * The owner role is granted during initial setup and has full access.
+ */
+export function isOwner(c: {
+  get: (key: string) => Record<string, unknown> | undefined
+}): boolean {
+  const payload = c.get("jwtPayload")
+  return (payload?.role as string) === "owner"
+}
