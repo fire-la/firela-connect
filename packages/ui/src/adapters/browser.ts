@@ -108,4 +108,19 @@ export class BrowserAdapter implements UIAdapter {
     })
     return res.json()
   }
+
+  async updateAccount(accountId: string, enabled: boolean): Promise<{
+    success: boolean
+    data?: Account
+    error?: string
+  }> {
+    const res = await fetch(`${this.baseUrl}/accounts/${accountId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ enabled }),
+    })
+    return res.json()
+  }
 }

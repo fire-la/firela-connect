@@ -156,4 +156,14 @@ export interface UIAdapter {
     expiresIn?: number
     error?: string
   }>
+
+  /**
+   * Update account settings
+   * Currently supports updating enabled status
+   */
+  updateAccount(accountId: string, enabled: boolean): Promise<{
+    success: boolean
+    data?: Account
+    error?: string
+  }>
 }
