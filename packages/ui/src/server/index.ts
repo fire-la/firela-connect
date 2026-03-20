@@ -105,6 +105,10 @@ app.route("/api/services", serviceRoutes)
 import { syncRoutes } from "./routes/sync.js"
 app.route("/api/sync", syncRoutes)
 
+// Accounts routes (Plan 13.3.3-02)
+import { accountsRoutes } from "./routes/accounts.js"
+app.route("/api/accounts", accountsRoutes)
+
 // ============================================================================
 // SPA Fallback - handled by Cloudflare Workers Assets
 // ============================================================================
