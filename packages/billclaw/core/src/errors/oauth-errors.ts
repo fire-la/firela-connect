@@ -377,7 +377,7 @@ export function parseOauthError(
           description: "Configure OAuth settings",
         },
       ],
-      { ...(context?.sessionId ? { sessionId: context.sessionId } : {}) },
+      context?.sessionId ? { sessionId: context.sessionId } : {},
       isError ? error : undefined,
     )
   }

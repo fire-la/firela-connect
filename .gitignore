@@ -41,6 +41,7 @@ playwright-report/
 test-results/
 playwright/.cache/
 .playwright-mcp
+.mcp.json
 
 # Automated Testing (managed in billclaw-docs submodule)
 # These are symlinks pointing to billclaw-docs/testing/

@@ -132,18 +132,22 @@ app.notFound(async (c) => {
     )
   }
 
-  // For SPA routes in Vite dev server, return HTML with root element and main.tsx script
-  // Vite dev server will inject its HMR client script automatically
+  // For SPA routes, return the built index.html
+  // In production/Cloudflare, assets are served from dist/ via wrangler.toml [assets]
+  // In local dev with wrangler, we need to return the built HTML manually
+  // The built HTML contains the correct asset hashes from Vite build
   return c.html(`<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <title>connect</title>
+    <script type="module" crossorigin src="/assets/index-Bta9ZeBb.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C8CCZ_qM.css">
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`, {
     headers: {
