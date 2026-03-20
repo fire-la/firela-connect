@@ -15,6 +15,7 @@ import {
 } from "@firela/billclaw-core/errors"
 import {
   gmailOAuthHandler,
+  refreshGmailToken,
   type GmailOAuthConfig,
 } from "@firela/billclaw-core/oauth"
 import { storeCredential } from "./credentials.js"

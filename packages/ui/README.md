@@ -11,7 +11,7 @@ cd packages/ui
 pnpm dev
 ```
 
-Opens the development server at `http://localhost:5173` with hot module replacement.
+Starts the development server using `wrangler dev` at `http://localhost:8787`.
 
 ### Build
 
@@ -26,11 +26,11 @@ Builds the production bundle to `dist/`.
 The UI is served via the `billclaw ui` command from the CLI package:
 
 ```bash
-billclaw ui [--port 3000] [--no-open]
+billclaw ui [--port 8787] [--no-open]
 ```
 
 Options:
-- `--port <number>` - Server port (default: 3000)
+- `--port <number>` - Server port (default: 8787)
 - `--no-open` - Don't open browser automatically
 
 ## Architecture
