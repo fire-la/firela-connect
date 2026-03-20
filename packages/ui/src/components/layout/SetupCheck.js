@@ -1,6 +1,4 @@
-import React, { useContext, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { StatusContext } from '../../context/Status';
+import React from 'react';
 
 const SetupCheck = ({ children }) => {
   // Setup check disabled for user-ui - redirect logic commented out

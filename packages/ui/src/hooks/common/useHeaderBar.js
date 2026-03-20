@@ -9,7 +9,7 @@ import { useIsMobile } from './useIsMobile';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useMinimumLoadingTime } from './useMinimumLoadingTime';
 
-export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
+export const useHeaderBar = ({ onMobileMenuToggle: _onMobileMenuToggle, drawerOpen }) => {
   const { t, i18n } = useTranslation();
   const [userState, userDispatch] = useContext(UserContext);
   const [statusState] = useContext(StatusContext);
@@ -92,7 +92,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
       if (cw) {
         cw.postMessage({ themeMode: actualTheme }, '*');
       }
-    } catch (e) {
+    } catch {
       // Silently ignore cross-origin or access errors
     }
   }, [actualTheme]);
@@ -107,7 +107,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
         if (cw) {
           cw.postMessage({ lang: lng }, '*');
         }
-      } catch (e) {
+      } catch {
         // Silently ignore cross-origin or access errors
       }
     };

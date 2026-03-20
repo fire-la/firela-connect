@@ -15,7 +15,7 @@ export const useNotifications = (statusState) => {
     let readKeys = [];
     try {
       readKeys = JSON.parse(localStorage.getItem('notice_read_keys')) || [];
-    } catch (_) {
+    } catch {
       readKeys = [];
     }
     const readSet = new Set(readKeys);
@@ -28,7 +28,7 @@ export const useNotifications = (statusState) => {
     let readKeys = [];
     try {
       readKeys = JSON.parse(localStorage.getItem('notice_read_keys')) || [];
-    } catch (_) {
+    } catch {
       readKeys = [];
     }
     const readSet = new Set(readKeys);
@@ -53,7 +53,7 @@ export const useNotifications = (statusState) => {
       let readKeys = [];
       try {
         readKeys = JSON.parse(localStorage.getItem('notice_read_keys')) || [];
-      } catch (_) {
+      } catch {
         readKeys = [];
       }
       const mergedKeys = Array.from(

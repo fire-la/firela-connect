@@ -238,7 +238,7 @@ function ComboboxChip({ className, children, showRemove = true, ...props }) {
   );
 }
 
-function ComboboxChipsInput({ className, children, ...props }) {
+function ComboboxChipsInput({ className, children: _children, ...props }) {
   return (
     <ComboboxPrimitive.Input
       data-slot='combobox-chip-input'

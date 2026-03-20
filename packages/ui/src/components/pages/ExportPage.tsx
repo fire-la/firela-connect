@@ -64,7 +64,7 @@ export function ExportPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors: _errors },
     watch,
     getValues,
   } = useForm<ExportConfig>({

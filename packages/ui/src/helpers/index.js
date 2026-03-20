@@ -36,11 +36,13 @@ export const showError = (error) => {
 // ============================================
 
 export const getSystemName = () => {
-  return import.meta.env.VITE_SYSTEM_NAME || 'BillClaw';
+  return import.meta.env.VITE_SYSTEM_NAME || 'connect';
 };
 
 export const getLogo = () => {
-  return import.meta.env.VITE_LOGO_URL || '';
+  const logo = localStorage.getItem('logo');
+  if (!logo) return '/logo.png';
+  return logo;
 };
 
 // ============================================

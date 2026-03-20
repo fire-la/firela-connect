@@ -54,7 +54,7 @@ const SimpleTooltip = ({
   content,
   children,
   position = 'top',
-  trigger = 'hover',
+  trigger: _trigger = 'hover',
   className,
 }) => {
   return (

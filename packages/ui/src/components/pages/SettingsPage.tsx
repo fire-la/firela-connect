@@ -8,10 +8,9 @@ import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
 import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import { SERVICE_CONFIGS, type ServiceState, type ServiceId, type ServicesApiResponse } from "@/types/services"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function SettingsPage() {

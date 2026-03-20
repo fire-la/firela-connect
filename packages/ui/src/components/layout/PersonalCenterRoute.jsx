@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { PersonalCenterLayout } from './PersonalCenterLayout';
 import { PageWrapper } from './PageWrapper';
 
@@ -10,8 +10,6 @@ import { PageWrapper } from './PageWrapper';
  * PageWrapper forces page remount on route change
  */
 export function PersonalCenterRoute() {
-  const location = useLocation();
-
   return (
     <PersonalCenterLayout>
       <PageWrapper>

@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { API, showError, getRelativeTime } from '../../helpers';
 import { marked } from 'marked';
 import { StatusContext } from '../../context/Status';
-import { Bell, Megaphone, FileText, Inbox, Circle } from 'lucide-react';
+import { Bell, Megaphone, Inbox } from 'lucide-react';
 import { Empty } from '@/components/ui/empty';
 
 const NoticeModal = ({

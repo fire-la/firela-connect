@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from './ThemeToggle';
 
-const ActionButtons = ({ theme, onThemeToggle, navigate, t }) => {
+const ActionButtons = ({ theme, onThemeToggle, navigate: _navigate, t }) => {
   return (
     <div className='flex items-center gap-4'>
       {/* GitHub Link - matches Pencil: 14px, normal, muted-foreground */}
