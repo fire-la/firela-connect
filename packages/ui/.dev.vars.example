@@ -1,0 +1,13 @@
+# Local development secrets for
+# These variables are loaded by wrangler dev for local testing
+# DO NOT commit this file to git
+
+PLAID_CLIENT_ID="your-plaid-client-id"
+PLAID_SECRET="your-plaid-secret"
+JWT_SECRET="local-dev-jwt-secret-for-testing-only"
+
+# Gmail OAuth credentials (required for Gmail onboarding tests)
+# Get credentials from Google Cloud Console
+# https://console.cloud.google.com/apis/credentials
+GMAIL_CLIENT_ID="your-gmail-client-id"
+GMAIL_CLIENT_SECRET="your-gmail-client-secret"
