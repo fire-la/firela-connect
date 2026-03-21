@@ -21,6 +21,9 @@ import { storeCredential } from "./credentials.js"
 
 import type { OAuthEnv as Env } from "./env.js"
 
+// KV key for accounts storage (same as accounts.ts)
+const ACCOUNTS_KEY = "billclaw:accounts"
+
 export const plaidRoutes = new Hono<{ Bindings: Env }>()
 
 /**
@@ -120,6 +123,39 @@ plaidRoutes.post(
           publicToken: publicToken,
           metadata: result.itemId,
         })
+      }
+
+      // Save account to KV storage for persistence
+      if (c.env.CONFIG) {
+        try {
+          // Get existing accounts
+          const existingAccounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
+          const accounts = Array.isArray(existingAccounts) ? existingAccounts : []
+
+          // Create new account entry
+          const newAccount = {
+            id: result.itemId,
+            name: `Plaid Account (${result.itemId.slice(0, 8)})`,
+            provider: "plaid",
+            status: "connected",
+            lastSync: new Date().toISOString(),
+          }
+
+          // Check if account exists and update, or add new
+          const existingIndex = accounts.findIndex((a) => a.id === result.itemId)
+          if (existingIndex >= 0) {
+            accounts[existingIndex] = { ...accounts[existingIndex], ...newAccount }
+          } else {
+            accounts.push(newAccount)
+          }
+
+          // Save back to KV
+          await c.env.CONFIG.put(ACCOUNTS_KEY, JSON.stringify(accounts))
+          console.log("[plaid_exchange] Account saved to KV:", result.itemId)
+        } catch (kvError) {
+          // Log error but don't fail the request
+          console.error("[plaid_exchange] Failed to save account to KV:", kvError)
+        }
       }
 
       return c.json({

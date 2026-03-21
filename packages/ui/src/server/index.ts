@@ -147,7 +147,7 @@ app.notFound(async (c) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <title>connect</title>
-    <script type="module" crossorigin src="/assets/index-Bta9ZeBb.js"></script>
+    <script type="module" crossorigin src="/assets/index-CSoXPgZl.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-C8CCZ_qM.css">
   </head>
   <body>

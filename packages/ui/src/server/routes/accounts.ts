@@ -22,6 +22,7 @@ interface Account {
   id: string
   name: string
   provider: string
+  status?: string // Connection status: 'connected' | 'disconnected' | 'error'
   enabled?: boolean
   lastSync?: string
   lastStatus?: string
