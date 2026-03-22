@@ -80,8 +80,8 @@ export function GmailConnectPage() {
 
       const redirectUri = `${window.location.origin}/gmail-callback`
       const url = sessionId
-        ? `/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}&session=${sessionId}`
-        : `/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}`
+        ? `/api/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}&session=${sessionId}`
+        : `/api/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}`
 
       const res = await fetch(url)
       const data: GmailAuthorizeResponse = await res.json()
