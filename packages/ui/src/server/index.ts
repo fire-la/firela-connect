@@ -29,6 +29,8 @@ export type Env = {
   // Service toggles (from wrangler.toml vars)
   BILLCLAW_ENABLED?: string
   FIRELA_BOT_ENABLED?: string
+  // ASSETS binding for static files (provided by wrangler when [assets] is configured)
+  ASSETS?: Fetcher
 }
 
 /**
@@ -123,41 +125,46 @@ app.route("/api/accounts", accountsRoutes)
 // - The built index.html already contains correct asset hashes from Vite
 
 app.notFound(async (c) => {
-  // For API routes, return JSON error
-  if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/webhook/")) {
+  const path = c.req.path
+
+  // For API routes, return JSON 404 error
+  if (
+    path.startsWith("/api/") ||
+    path.startsWith("/auth/") ||
+    path.startsWith("/webhook/") ||
+    path === "/health"
+  ) {
     return c.json(
       {
         success: false,
         error: "Not Found",
         errorCode: "NOT_FOUND",
-        path: c.req.path,
+        path: path,
       },
       404,
     )
   }
 
-  // For SPA routes, return the built index.html
-  // In production/Cloudflare, assets are served from dist/ via wrangler.toml [assets]
-  // In local dev with wrangler, we need to return the built HTML manually
-  // The built HTML contains the correct asset hashes from Vite build
-  return c.html(`<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <title>connect</title>
-    <script type="module" crossorigin src="/assets/index-CSoXPgZl.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C8CCZ_qM.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>`, {
-    headers: {
-      "Content-Type": "text/html; charset=UTF-8",
-    },
-  })
+  // For SPA routes, serve index.html from ASSETS binding
+  // This handles client-side routing for React SPA
+  if (c.env.ASSETS) {
+    try {
+      // Use ASSETS binding to fetch index.html
+      const indexUrl = new URL("/index.html", c.req.url)
+      const asset = await c.env.ASSETS.fetch(indexUrl)
+      if (asset.ok) {
+        return new Response(asset.body, {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        })
+      }
+    } catch {
+      // Fall through to 404
+    }
+  }
+
+  // Fallback: return 404 without body
+  // wrangler's not_found_handling = "single-page-application" should handle this
+  return new Response(null, { status: 404 })
 })
 
 // Global error handler

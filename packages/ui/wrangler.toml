@@ -10,9 +10,15 @@ compatibility_date = "2025-09-15"
 compatibility_flags = ["nodejs_compat_v2"]
 
 # Static assets (React SPA build output)
+# SPA routing: return index.html for non-API, non-static routes
+# Note: run_worker_first defaults to false, so static assets are served first
+# When no asset matches, request goes to Worker (Hono)
+# When Worker returns 404, not_found_handling serves index.html
+# binding: exposes ASSETS fetcher to Worker for manual asset serving
 [assets]
 directory = "dist"
 not_found_handling = "single-page-application"
+binding = "ASSETS"
 
 # D1 Database (shared with billclaw-worker)
 [[d1_databases]]
