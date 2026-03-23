@@ -52,6 +52,11 @@ function getNotifier(): UpdateNotifier {
  * Highlights major version changes with warnings.
  */
 export function showUpdateNotification(): void {
+  // Skip update notification in test environment
+  if (process.env.NODE_ENV === 'test') {
+    return
+  }
+
   // Run asynchronously to avoid blocking
   setImmediate(() => {
     try {

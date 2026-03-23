@@ -53,7 +53,10 @@ export async function main(args: string[] = process.argv): Promise<void> {
     await program.parseAsync(args)
 
     // Show update notification after command completes (non-blocking)
-    showUpdateNotification()
+    // In test environment, skip to avoid keeping process alive
+    if (process.env.NODE_ENV !== 'test') {
+      showUpdateNotification()
+    }
   } catch (error) {
     console.error("CLI error:", error)
     process.exit(1)
