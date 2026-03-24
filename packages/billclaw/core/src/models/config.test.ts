@@ -13,6 +13,8 @@ import {
   PlaidConfigSchema,
   GmailConfigSchema,
   BillclawConfigSchema,
+  ConnectionModeSchema,
+  RelayConfigSchema,
   type AccountConfig,
   type BillclawConfig,
 } from "../index"
@@ -234,6 +236,68 @@ describe("GmailConfigSchema", () => {
   })
 })
 
+describe("ConnectionModeSchema", () => {
+  it("should accept 'relay' as valid connection mode", () => {
+    const result = ConnectionModeSchema.safeParse("relay")
+    expect(result.success).toBe(true)
+  })
+
+  it("should accept all valid connection modes", () => {
+    const validModes = ["auto", "direct", "relay", "polling"]
+    validModes.forEach((mode) => {
+      const result = ConnectionModeSchema.safeParse(mode)
+      expect(result.success).toBe(true)
+    })
+  })
+})
+
+describe("RelayConfigSchema", () => {
+  it("should validate url as optional URL string", () => {
+    const result = RelayConfigSchema.safeParse({ url: "https://relay.firela.io" })
+    expect(result.success).toBe(true)
+  })
+
+  it("should reject invalid url", () => {
+    const result = RelayConfigSchema.safeParse({ url: "not-a-url" })
+    expect(result.success).toBe(false)
+  })
+
+  it("should validate apiKey as optional string", () => {
+    const result = RelayConfigSchema.safeParse({ apiKey: "test-api-key" })
+    expect(result.success).toBe(true)
+  })
+
+  it("should default timeout to 30000", () => {
+    const result = RelayConfigSchema.safeParse({})
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.timeout).toBe(30000)
+    }
+  })
+
+  it("should default maxRetries to 3", () => {
+    const result = RelayConfigSchema.safeParse({})
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.maxRetries).toBe(3)
+    }
+  })
+
+  it("should accept valid relay config with all fields", () => {
+    const config = {
+      url: "https://relay.firela.io",
+      apiKey: "test-api-key",
+      timeout: 60000,
+      maxRetries: 5,
+    }
+    const result = RelayConfigSchema.safeParse(config)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data).toEqual(config)
+    }
+  })
+})
+
 describe("BillclawConfigSchema", () => {
   const validConfig: BillclawConfig = {
     accounts: [],
@@ -252,6 +316,45 @@ describe("BillclawConfigSchema", () => {
       environment: "sandbox",
     },
   }
+
+  it("should accept relay config when provided", () => {
+    const configWithRelay = {
+      ...validConfig,
+      relay: {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      },
+    }
+    const result = BillclawConfigSchema.safeParse(configWithRelay)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.relay).toBeDefined()
+      expect(result.data.relay?.url).toBe("https://relay.firela.io")
+    }
+  })
+
+  it("should accept config with connection mode set to relay", () => {
+    const configWithRelay = {
+      ...validConfig,
+      connect: {
+        port: 4456,
+        host: "localhost",
+        connection: {
+          mode: "relay" as const,
+        },
+      },
+      relay: {
+        url: "https://relay.firela.io",
+        apiKey: "test-key",
+      },
+    }
+    const result = BillclawConfigSchema.safeParse(configWithRelay)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.connect?.connection?.mode).toBe("relay")
+      expect(result.data.relay?.url).toBe("https://relay.firela.io")
+    }
+  })
 
   it("should accept valid full config", () => {
     const result = BillclawConfigSchema.safeParse(validConfig)

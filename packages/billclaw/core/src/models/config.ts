@@ -18,8 +18,9 @@ import { InboundWebhookReceiverConfigSchema } from "../webhook/config.js"
  * @see ADR-006 for architecture details
  */
 export const ConnectionModeSchema = z.enum([
-  "auto", // Auto-detect optimal mode (Direct > Polling)
+  "auto", // Auto-detect optimal mode (Relay > Direct > Polling)
   "direct", // Force user's Connect service (requires publicUrl)
+  "relay", // Force relay mode (requires relay.url and relay.apiKey)
   "polling", // Force API polling (webhooks only, not for OAuth)
 ])
 export type ConnectionMode = z.infer<typeof ConnectionModeSchema>
@@ -42,6 +43,25 @@ export const ConnectionModeSelectorSchema = z.object({
     .default({}),
 })
 export type ConnectionModeSelector = z.infer<typeof ConnectionModeSelectorSchema>
+
+/**
+ * Relay service configuration for Open Banking without user-owned credentials
+ *
+ * When configured, BillClaw can use the firela-relay service to access
+ * Plaid and GoCardless APIs without requiring users to have their own
+ * provider accounts.
+ */
+export const RelayConfigSchema = z.object({
+  /** Relay service base URL (e.g., https://relay.firela.io) */
+  url: z.string().url().optional(),
+  /** API key for Bearer token authentication */
+  apiKey: z.string().optional(),
+  /** Request timeout in milliseconds (default: 30000) */
+  timeout: z.number().int().positive().default(30000),
+  /** Maximum retry attempts (default: 3) */
+  maxRetries: z.number().int().min(0).max(5).default(3),
+})
+export type RelayConfig = z.infer<typeof RelayConfigSchema>
 
 /**
  * Account types supported by BillClaw
@@ -350,6 +370,8 @@ export const BillclawConfigSchema = z.object({
   gocardless: GoCardlessConfigSchema.optional(),
   gmail: GmailConfigSchema.optional(),
   ign: IgnConfigSchema.optional(),
+  /** Relay service configuration for Open Banking without user-owned credentials */
+  relay: RelayConfigSchema.optional(),
   export: ExportConfigSchema.default({}),
   connect: ConnectConfigSchema.default({
     port: 4456,
