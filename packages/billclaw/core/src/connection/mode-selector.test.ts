@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   isDirectAvailable,
+  isRelayAvailable,
   selectConnectionMode,
   getFallbackMode,
   canUpgradeMode,
@@ -111,6 +112,108 @@ describe("connection mode selector", () => {
     })
   })
 
+  describe("isRelayAvailable", () => {
+    it("should return available=false when relay config missing", async () => {
+      const result = await isRelayAvailable(mockContext)
+      expect(result.available).toBe(false)
+      expect(result.error).toBe("Relay URL or API key not configured")
+    })
+
+    it("should return available=false when relay.url missing", async () => {
+      mockConfig.relay = { apiKey: "test-key" }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      const result = await isRelayAvailable(mockContext)
+      expect(result.available).toBe(false)
+      expect(result.error).toBe("Relay URL or API key not configured")
+    })
+
+    it("should return available=false when relay.apiKey missing", async () => {
+      mockConfig.relay = { url: "https://relay.firela.io" }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      const result = await isRelayAvailable(mockContext)
+      expect(result.available).toBe(false)
+      expect(result.error).toBe("Relay URL or API key not configured")
+    })
+
+    it("should return available=true on successful health check", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
+      const result = await isRelayAvailable(mockContext)
+      expect(result.available).toBe(true)
+      expect(result.latency).toBeGreaterThanOrEqual(0)
+      expect(result.error).toBeUndefined()
+    })
+
+    it("should return latency on successful check", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
+      const result = await isRelayAvailable(mockContext)
+      expect(result.latency).toBeDefined()
+      expect(result.latency).toBeGreaterThanOrEqual(0)
+    })
+
+    it("should return error message on failed check", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 503,
+        } as Response)),
+      )
+
+      const result = await isRelayAvailable(mockContext)
+      expect(result.available).toBe(false)
+      expect(result.error).toBe("Health check returned 503")
+    })
+
+    it("should use custom timeout when provided", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
+      const result = await isRelayAvailable(mockContext, 10000)
+      expect(result.available).toBe(true)
+    })
+  })
+
   describe("selectConnectionMode", () => {
     it("should return configured mode when explicitly set to direct", async () => {
       mockConfig.connect!.connection!.mode = "direct"
@@ -122,7 +225,48 @@ describe("connection mode selector", () => {
       expect(result.reason).toContain("User configured mode")
     })
 
-    it("should return direct when auto and publicUrl is set", async () => {
+    it("should return relay mode when explicitly set to relay", async () => {
+      mockConfig.connect!.connection!.mode = "relay"
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      const result = await selectConnectionMode(mockContext, "webhook")
+
+      expect(result.mode).toBe("relay")
+      expect(result.reason).toContain("User configured mode")
+    })
+
+    it("should return relay mode for OAuth when explicitly set to relay", async () => {
+      mockConfig.connect!.connection!.mode = "relay"
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      const result = await selectConnectionMode(mockContext, "oauth")
+
+      expect(result.mode).toBe("relay")
+      expect(result.reason).toContain("User configured mode")
+    })
+
+    it("should return relay when auto mode and relay config available", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockConfig.connect!.connection!.mode = "auto"
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
+      const result = await selectConnectionMode(mockContext, "webhook")
+
+      expect(result.mode).toBe("relay")
+      expect(result.reason).toContain("Relay mode available")
+    })
+
+    it("should return direct when auto and publicUrl is set (no relay)", async () => {
       vi.stubGlobal("fetch", vi.fn(() =>
         Promise.resolve({
           ok: true,
@@ -149,7 +293,7 @@ describe("connection mode selector", () => {
       expect(result.reason).toContain("User configured mode")
     })
 
-    it("should fallback to polling for webhooks when direct is not available", async () => {
+    it("should fallback to polling for webhooks when relay and direct are not available", async () => {
       vi.stubGlobal("fetch", vi.fn(() =>
         Promise.resolve({
           ok: false,
@@ -163,21 +307,57 @@ describe("connection mode selector", () => {
       const result = await selectConnectionMode(mockContext, "webhook")
 
       expect(result.mode).toBe("polling")
+      expect(result.reason).toContain("Relay unavailable")
       expect(result.reason).toContain("Direct unavailable")
     })
 
-    it("should return direct with error reason for OAuth when no publicUrl is configured", async () => {
+    it("should return relay with error reason for OAuth when no publicUrl is configured", async () => {
       mockConfig.connect!.publicUrl = undefined
       mockContext.config = new MemoryConfigProvider(mockConfig)
 
-      // OAuth returns direct mode with error reason (not throw)
+      // OAuth returns relay mode with error reason (not throw)
       const result = await selectConnectionMode(mockContext, "oauth")
-      expect(result.mode).toBe("direct")
-      expect(result.reason).toContain("Direct mode required for OAuth")
+      expect(result.mode).toBe("relay")
+      expect(result.reason).toContain("OAuth requires Relay or Direct mode")
+    })
+
+    it("should return error for OAuth when polling mode is configured", async () => {
+      mockConfig.connect!.connection!.mode = "polling"
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      const result = await selectConnectionMode(mockContext, "oauth")
+
+      expect(result.mode).toBe("relay")
+      expect(result.reason).toContain("Polling mode not supported for OAuth")
+    })
+
+    it("should detect modes in order: Relay -> Direct -> Polling", async () => {
+      // All modes available: should pick Relay
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockConfig.connect!.connection!.mode = "auto"
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
+      const result = await selectConnectionMode(mockContext, "webhook")
+      expect(result.mode).toBe("relay")
     })
   })
 
   describe("getFallbackMode", () => {
+    it("should return direct when current mode is relay for webhooks", () => {
+      const fallback = getFallbackMode("relay", "webhook")
+      expect(fallback).toBe("direct")
+    })
+
     it("should return polling when current mode is direct for webhooks", () => {
       const fallback = getFallbackMode("direct", "webhook")
       expect(fallback).toBe("polling")
@@ -185,7 +365,7 @@ describe("connection mode selector", () => {
 
     it("should throw error for OAuth fallback", () => {
       expect(() => getFallbackMode("direct", "oauth")).toThrow(
-        "Direct mode required for OAuth. Please configure connect.publicUrl.",
+        "OAuth requires Relay or Direct mode",
       )
     })
 
@@ -196,7 +376,7 @@ describe("connection mode selector", () => {
   })
 
   describe("canUpgradeMode", () => {
-    it("should return true when polling can upgrade to direct", async () => {
+    it("should return true when polling can upgrade to relay or direct", async () => {
       vi.stubGlobal("fetch", vi.fn(() =>
         Promise.resolve({
           ok: true,
@@ -208,8 +388,49 @@ describe("connection mode selector", () => {
       expect(canUpgrade).toBe(true)
     })
 
-    it("should return false when direct is already optimal", async () => {
+    it("should return true when polling can upgrade to relay", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
+      const canUpgrade = await canUpgradeMode("polling", mockContext)
+      expect(canUpgrade).toBe(true)
+    })
+
+    it("should return true when direct can upgrade to relay", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
       const canUpgrade = await canUpgradeMode("direct", mockContext)
+      expect(canUpgrade).toBe(true)
+    })
+
+    it("should return false when direct is already optimal (no relay)", async () => {
+      const canUpgrade = await canUpgradeMode("direct", mockContext)
+      expect(canUpgrade).toBe(false)
+    })
+
+    it("should return false when relay is already optimal", async () => {
+      const canUpgrade = await canUpgradeMode("relay", mockContext)
       expect(canUpgrade).toBe(false)
     })
 
@@ -220,7 +441,25 @@ describe("connection mode selector", () => {
   })
 
   describe("getBestAvailableMode", () => {
-    it("should return direct when available", async () => {
+    it("should return relay when available", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+        } as Response)),
+      )
+
+      const best = await getBestAvailableMode(mockContext, "webhook")
+      expect(best).toBe("relay")
+    })
+
+    it("should return direct when relay unavailable but direct available", async () => {
       vi.stubGlobal("fetch", vi.fn(() =>
         Promise.resolve({
           ok: true,
@@ -232,7 +471,7 @@ describe("connection mode selector", () => {
       expect(best).toBe("direct")
     })
 
-    it("should return polling for webhooks when direct is unavailable", async () => {
+    it("should return polling for webhooks when both unavailable", async () => {
       vi.stubGlobal("fetch", vi.fn(() =>
         Promise.resolve({
           ok: false,
@@ -244,7 +483,13 @@ describe("connection mode selector", () => {
       expect(best).toBe("polling")
     })
 
-    it("should return direct for OAuth when available", async () => {
+    it("should return relay for OAuth when relay available", async () => {
+      mockConfig.relay = {
+        url: "https://relay.firela.io",
+        apiKey: "test-api-key",
+      }
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
       vi.stubGlobal("fetch", vi.fn(() =>
         Promise.resolve({
           ok: true,
@@ -253,7 +498,22 @@ describe("connection mode selector", () => {
       )
 
       const best = await getBestAvailableMode(mockContext, "oauth")
-      expect(best).toBe("direct")
+      expect(best).toBe("relay")
+    })
+
+    it("should return relay for OAuth when no modes available (as suggestion)", async () => {
+      mockConfig.connect!.publicUrl = undefined
+      mockContext.config = new MemoryConfigProvider(mockConfig)
+
+      vi.stubGlobal("fetch", vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 503,
+        } as Response)),
+      )
+
+      const best = await getBestAvailableMode(mockContext, "oauth")
+      expect(best).toBe("relay")
     })
   })
 
