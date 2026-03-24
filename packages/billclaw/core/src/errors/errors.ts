@@ -39,6 +39,10 @@ export enum ErrorCategory {
   // IGN errors
   IGN = "ign",
 
+  // Relay errors
+  RELAY = "relay",
+  RELAY_PROVIDER = "relay_provider",
+
   // General errors
   UNKNOWN = "unknown",
 }
@@ -133,6 +137,14 @@ export const ERROR_CODES = {
   IGN_REGION_INVALID: "IGN_REGION_INVALID",
   IGN_CONNECTION_FAILED: "IGN_CONNECTION_FAILED",
   IGN_RATE_LIMITED: "IGN_RATE_LIMITED",
+
+  // Relay errors
+  RELAY_NOT_CONFIGURED: "RELAY_NOT_CONFIGURED",
+  RELAY_CONNECTION_FAILED: "RELAY_CONNECTION_FAILED",
+  RELAY_TIMEOUT: "RELAY_TIMEOUT",
+  RELAY_RATE_LIMITED: "RELAY_RATE_LIMITED",
+  RELAY_AUTH_FAILED: "RELAY_AUTH_FAILED",
+  RELAY_PROVIDER_ERROR: "RELAY_PROVIDER_ERROR",
 
   // Generic
   UNKNOWN_ERROR: "UNKNOWN_ERROR",
@@ -344,6 +356,8 @@ function getCategoryEmoji(category: ErrorCategory): string {
     [ErrorCategory.WEBHOOK]: "🪝",
     [ErrorCategory.OAUTH]: "🔑",
     [ErrorCategory.IGN]: "📤",
+    [ErrorCategory.RELAY]: "🔗",
+    [ErrorCategory.RELAY_PROVIDER]: "🔌",
     [ErrorCategory.UNKNOWN]: "❓",
   }
   return emojis[category] || "❓"
