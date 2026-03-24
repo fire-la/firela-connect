@@ -2,7 +2,8 @@
  * Unified inbound webhook receiver configuration
  *
  * This module defines configuration schemas for receiving webhooks from external
- * services (Plaid, GoCardless, Gmail) via two modes:
+ * services (Plaid, GoCardless, Gmail) via three modes:
+ * - Relay: Webhooks via firela-relay service (no public IP required)
  * - Direct: Webhooks delivered directly to user's Connect service
  * - Polling: Fallback mode using direct API calls
  *
@@ -17,11 +18,12 @@ import { z } from "zod"
 /**
  * Inbound webhook receiver mode
  *
- * - auto: Automatically detect optimal mode (Direct > Polling)
+ * - auto: Automatically detect optimal mode (Relay > Direct > Polling)
+ * - relay: Force relay mode (requires relay.url and relay.apiKey)
  * - direct: Force direct webhook delivery (requires public IP)
  * - polling: Force API polling fallback
  */
-export const InboundWebhookModeSchema = z.enum(["auto", "direct", "polling"])
+export const InboundWebhookModeSchema = z.enum(["auto", "relay", "direct", "polling"])
 export type InboundWebhookMode = z.infer<typeof InboundWebhookModeSchema>
 
 /**

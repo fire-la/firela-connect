@@ -19,6 +19,7 @@ import {
   canUpgradeMode,
   getBestAvailableMode,
   isDirectAvailable,
+  isRelayAvailable,
 } from "../connection/mode-selector.js"
 
 /**
@@ -280,6 +281,9 @@ export class WebhookManager {
    */
   private async checkCurrentModeHealth(): Promise<boolean> {
     switch (this.state.currentMode) {
+      case "relay":
+        return (await isRelayAvailable(this.context)).available
+
       case "direct":
         return (await isDirectAvailable(this.context)).available
 
@@ -287,7 +291,7 @@ export class WebhookManager {
         // Polling is always healthy
         return true
 
-      default:
+      case "auto":
         return false
     }
   }

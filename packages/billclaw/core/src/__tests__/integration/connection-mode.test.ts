@@ -140,10 +140,10 @@ describe("Connection Mode Integration", () => {
         },
       })
 
-      // OAuth returns direct mode with error reason (not throw)
+      // OAuth returns relay mode with error reason (not throw)
       const result = await selectConnectionMode(context, "oauth")
-      expect(result.mode).toBe("direct")
-      expect(result.reason).toContain("Direct mode required for OAuth")
+      expect(result.mode).toBe("relay")
+      expect(result.reason).toContain("OAuth requires Relay or Direct mode")
     })
 
     it("should auto-select Direct mode when available", async () => {
@@ -173,7 +173,7 @@ describe("Connection Mode Integration", () => {
 
     it("should throw error for OAuth fallback", () => {
       expect(() => getFallbackMode("direct", "oauth")).toThrow(
-        "Direct mode required for OAuth"
+        "OAuth requires Relay or Direct mode"
       )
     })
   })
@@ -261,9 +261,9 @@ describe("Connection Mode Integration", () => {
         },
       })
 
-      // getBestAvailableMode returns 'direct' even when unavailable for OAuth
+      // getBestAvailableMode returns 'relay' as suggestion for OAuth when no modes available
       const best = await getBestAvailableMode(context, "oauth")
-      expect(best).toBe("direct")
+      expect(best).toBe("relay")
     })
   })
 
@@ -310,10 +310,10 @@ describe("Connection Mode Integration", () => {
       const webhookMode = await selectConnectionMode(context, "webhook")
       expect(webhookMode.mode).toBe("polling") // Fallback
 
-      // OAuth returns direct mode with error reason
+      // OAuth returns relay mode with error reason (now prefers relay as suggestion)
       const oauthMode = await selectConnectionMode(context, "oauth")
-      expect(oauthMode.mode).toBe("direct")
-      expect(oauthMode.reason).toContain("Direct mode required for OAuth")
+      expect(oauthMode.mode).toBe("relay")
+      expect(oauthMode.reason).toContain("OAuth requires Relay or Direct mode")
     })
   })
 })
