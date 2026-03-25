@@ -82,3 +82,10 @@ export {
   PlaidTransactionSchema,
   PlaidRemovedTransactionSchema,
 } from "./plaid-types.js"
+
+// Plaid error handling
+export {
+  PLAID_ERROR_MAPPING,
+  mapPlaidRelayError,
+  parsePlaidRelayError,
+} from "./plaid-errors.js"
