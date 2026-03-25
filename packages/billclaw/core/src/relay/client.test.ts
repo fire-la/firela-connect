@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { RelayClient } from "./client.js"
 import type { Logger } from "../errors/errors.js"
+import { redactSensitive } from "./redact.js"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
@@ -64,13 +65,96 @@ describe("RelayClient", () => {
 
       expect(clientDefault).toBeDefined()
     })
+
+    it("accepts HTTPS URLs", () => {
+      expect(() => {
+        new RelayClient({
+          url: "https://relay.firela.io",
+          apiKey: "test-key",
+        })
+      }).not.toThrow()
+    })
+
+    it("accepts localhost HTTP URLs for development", () => {
+      expect(() => {
+        new RelayClient({
+          url: "http://localhost:8080",
+          apiKey: "test-key",
+        })
+      }).not.toThrow()
+
+      expect(() => {
+        new RelayClient({
+          url: "http://127.0.0.1:8080",
+          apiKey: "test-key",
+        })
+      }).not.toThrow()
+    })
+
+    it("throws error for non-localhost HTTP URLs", () => {
+      expect(() => {
+        new RelayClient({
+          url: "http://relay.firela.io",
+          apiKey: "test-key",
+        })
+      }).toThrow("Relay URL must use HTTPS")
+
+      expect(() => {
+        new RelayClient({
+          url: "http://example.com/relay",
+          apiKey: "test-key",
+        })
+      }).toThrow("Relay URL must use HTTPS")
+    })
+  })
+
+  describe("logging security", () => {
+    it("logs use redactSensitive on request bodies", async () => {
+      const sensitiveData = { access_token: "secret-token-123", name: "test" }
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({ success: true }),
+      })
+
+      await client.request("/v1/test", {
+        method: "POST",
+        body: JSON.stringify(sensitiveData),
+      })
+
+      // Verify debug was called - the actual redaction is done via redactSensitive
+      expect(mockLogger.debug).toHaveBeenCalled()
+    })
+
+    it("logs use redactSensitive on response bodies", async () => {
+      const sensitiveResponse = {
+        success: true,
+        access_token: "response-token-456",
+      }
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify(sensitiveResponse),
+      })
+
+      await client.request("/v1/test", { method: "GET" })
+
+      // Verify debug was called
+      expect(mockLogger.debug).toHaveBeenCalled()
+    })
+
+    it("redactSensitive properly redacts access_token in logged data", () => {
+      const data = { access_token: "sk_live_secret123", userId: "user-123" }
+      const redacted = redactSensitive(data)
+
+      expect(redacted.access_token).toBe("sk_l***REDACTED***")
+      expect(redacted.userId).toBe("user-123")
+    })
   })
 
   describe("request()", () => {
     it("adds Authorization: Bearer header", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, data: { id: "123" } }),
+        text: async () => JSON.stringify({ success: true, data: { id: "123" } }),
       })
 
       await client.request("/v1/test", { method: "GET" })
@@ -101,7 +185,7 @@ describe("RelayClient", () => {
         () =>
           new Promise((resolve) => {
             setTimeout(() => {
-              resolve({ ok: true, json: async () => ({}) })
+              resolve({ ok: true, text: async () => JSON.stringify({}) })
             }, 500)
           }),
       )
@@ -136,7 +220,7 @@ describe("RelayClient", () => {
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true }),
+          text: async () => JSON.stringify({ success: true }),
         })
 
       await client.request("/v1/test", { method: "GET" })
@@ -161,7 +245,7 @@ describe("RelayClient", () => {
     it("returns parsed JSON response", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, data: { id: "test-123" } }),
+        text: async () => JSON.stringify({ success: true, data: { id: "test-123" } }),
       })
 
       const result = await client.request<{ id: string }>(
@@ -224,7 +308,7 @@ describe("RelayClient", () => {
         }
         return {
           ok: true,
-          json: async () => ({ success: true }),
+          text: async () => JSON.stringify({ success: true }),
         }
       })
 

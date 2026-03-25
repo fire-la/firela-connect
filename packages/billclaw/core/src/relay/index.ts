@@ -6,9 +6,14 @@
  * for Open Banking operations (Plaid, GoCardless) without user-owned
  * provider accounts.
  *
+ * SECURITY: All tokens (access_token, refresh_token) are:
+ * - Passed in request body (never in URL parameters)
+ * - Redacted from all log output via redactSensitive()
+ * - Stored locally only (never sent to relay for storage)
+ *
  * @example
  * ```typescript
- * import { RelayClient, RelayError, RelayClientConfig } from '@firela/billclaw-core/relay'
+ * import { RelayClient, RelayError, RelayClientConfig, redactSensitive } from '@firela/billclaw-core/relay'
  *
  * const client = new RelayClient({
  *   url: 'https://relay.firela.io',
@@ -17,6 +22,10 @@
  *
  * const result = await client.request('/v1/accounts', { method: 'GET' })
  * const health = await client.healthCheck()
+ *
+ * // Use redactSensitive before logging sensitive data
+ * const data = { access_token: 'secret', userId: '123' }
+ * console.log(redactSensitive(data)) // { access_token: 'secr***REDACTED***', userId: '123' }
  * ```
  *
  * @packageDocumentation
@@ -39,3 +48,6 @@ export {
   ProviderError,
   parseRelayError,
 } from "./errors.js"
+
+// Security utilities
+export { redactSensitive, isSensitiveValue } from "./redact.js"

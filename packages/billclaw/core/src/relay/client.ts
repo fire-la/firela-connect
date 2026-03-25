@@ -4,12 +4,18 @@
  * Provides HTTP client with retry logic for firela-relay API.
  * Uses native fetch with Bearer token authentication.
  *
+ * SECURITY: All tokens (access_token, refresh_token) are:
+ * - Passed in request body (never in URL parameters)
+ * - Redacted from all log output via redactSensitive()
+ * - Stored locally only (never sent to relay for storage)
+ *
  * @packageDocumentation
  */
 
 import type { Logger } from "../errors/errors.js"
 import { calculateBackoffDelay } from "../utils/backoff.js"
 import { parseRelayError } from "./errors.js"
+import { redactSensitive } from "./redact.js"
 import type { RelayClientConfig, RelayHealthCheckResult } from "./types.js"
 
 /**
@@ -54,6 +60,16 @@ export class RelayClient {
   private readonly logger?: Logger
 
   constructor(config: RelayClientConfig, logger?: Logger) {
+    // Validate URL scheme (HTTPS required for production)
+    const url = config.url.toLowerCase()
+    const isLocalhost =
+      url.includes("localhost") || url.includes("127.0.0.1")
+    if (!url.startsWith("https://") && !isLocalhost) {
+      throw new Error(
+        "Relay URL must use HTTPS. HTTP is only allowed for localhost development.",
+      )
+    }
+
     // Normalize base URL (remove trailing slash)
     this.baseUrl = config.url.replace(/\/$/, "")
     this.apiKey = config.apiKey
@@ -76,6 +92,26 @@ export class RelayClient {
   ): Promise<T> {
     let lastError: Error | undefined
 
+    // Log request with redacted sensitive data
+    if (options.body && typeof options.body === "string") {
+      try {
+        const bodyData = JSON.parse(options.body)
+        this.logger?.debug?.(
+          `Relay request: ${options.method || "GET"} ${endpoint}`,
+          redactSensitive(bodyData),
+        )
+      } catch {
+        // Body is not JSON, log without redaction
+        this.logger?.debug?.(
+          `Relay request: ${options.method || "GET"} ${endpoint}`,
+        )
+      }
+    } else {
+      this.logger?.debug?.(
+        `Relay request: ${options.method || "GET"} ${endpoint}`,
+      )
+    }
+
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         const response = await this.fetch(endpoint, options)
@@ -86,8 +122,25 @@ export class RelayClient {
           throw new Error(`HTTP ${response.status}: ${errorText}`)
         }
 
-        // Return parsed JSON response
-        return (await response.json()) as T
+        // Parse response and log with redaction
+        const responseText = await response.text()
+        let responseData: T
+        try {
+          responseData = JSON.parse(responseText) as T
+          this.logger?.debug?.(
+            `Relay response: ${response.status}`,
+            redactSensitive(responseData),
+          )
+        } catch {
+          this.logger?.debug?.(
+            `Relay response: ${response.status} (non-JSON)`,
+          )
+          throw new Error(
+            `Invalid JSON response: ${responseText.slice(0, 100)}`,
+          )
+        }
+
+        return responseData
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
 
