@@ -144,6 +144,54 @@ export interface StorageAdapter {
 }
 
 /**
+ * Relay token storage interface
+ *
+ * Tokens are stored locally only, never sent to relay for storage.
+ * This ensures user data sovereignty and security.
+ */
+export interface RelayTokenStorage {
+  /**
+   * Store relay access token for a provider
+   * @param provider - Provider name (plaid, gocardless)
+   * @param accountId - Account identifier
+   * @param token - Access token (stored locally only)
+   */
+  storeRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+    token: string,
+  ): Promise<void>
+
+  /**
+   * Retrieve relay access token for a provider
+   * @param provider - Provider name
+   * @param accountId - Account identifier
+   * @returns Token or null if not found
+   */
+  getRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+  ): Promise<string | null>
+
+  /**
+   * Delete relay access token
+   * @param provider - Provider name
+   * @param accountId - Account identifier
+   */
+  deleteRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+  ): Promise<void>
+}
+
+/**
+ * Combined storage interface with relay token support
+ */
+export interface StorageAdapterWithRelayTokens
+  extends StorageAdapter,
+    RelayTokenStorage {}
+
+/**
  * Storage adapter capabilities for feature detection
  */
 export interface StorageCapabilities {

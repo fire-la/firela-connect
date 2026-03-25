@@ -7,6 +7,8 @@
  * @packageDocumentation
  */
 
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises"
+import path from "node:path"
 import type { StorageConfig } from "../models/config.js"
 import type {
   StorageAdapter,
@@ -14,6 +16,7 @@ import type {
   Transaction,
   SyncState,
   AccountRegistry,
+  RelayTokenStorage,
 } from "./types.js"
 import {
   initializeStorage,
@@ -43,6 +46,7 @@ export interface FileStorageAdapterOptions {
  * - `accounts.json` - Account registry
  * - `transactions/{accountId}/{year}/{month}.json` - Monthly transaction files
  * - `sync/{accountId}/{syncId}.json` - Sync state files
+ * - `tokens/{provider}-{accountId}.json` - Relay token files
  *
  * @example
  * ```typescript
@@ -53,7 +57,9 @@ export interface FileStorageAdapterOptions {
  * await storage.saveTransactions('account-1', 2024, 1, [...transactions, newTxn])
  * ```
  */
-export class FileStorageAdapter implements StorageAdapter {
+export class FileStorageAdapter
+  implements StorageAdapter, RelayTokenStorage
+{
   private config?: StorageConfig
 
   constructor(options: FileStorageAdapterOptions = {}) {
@@ -157,6 +163,97 @@ export class FileStorageAdapter implements StorageAdapter {
 
     if (filtered.length !== accounts.length) {
       await writeAccountRegistry(filtered, this.config)
+    }
+  }
+
+  // ============================================================================
+  // Relay Token Operations
+  // ============================================================================
+
+  /**
+   * Get the path to the tokens directory
+   */
+  private getTokensPath(): string {
+    const basePath = this.config?.path ?? ".firela"
+    return path.join(basePath, "tokens")
+  }
+
+  /**
+   * Get the path to a specific token file
+   */
+  private getTokenFile(provider: string, accountId: string): string {
+    return path.join(this.getTokensPath(), `${provider}-${accountId}.json`)
+  }
+
+  /**
+   * Store relay access token for a provider
+   *
+   * Tokens are stored in ~/.firela/tokens/ directory with restricted permissions.
+   * Note: Encryption at rest is deferred to security hardening phase.
+   *
+   * @param provider - Provider name (plaid, gocardless)
+   * @param accountId - Account identifier
+   * @param token - Access token to store
+   */
+  async storeRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+    token: string,
+  ): Promise<void> {
+    // Ensure tokens directory exists with restricted permissions
+    const tokensDir = this.getTokensPath()
+    await mkdir(tokensDir, { recursive: true, mode: 0o700 })
+
+    // Write token file with restricted permissions
+    const tokenFile = this.getTokenFile(provider, accountId)
+    await writeFile(
+      tokenFile,
+      JSON.stringify({ token, updatedAt: new Date().toISOString() }),
+      { mode: 0o600 }, // Owner read/write only
+    )
+  }
+
+  /**
+   * Retrieve relay access token for a provider
+   *
+   * @param provider - Provider name
+   * @param accountId - Account identifier
+   * @returns Token or null if not found
+   */
+  async getRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+  ): Promise<string | null> {
+    try {
+      const tokenFile = this.getTokenFile(provider, accountId)
+      const data = await readFile(tokenFile, "utf-8")
+      const parsed = JSON.parse(data) as { token: string }
+      return parsed.token
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null
+      }
+      throw error
+    }
+  }
+
+  /**
+   * Delete relay access token
+   *
+   * @param provider - Provider name
+   * @param accountId - Account identifier
+   */
+  async deleteRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+  ): Promise<void> {
+    const tokenFile = this.getTokenFile(provider, accountId)
+    try {
+      await unlink(tokenFile)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error
+      }
     }
   }
 }

@@ -13,6 +13,7 @@ import type {
   Transaction,
   SyncState,
   AccountRegistry,
+  RelayTokenStorage,
 } from "./types.js"
 
 /**
@@ -116,7 +117,9 @@ export interface D1StorageAdapterOptions {
  * const transactions = await storage.getTransactions('account-1', 2024, 1)
  * ```
  */
-export class D1StorageAdapter implements StorageAdapter {
+export class D1StorageAdapter
+  implements StorageAdapter, RelayTokenStorage
+{
   private db: D1Database
 
   constructor(options: D1StorageAdapterOptions) {
@@ -464,6 +467,73 @@ export class D1StorageAdapter implements StorageAdapter {
     await this.db
       .prepare(`DELETE FROM accounts WHERE id = ?`)
       .bind(accountId)
+      .run()
+  }
+
+  // ============================================================================
+  // Relay Token Operations
+  // ============================================================================
+
+  /**
+   * Store relay access token for a provider
+   *
+   * Tokens are stored in D1 relay_tokens table.
+   * Note: Encryption at rest is deferred to security hardening phase.
+   *
+   * @param provider - Provider name (plaid, gocardless)
+   * @param accountId - Account identifier
+   * @param token - Access token to store
+   */
+  async storeRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+    token: string,
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT OR REPLACE INTO relay_tokens (provider, account_id, token, updated_at)
+         VALUES (?, ?, ?, datetime('now'))`,
+      )
+      .bind(provider, accountId, token)
+      .run()
+  }
+
+  /**
+   * Retrieve relay access token for a provider
+   *
+   * @param provider - Provider name
+   * @param accountId - Account identifier
+   * @returns Token or null if not found
+   */
+  async getRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+  ): Promise<string | null> {
+    const result = await this.db
+      .prepare(
+        `SELECT token FROM relay_tokens WHERE provider = ? AND account_id = ?`,
+      )
+      .bind(provider, accountId)
+      .first<{ token: string }>()
+
+    return result?.token ?? null
+  }
+
+  /**
+   * Delete relay access token
+   *
+   * @param provider - Provider name
+   * @param accountId - Account identifier
+   */
+  async deleteRelayToken(
+    provider: "plaid" | "gocardless",
+    accountId: string,
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `DELETE FROM relay_tokens WHERE provider = ? AND account_id = ?`,
+      )
+      .bind(provider, accountId)
       .run()
   }
 
