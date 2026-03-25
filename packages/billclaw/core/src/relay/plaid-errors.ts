@@ -383,7 +383,7 @@ function createProviderUserError(
  */
 function createRelayUserError(
   error: RelayError,
-  context?: { accountId?: string },
+  _context?: { accountId?: string },
 ): UserError {
   // Authentication failed
   if (error.code === "RELAY_AUTH_FAILED") {
@@ -466,7 +466,7 @@ function createRelayUserError(
  */
 function createHttpUserError(
   error: RelayHttpError,
-  context?: { accountId?: string },
+  _context?: { accountId?: string },
 ): UserError {
   // Timeout
   if (error.statusCode === 0 || error.message.includes("timeout")) {
