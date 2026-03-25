@@ -50,7 +50,7 @@ export {
 } from "./errors.js"
 
 // Security utilities
-export { redactSensitive, isSensitiveValue } from "./redact.js"
+export { redactSensitive, isSensitiveValue, maskApiKey } from "./redact.js"
 
 // Plaid relay types
 export type {
