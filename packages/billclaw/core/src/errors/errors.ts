@@ -179,6 +179,7 @@ export type ErrorSeverity = "fatal" | "error" | "warning" | "info"
 export type ActionType =
   | "retry" // Retry the operation with optional delay
   | "oauth_reauth" // Trigger OAuth re-authentication flow
+  | "reauth" // Re-authenticate (generic, used by GoCardless)
   | "config_change" // Request configuration change
   | "abort" // Abort the operation
   | "wait" // Wait for a condition before retrying

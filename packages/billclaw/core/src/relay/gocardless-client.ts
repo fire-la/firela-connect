@@ -213,7 +213,7 @@ export class GoCardlessRelayClient {
    * @returns Valid access token
    * @throws ProviderError if no token found or refresh fails
    */
-  private async ensureValidToken(accountId: string): Promise<string> {
+  async ensureValidToken(accountId: string): Promise<string> {
     if (!this.storage) {
       throw new ProviderError(
         "gocardless",
@@ -255,7 +255,7 @@ export class GoCardlessRelayClient {
    * @returns New access token
    * @throws ProviderError if refresh fails
    */
-  private async refreshToken(
+  async refreshToken(
     accountId: string,
     refreshToken: string,
   ): Promise<string> {
