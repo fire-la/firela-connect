@@ -30,7 +30,6 @@ vi.mock("../../relay/gocardless-client.js", () => ({
 }))
 
 import { selectConnectionMode } from "../../connection/mode-selector.js"
-import { GoCardlessRelayClient } from "../../relay/gocardless-client.js"
 
 describe("createGoCardlessAdapter", () => {
   let mockContext: RuntimeContext

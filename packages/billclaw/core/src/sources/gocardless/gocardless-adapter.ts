@@ -14,7 +14,6 @@
 
 import type { RuntimeContext } from "../../runtime/types.js"
 import { selectConnectionMode } from "../../connection/mode-selector.js"
-import type { Logger } from "../../errors/errors.js"
 import {
   GoCardlessRelayClient,
   type Institution,
