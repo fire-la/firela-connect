@@ -62,6 +62,22 @@ CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions(account
 CREATE INDEX IF NOT EXISTS idx_sync_state_account_id ON sync_state(account_id);
 CREATE INDEX IF NOT EXISTS idx_sync_state_started_at ON sync_state(started_at);
 
+-- Relay tokens table
+-- Stores relay access tokens for Open Banking providers
+-- SECURITY: Tokens are stored locally only, never sent to relay for storage
+CREATE TABLE IF NOT EXISTS relay_tokens (
+  provider TEXT NOT NULL,          -- 'plaid' | 'gocardless'
+  account_id TEXT NOT NULL,        -- Reference to accounts.id
+  token TEXT NOT NULL,             -- Access token (plaintext for v1.4.0, encryption deferred)
+  updated_at TEXT NOT NULL,        -- ISO timestamp
+
+  PRIMARY KEY (provider, account_id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+-- Index for relay token lookups
+CREATE INDEX IF NOT EXISTS idx_relay_tokens_account_id ON relay_tokens(account_id);
+
 -- Unique constraint for plaid_transaction_id
 -- Note: UNIQUE constraint is already in CREATE TABLE, this is explicit
 -- CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_plaid_id ON transactions(plaid_transaction_id);
