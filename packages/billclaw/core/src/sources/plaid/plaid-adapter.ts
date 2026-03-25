@@ -97,7 +97,7 @@ export class DirectPlaidClient implements PlaidSyncAdapter {
   private plaidApi: PlaidApi
 
   constructor(
-    private config: PlaidConfig,
+    config: PlaidConfig,
     private logger: Logger,
   ) {
     const environment =

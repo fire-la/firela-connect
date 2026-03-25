@@ -51,3 +51,34 @@ export {
 
 // Security utilities
 export { redactSensitive, isSensitiveValue } from "./redact.js"
+
+// Plaid relay types
+export type {
+  LinkTokenCreateRequest,
+  LinkTokenCreateResponse,
+  PublicTokenExchangeRequest,
+  PublicTokenExchangeResponse,
+  AccountsGetRequest,
+  AccountsGetResponse,
+  TransactionsSyncRequest,
+  TransactionsSyncResponse,
+  PlaidAccount,
+  PlaidAccountBalance,
+  PlaidTransaction,
+  PlaidRemovedTransaction,
+} from "./plaid-types.js"
+
+export {
+  LinkTokenCreateRequestSchema,
+  LinkTokenCreateResponseSchema,
+  PublicTokenExchangeRequestSchema,
+  PublicTokenExchangeResponseSchema,
+  AccountsGetRequestSchema,
+  AccountsGetResponseSchema,
+  TransactionsSyncRequestSchema,
+  TransactionsSyncResponseSchema,
+  PlaidAccountSchema,
+  PlaidAccountBalanceSchema,
+  PlaidTransactionSchema,
+  PlaidRemovedTransactionSchema,
+} from "./plaid-types.js"
