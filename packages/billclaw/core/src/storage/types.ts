@@ -185,6 +185,48 @@ export interface RelayTokenStorage {
 }
 
 /**
+ * GoCardless token data with expiry information
+ *
+ * GoCardless tokens have a 24-hour TTL and need to be refreshed automatically.
+ */
+export interface GoCardlessTokenData {
+  access_token: string
+  refresh_token: string
+  expires_at: string // ISO timestamp
+}
+
+/**
+ * GoCardless token storage interface
+ *
+ * Extends basic token storage with methods for handling GoCardless-specific
+ * token data with refresh_token and expires_at fields.
+ */
+export interface GoCardlessTokenStorage extends RelayTokenStorage {
+  /**
+   * Store GoCardless token data with expiry information
+   * @param accountId - Account identifier
+   * @param data - Token data including access_token, refresh_token, and expires_at
+   */
+  storeGoCardlessToken(
+    accountId: string,
+    data: GoCardlessTokenData,
+  ): Promise<void>
+
+  /**
+   * Retrieve GoCardless token data
+   * @param accountId - Account identifier
+   * @returns Token data or null if not found
+   */
+  getGoCardlessToken(accountId: string): Promise<GoCardlessTokenData | null>
+
+  /**
+   * Delete GoCardless token data
+   * @param accountId - Account identifier
+   */
+  deleteGoCardlessToken(accountId: string): Promise<void>
+}
+
+/**
  * Combined storage interface with relay token support
  */
 export interface StorageAdapterWithRelayTokens

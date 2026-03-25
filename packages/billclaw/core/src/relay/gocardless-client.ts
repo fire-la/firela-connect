@@ -14,6 +14,7 @@
 
 import { RelayClient } from "./client.js"
 import type { Logger } from "../errors/errors.js"
+import { ProviderError } from "./errors.js"
 import type {
   Institution,
   Requisition,
@@ -21,7 +22,9 @@ import type {
   TransactionsResponse,
   CreateRequisitionRequest,
   GetTransactionsRequest,
+  TokenResponse,
 } from "./gocardless-types.js"
+import type { GoCardlessTokenStorage } from "../storage/types.js"
 
 /**
  * Base path for GoCardless relay API endpoints
@@ -68,6 +71,7 @@ export class GoCardlessRelayClient {
   constructor(
     config: { relayUrl: string; relayApiKey: string },
     private logger: Logger,
+    private storage?: GoCardlessTokenStorage,
   ) {
     this.client = new RelayClient(
       { url: config.relayUrl, apiKey: config.relayApiKey },
@@ -197,5 +201,102 @@ export class GoCardlessRelayClient {
    */
   getMode(): "relay" {
     return "relay"
+  }
+
+  /**
+   * Ensure valid access token with automatic refresh
+   *
+   * Checks if the token is expired or about to expire (within 5 minutes).
+   * If so, automatically refreshes it using the refresh_token.
+   *
+   * @param accountId - Account identifier
+   * @returns Valid access token
+   * @throws ProviderError if no token found or refresh fails
+   */
+  private async ensureValidToken(accountId: string): Promise<string> {
+    if (!this.storage) {
+      throw new ProviderError(
+        "gocardless",
+        "storage_not_configured",
+        "Token storage not configured for this client",
+      )
+    }
+
+    const tokenData = await this.storage.getGoCardlessToken(accountId)
+    if (!tokenData) {
+      throw new ProviderError(
+        "gocardless",
+        "token_not_found",
+        "No token found for account",
+      )
+    }
+
+    // Check if token expires within 5 minutes (proactive refresh buffer)
+    const expiresAt = new Date(tokenData.expires_at)
+    const bufferMs = 5 * 60 * 1000 // 5 minutes
+    if (expiresAt.getTime() - Date.now() < bufferMs) {
+      this.logger.debug?.(
+        `GoCardless token expiring soon for account ${accountId}, refreshing...`,
+      )
+      return this.refreshToken(accountId, tokenData.refresh_token)
+    }
+
+    return tokenData.access_token
+  }
+
+  /**
+   * Refresh expired access token
+   *
+   * Calls the relay /refresh endpoint to get new tokens.
+   * Updates storage with new tokens and returns the new access token.
+   *
+   * @param accountId - Account identifier
+   * @param refreshToken - Current refresh token
+   * @returns New access token
+   * @throws ProviderError if refresh fails
+   */
+  private async refreshToken(
+    accountId: string,
+    refreshToken: string,
+  ): Promise<string> {
+    this.logger.debug?.(`Refreshing GoCardless token for account ${accountId}`)
+
+    try {
+      const response = await this.client.request<TokenResponse>(
+        `${GOCARDLESS_RELAY_BASE}/refresh`,
+        {
+          method: "POST",
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        },
+      )
+
+      // Calculate new expiry time
+      const expiresAt = new Date(
+        Date.now() + response.access_expires * 1000,
+      ).toISOString()
+
+      // Update storage with new tokens
+      await this.storage!.storeGoCardlessToken(accountId, {
+        access_token: response.access,
+        refresh_token: response.refresh,
+        expires_at: expiresAt,
+      })
+
+      this.logger.debug?.(
+        `GoCardless token refreshed successfully for account ${accountId}`,
+      )
+
+      return response.access
+    } catch (error) {
+      this.logger.error?.(
+        `Failed to refresh GoCardless token for account ${accountId}:`,
+        error,
+      )
+      throw new ProviderError(
+        "gocardless",
+        "token_refresh_failed",
+        "Failed to refresh GoCardless token. Re-authentication required.",
+      )
+    }
   }
 }

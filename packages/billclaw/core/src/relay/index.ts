@@ -121,3 +121,10 @@ export {
   GetTransactionsRequestSchema,
   GoCardlessErrorSchema,
 } from "./gocardless-types.js"
+
+// GoCardless error handling
+export {
+  GOCARDLESS_ERROR_MAPPING,
+  mapGoCardlessError,
+  parseGoCardlessRelayError,
+} from "./gocardless-errors.js"

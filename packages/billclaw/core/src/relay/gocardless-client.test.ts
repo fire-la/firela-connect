@@ -289,4 +289,126 @@ describe("GoCardlessRelayClient", () => {
       expect(client.getMode()).toBe("relay")
     })
   })
+
+  describe("token management", () => {
+    let mockStorage: any
+
+    beforeEach(() => {
+      // Create mock storage
+      mockStorage = {
+        getGoCardlessToken: vi.fn(),
+        storeGoCardlessToken: vi.fn(),
+        deleteGoCardlessToken: vi.fn(),
+      }
+
+      // Create client with storage
+      client = new GoCardlessRelayClient(
+        {
+          relayUrl: "https://relay.firela.io",
+          relayApiKey: "test-api-key",
+        },
+        {
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        } as any,
+        mockStorage,
+      )
+      mockRequest = (client as any).client.request
+    })
+
+    describe("ensureValidToken", () => {
+      it("returns valid token when not expired", async () => {
+        const futureDate = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes from now
+        mockStorage.getGoCardlessToken.mockResolvedValueOnce({
+          access_token: "valid-token",
+          refresh_token: "refresh-token",
+          expires_at: futureDate,
+        })
+
+        const token = await (client as any).ensureValidToken("account-1")
+
+        expect(token).toBe("valid-token")
+        expect(mockStorage.getGoCardlessToken).toHaveBeenCalledWith("account-1")
+        expect(mockRequest).not.toHaveBeenCalled() // Should not refresh
+      })
+
+      it("triggers refresh when token expires within 5 minutes", async () => {
+        const nearExpiryDate = new Date(Date.now() + 3 * 60 * 1000).toISOString() // 3 minutes from now
+        mockStorage.getGoCardlessToken.mockResolvedValueOnce({
+          access_token: "expiring-token",
+          refresh_token: "refresh-token",
+          expires_at: nearExpiryDate,
+        })
+
+        mockRequest.mockResolvedValueOnce({
+          access: "new-access-token",
+          refresh: "new-refresh-token",
+          access_expires: 86400, // 24 hours
+        })
+
+        const token = await (client as any).ensureValidToken("account-1")
+
+        expect(token).toBe("new-access-token")
+        expect(mockRequest).toHaveBeenCalledWith(
+          expect.stringContaining("/refresh"),
+          expect.objectContaining({
+            method: "POST",
+          }),
+        )
+        expect(mockStorage.storeGoCardlessToken).toHaveBeenCalledWith(
+          "account-1",
+          expect.objectContaining({
+            access_token: "new-access-token",
+            refresh_token: "new-refresh-token",
+          }),
+        )
+      })
+
+      it("throws ProviderError if no token found", async () => {
+        mockStorage.getGoCardlessToken.mockResolvedValueOnce(null)
+
+        await expect((client as any).ensureValidToken("account-1")).rejects.toThrow(
+          "No token found",
+        )
+      })
+    })
+
+    describe("refreshToken", () => {
+      it("updates storage with new tokens", async () => {
+        mockRequest.mockResolvedValueOnce({
+          access: "new-access-token",
+          refresh: "new-refresh-token",
+          access_expires: 86400,
+        })
+
+        const token = await (client as any).refreshToken("account-1", "old-refresh-token")
+
+        expect(token).toBe("new-access-token")
+        expect(mockRequest).toHaveBeenCalledWith(
+          expect.stringContaining("/refresh"),
+          expect.objectContaining({
+            method: "POST",
+            body: JSON.stringify({ refresh_token: "old-refresh-token" }),
+          }),
+        )
+        expect(mockStorage.storeGoCardlessToken).toHaveBeenCalledWith(
+          "account-1",
+          expect.objectContaining({
+            access_token: "new-access-token",
+            refresh_token: "new-refresh-token",
+          }),
+        )
+      })
+
+      it("throws ProviderError if refresh fails", async () => {
+        mockRequest.mockRejectedValueOnce(new Error("Refresh failed"))
+
+        await expect(
+          (client as any).refreshToken("account-1", "invalid-refresh-token"),
+        ).rejects.toThrow()
+      })
+    })
+  })
 })
