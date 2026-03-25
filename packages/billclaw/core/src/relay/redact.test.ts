@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { redactSensitive, isSensitiveValue } from "./redact.js"
+import { redactSensitive, isSensitiveValue, maskApiKey } from "./redact.js"
 
 describe("redactSensitive", () => {
   describe("basic redaction", () => {
@@ -143,5 +143,49 @@ describe("isSensitiveValue", () => {
   it("is case-insensitive", () => {
     expect(isSensitiveValue("ACCESS_TOKEN")).toBe(true)
     expect(isSensitiveValue("ApiKey")).toBe(true)
+  })
+})
+
+describe("maskApiKey", () => {
+  describe("basic masking", () => {
+    it("masks API key showing first 4 and last 4 characters", () => {
+      expect(maskApiKey("abcd1234efgh5678ijkl")).toBe("abcd...ijkl")
+    })
+
+    it("handles short strings (length <= 8)", () => {
+      expect(maskApiKey("short")).toBe("shor...")
+    })
+
+    it("handles empty string", () => {
+      expect(maskApiKey("")).toBe("...")
+    })
+  })
+
+  describe("custom visible chars", () => {
+    it("allows customizing visible characters count", () => {
+      expect(maskApiKey("abcd", 2)).toBe("ab...cd")
+    })
+
+    it("handles exactly visibleChars*2 length", () => {
+      expect(maskApiKey("abcdefgh", 4)).toBe("abcd...efgh")
+    })
+  })
+
+  describe("edge cases", () => {
+    it("handles undefined input", () => {
+      expect(maskApiKey(undefined)).toBe("...")
+    })
+
+    it("handles null input", () => {
+      expect(maskApiKey(null as unknown as undefined)).toBe("...")
+    })
+
+    it("handles string exactly 9 characters", () => {
+      expect(maskApiKey("123456789")).toBe("1234...6789")
+    })
+
+    it("handles string exactly 8 characters", () => {
+      expect(maskApiKey("12345678")).toBe("1234...5678")
+    })
   })
 })

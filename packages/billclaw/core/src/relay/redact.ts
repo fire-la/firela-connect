@@ -102,3 +102,31 @@ export function isSensitiveValue(value: string): boolean {
   const lowerValue = value.toLowerCase()
   return SENSITIVE_PATTERNS.some((pattern) => lowerValue.includes(pattern))
 }
+
+/**
+ * Mask API key for display, showing first N and last N characters
+ *
+ * Used for displaying relay API keys in `billclaw config show` output.
+ * Shows first 4 and last 4 characters with ... in between.
+ *
+ * @param value - API key value to mask
+ * @param visibleChars - Number of characters to show at start and end (default: 4)
+ * @returns Masked string like "abcd...wxyz"
+ *
+ * @example
+ * ```typescript
+ * maskApiKey("abcd1234efgh5678ijkl") // "abcd...ijkl"
+ * maskApiKey("short") // "shor..."
+ * maskApiKey(undefined) // "..."
+ * maskApiKey("abcd", 2) // "ab...cd"
+ * ```
+ */
+export function maskApiKey(value: string | undefined, visibleChars = 4): string {
+  if (!value) {
+    return "..."
+  }
+  if (value.length < visibleChars * 2) {
+    return `${value.slice(0, visibleChars)}...`
+  }
+  return `${value.slice(0, visibleChars)}...${value.slice(-visibleChars)}`
+}
