@@ -89,3 +89,35 @@ export {
   mapPlaidRelayError,
   parsePlaidRelayError,
 } from "./plaid-errors.js"
+
+// GoCardless relay client
+export { GoCardlessRelayClient, GOCARDLESS_RELAY_BASE } from "./gocardless-client.js"
+
+// GoCardless relay types
+export type {
+  TokenResponse,
+  Institution,
+  Requisition,
+  RequisitionStatus,
+  Account,
+  AccountStatus,
+  TransactionAmount,
+  GoCardlessTransaction,
+  TransactionsResponse,
+  CreateRequisitionRequest,
+  GetTransactionsRequest,
+  GoCardlessError,
+} from "./gocardless-types.js"
+
+export {
+  TokenResponseSchema,
+  InstitutionSchema,
+  RequisitionSchema,
+  AccountSchema,
+  TransactionAmountSchema,
+  GoCardlessTransactionSchema,
+  TransactionsResponseSchema,
+  CreateRequisitionRequestSchema,
+  GetTransactionsRequestSchema,
+  GoCardlessErrorSchema,
+} from "./gocardless-types.js"
