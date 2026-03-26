@@ -12,6 +12,18 @@ import {
 } from "../__tests__/test-utils.js"
 import type { BillclawConfig } from "@firela/billclaw-core"
 
+// Mock relay-config utilities
+vi.mock("../utils/relay-config.js", () => ({
+  validateRelayConnection: vi.fn(),
+  classifyRelayError: vi.fn(),
+  STARTUP_HEALTH_CHECK_TIMEOUT: 3000,
+}))
+
+import {
+  validateRelayConnection,
+  classifyRelayError
+} from "../utils/relay-config.js"
+
 /**
  * Create a mock CliContext with saveConfig support for config tests
  */
@@ -318,6 +330,157 @@ describe("config command", () => {
       await configCommand.handler(context, { list: true })
 
       expect(mockConsole.output.some((line) => line.includes("version"))).toBe(true)
+    })
+  })
+
+  describe("relay configuration display", () => {
+    it("should display Relay Configuration section when list is true", async () => {
+      const config: BillclawConfig = {
+        version: 1,
+        accounts: [],
+        webhooks: [],
+        storage: {
+          path: "~/.firela/billclaw",
+          format: "json",
+          encryption: { enabled: false },
+        },
+      }
+
+      vi.mocked(validateRelayConnection).mockResolvedValue({
+        available: false,
+        error: "Not configured",
+      })
+
+      const context = createMockCliContext(config)
+      await configCommand.handler(context, { list: true })
+
+      expect(mockConsole.output.some((line) => line.includes("Relay Configuration"))).toBe(true)
+    })
+
+    it("should display Not configured when no relay set", async () => {
+      const config: BillclawConfig = {
+        version: 1,
+        accounts: [],
+        webhooks: [],
+        storage: {
+          path: "~/.firela/billclaw",
+          format: "json",
+          encryption: { enabled: false },
+        },
+      }
+
+      vi.mocked(validateRelayConnection).mockResolvedValue({
+        available: false,
+        error: "Not configured",
+      })
+
+      const context = createMockCliContext(config)
+      await configCommand.handler(context, { list: true })
+
+      expect(mockConsole.output.some((line) => line.includes("Not configured"))).toBe(true)
+    })
+
+    it("should display relay URL and masked API key when configured", async () => {
+      const config: BillclawConfig = {
+        version: 1,
+        accounts: [],
+        webhooks: [],
+        storage: {
+          path: "~/.firela/billclaw",
+          format: "json",
+          encryption: { enabled: false },
+        },
+        relay: {
+          url: "https://relay.firela.io",
+          apiKey: "test-api-key-12345678",
+          timeout: 30000,
+          maxRetries: 3,
+        },
+      }
+
+      vi.mocked(validateRelayConnection).mockResolvedValue({
+        available: true,
+        latency: 150,
+      })
+
+      const context = createMockCliContext(config)
+      await configCommand.handler(context, { list: true })
+
+      // Check URL is displayed
+      expect(mockConsole.output.some((line) => line.includes("https://relay.firela.io"))).toBe(true)
+      // Check API key is masked (showing first 4 and last 4 chars)
+      expect(mockConsole.output.some((line) => line.includes("test..."))).toBe(true)
+    })
+
+    it("should display Connected status when health check passes", async () => {
+      const config: BillclawConfig = {
+        version: 1,
+        accounts: [],
+        webhooks: [],
+        storage: {
+          path: "~/.firela/billclaw",
+          format: "json",
+          encryption: { enabled: false },
+        },
+        relay: {
+          url: "https://relay.firela.io",
+          apiKey: "test-api-key",
+          timeout: 30000,
+          maxRetries: 3,
+        },
+      }
+
+      vi.mocked(validateRelayConnection).mockResolvedValue({
+        available: true,
+        latency: 150,
+      })
+
+      const context = createMockCliContext(config)
+      await configCommand.handler(context, { list: true })
+
+      expect(mockConsole.output.some((line) => line.includes("Connected"))).toBe(true)
+    })
+
+    it("should display Failed status with error guidance when health check fails", async () => {
+      const config: BillclawConfig = {
+        version: 1,
+        accounts: [],
+        webhooks: [],
+        storage: {
+          path: "~/.firela/billclaw",
+          format: "json",
+          encryption: { enabled: false },
+        },
+        relay: {
+          url: "https://invalid.relay.io",
+          apiKey: "invalid-key",
+          timeout: 30000,
+          maxRetries: 3,
+        },
+      }
+
+      vi.mocked(validateRelayConnection).mockResolvedValue({
+        available: false,
+        error: "Connection refused",
+      })
+      vi.mocked(classifyRelayError).mockReturnValue({
+        category: "network",
+        message: "Connection failed: Connection refused",
+        action: "Check your network connection",
+      })
+
+      const context = createMockCliContext(config)
+      await configCommand.handler(context, { list: true })
+
+      expect(classifyRelayError).toHaveBeenCalled()
+      expect(mockConsole.output.some((line) => line.includes("Failed"))).toBe(true)
+    })
+
+    it("should have --verbose option", () => {
+      const verboseOption = configCommand.options?.find((opt) =>
+        opt.flags.includes("--verbose"),
+      )
+      expect(verboseOption).toBeDefined()
     })
   })
 })

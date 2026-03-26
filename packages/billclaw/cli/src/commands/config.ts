@@ -5,23 +5,30 @@
  */
 
 import type { CliCommand, CliContext } from "./registry.js"
-import { success, error } from "../utils/format.js"
+import { maskApiKey } from "@firela/billclaw-core/relay"
+import type { RelayConfig } from "@firela/billclaw-core"
+import {
+  validateRelayConnection,
+  classifyRelayError,
+} from "../utils/relay-config.js"
+import { success, error, warn, info, formatStatus } from "../utils/format.js"
 
 /**
  * Run config command
  */
 async function runConfig(
   context: CliContext,
-  args?: { key?: string; value?: string; list?: boolean },
+  args?: { key?: string; value?: string; list?: boolean; verbose?: boolean },
 ): Promise<void> {
   const { runtime } = context
 
   const list = args?.list ?? false
   const key = args?.key
   const value = args?.value
+  const verbose = args?.verbose ?? false
 
   if (list || (!key && !value)) {
-    await listConfig(runtime)
+    await listConfig(runtime, verbose)
   } else if (key && value) {
     await setConfig(runtime, key, value)
   } else if (key) {
@@ -32,9 +39,75 @@ async function runConfig(
 /**
  * List all configuration
  */
-async function listConfig(runtime: CliContext["runtime"]): Promise<void> {
+async function listConfig(
+  runtime: CliContext["runtime"],
+  verbose: boolean = false,
+): Promise<void> {
   const config = await runtime.config.getConfig()
+
+  // Display relay configuration with health check
+  await displayRelayConfig(config, runtime, verbose)
+
+  // Display rest of config as JSON (existing behavior)
+  console.log("")
+  console.log("Full Configuration:")
   console.log(JSON.stringify(config, null, 2))
+}
+
+/**
+ * Display relay configuration with health check
+ */
+async function displayRelayConfig(
+  config: { relay?: RelayConfig },
+  runtime: CliContext["runtime"],
+  verbose: boolean = false,
+): Promise<void> {
+  const relay = config.relay
+
+  console.log("") // Blank line for readability
+  console.log("Relay Configuration:")
+
+  // Not configured
+  if (!relay?.url && !relay?.apiKey) {
+    console.log("  Status: Not configured")
+    if (verbose) {
+      info("Set FIRELA_RELAY_URL and FIRELA_RELAY_API_KEY to enable relay mode")
+    }
+    return
+  }
+
+  // Display URL (not masked)
+  console.log(`  URL: ${relay.url || "Not set"}`)
+
+  // Display masked API key
+  console.log(`  API Key: ${relay.apiKey ? maskApiKey(relay.apiKey) : "Not set"}`)
+
+  // Verbose mode: show additional config
+  if (verbose) {
+    console.log(`  Timeout: ${relay.timeout ?? 30000}ms`)
+    console.log(`  Retries: ${relay.maxRetries ?? 3}`)
+  }
+
+  // Perform health check
+  const healthResult = await validateRelayConnection(relay, runtime.logger)
+
+  // Display status with color
+  if (healthResult.available) {
+    const latency = healthResult.latency ? ` (${healthResult.latency}ms)` : ""
+    console.log(`  Status: ${formatStatus("Connected")}${verbose ? latency : ""}`)
+  } else {
+    console.log(`  Status: ${formatStatus("Failed")}`)
+
+    // Show error guidance
+    const guidance = classifyRelayError(healthResult, relay)
+    error(guidance.message)
+    if (verbose) {
+      console.log(guidance.action)
+    }
+
+    // Show fallback warning
+    warn("Relay unavailable, falling back to direct/polling mode")
+  }
 }
 
 /**
@@ -126,12 +199,17 @@ export const configCommand: CliCommand = {
       flags: "-v, --value <value>",
       description: "Config value to set",
     },
+    {
+      flags: "-V, --verbose",
+      description: "Show detailed output",
+    },
   ],
   handler: (context: CliContext, args?: Record<string, unknown>) => {
     const typedArgs = args as {
       key?: string
       value?: string
       list?: boolean
+      verbose?: boolean
     } | undefined
     return runConfig(context, typedArgs ?? {})
   },
