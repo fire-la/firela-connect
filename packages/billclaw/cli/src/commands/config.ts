@@ -43,7 +43,21 @@ async function listConfig(
   runtime: CliContext["runtime"],
   verbose: boolean = false,
 ): Promise<void> {
-  const config = await runtime.config.getConfig()
+  // Use getEffectiveConfig to include environment variable overrides
+  // This is important for relay configuration which can be set via env vars
+  const configProvider = runtime.config as {
+    getConfig: () => Promise<any>
+    getConfigManager?: () => { getEffectiveConfig: () => Promise<any> }
+  }
+
+  let config: any
+  if (configProvider.getConfigManager) {
+    // Use getEffectiveConfig to merge env overrides (e.g., FIRELA_RELAY_URL)
+    config = await configProvider.getConfigManager().getEffectiveConfig()
+  } else {
+    // Fallback to getConfig if getConfigManager not available
+    config = await configProvider.getConfig()
+  }
 
   // Display relay configuration with health check
   await displayRelayConfig(config, runtime, verbose)
