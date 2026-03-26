@@ -78,6 +78,22 @@ CREATE TABLE IF NOT EXISTS relay_tokens (
 -- Index for relay token lookups
 CREATE INDEX IF NOT EXISTS idx_relay_tokens_account_id ON relay_tokens(account_id);
 
+-- GoCardless tokens table
+-- Stores GoCardless token data with refresh_token and expiry
+-- SECURITY: Tokens are stored locally only, never sent to relay for storage
+CREATE TABLE IF NOT EXISTS gocardless_tokens (
+  account_id TEXT PRIMARY KEY,        -- Reference to accounts.id
+  access_token TEXT NOT NULL,         -- GoCardless access token
+  refresh_token TEXT NOT NULL,        -- GoCardless refresh token for token renewal
+  expires_at TEXT NOT NULL,           -- ISO timestamp when access token expires
+  updated_at TEXT NOT NULL,           -- ISO timestamp of last update
+
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+-- Index for gocardless token expiry lookups (for proactive refresh)
+CREATE INDEX IF NOT EXISTS idx_gocardless_tokens_expires_at ON gocardless_tokens(expires_at);
+
 -- Unique constraint for plaid_transaction_id
 -- Note: UNIQUE constraint is already in CREATE TABLE, this is explicit
 -- CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_plaid_id ON transactions(plaid_transaction_id);

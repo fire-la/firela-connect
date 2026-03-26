@@ -14,6 +14,8 @@ import type {
   SyncState,
   AccountRegistry,
   RelayTokenStorage,
+  GoCardlessTokenStorage,
+  GoCardlessTokenData,
 } from "./types.js"
 
 /**
@@ -118,7 +120,7 @@ export interface D1StorageAdapterOptions {
  * ```
  */
 export class D1StorageAdapter
-  implements StorageAdapter, RelayTokenStorage
+  implements StorageAdapter, RelayTokenStorage, GoCardlessTokenStorage
 {
   private db: D1Database
 
@@ -201,12 +203,36 @@ export class D1StorageAdapter
         FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
       );
 
+      -- Relay tokens table
+      -- Stores relay access tokens for Open Banking providers
+      CREATE TABLE IF NOT EXISTS relay_tokens (
+        provider TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (provider, account_id),
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      );
+
+      -- GoCardless tokens table
+      -- Stores GoCardless token data with refresh_token and expiry
+      CREATE TABLE IF NOT EXISTS gocardless_tokens (
+        account_id TEXT PRIMARY KEY,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      );
+
       -- Indexes
       CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
       CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions(account_id, date);
       CREATE INDEX IF NOT EXISTS idx_sync_state_account_id ON sync_state(account_id);
       CREATE INDEX IF NOT EXISTS idx_sync_state_started_at ON sync_state(started_at);
+      CREATE INDEX IF NOT EXISTS idx_relay_tokens_account_id ON relay_tokens(account_id);
+      CREATE INDEX IF NOT EXISTS idx_gocardless_tokens_expires_at ON gocardless_tokens(expires_at);
     `
   }
 
@@ -534,6 +560,66 @@ export class D1StorageAdapter
         `DELETE FROM relay_tokens WHERE provider = ? AND account_id = ?`,
       )
       .bind(provider, accountId)
+      .run()
+  }
+
+  // ============================================================================
+  // GoCardless Token Operations
+  // ============================================================================
+
+  /**
+   * Store GoCardless token data with expiry information
+   *
+   * Tokens are stored in D1 gocardless_tokens table with access_token,
+   * refresh_token, and expires_at fields.
+   * Note: Encryption at rest is deferred to security hardening phase.
+   *
+   * @param accountId - Account identifier
+   * @param data - Token data including access_token, refresh_token, and expires_at
+   */
+  async storeGoCardlessToken(
+    accountId: string,
+    data: GoCardlessTokenData,
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT OR REPLACE INTO gocardless_tokens
+         (account_id, access_token, refresh_token, expires_at, updated_at)
+         VALUES (?, ?, ?, ?, datetime('now'))`,
+      )
+      .bind(accountId, data.access_token, data.refresh_token, data.expires_at)
+      .run()
+  }
+
+  /**
+   * Retrieve GoCardless token data
+   *
+   * @param accountId - Account identifier
+   * @returns Token data or null if not found
+   */
+  async getGoCardlessToken(
+    accountId: string,
+  ): Promise<GoCardlessTokenData | null> {
+    const result = await this.db
+      .prepare(
+        `SELECT access_token, refresh_token, expires_at
+         FROM gocardless_tokens WHERE account_id = ?`,
+      )
+      .bind(accountId)
+      .first<{ access_token: string; refresh_token: string; expires_at: string }>()
+
+    return result ?? null
+  }
+
+  /**
+   * Delete GoCardless token data
+   *
+   * @param accountId - Account identifier
+   */
+  async deleteGoCardlessToken(accountId: string): Promise<void> {
+    await this.db
+      .prepare(`DELETE FROM gocardless_tokens WHERE account_id = ?`)
+      .bind(accountId)
       .run()
   }
 

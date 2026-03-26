@@ -17,6 +17,8 @@ import type {
   SyncState,
   AccountRegistry,
   RelayTokenStorage,
+  GoCardlessTokenStorage,
+  GoCardlessTokenData,
 } from "./types.js"
 import {
   initializeStorage,
@@ -58,7 +60,7 @@ export interface FileStorageAdapterOptions {
  * ```
  */
 export class FileStorageAdapter
-  implements StorageAdapter, RelayTokenStorage
+  implements StorageAdapter, RelayTokenStorage, GoCardlessTokenStorage
 {
   private config?: StorageConfig
 
@@ -248,6 +250,88 @@ export class FileStorageAdapter
     accountId: string,
   ): Promise<void> {
     const tokenFile = this.getTokenFile(provider, accountId)
+    try {
+      await unlink(tokenFile)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error
+      }
+    }
+  }
+
+  // ============================================================================
+  // GoCardless Token Operations
+  // ============================================================================
+
+  /**
+   * Get the path to a GoCardless token file
+   */
+  private getGoCardlessTokenFile(accountId: string): string {
+    return path.join(this.getTokensPath(), `gocardless-${accountId}.json`)
+  }
+
+  /**
+   * Store GoCardless token data with expiry information
+   *
+   * Tokens are stored in ~/.firela/tokens/ directory with restricted permissions.
+   * Note: Encryption at rest is deferred to security hardening phase.
+   *
+   * @param accountId - Account identifier
+   * @param data - Token data including access_token, refresh_token, and expires_at
+   */
+  async storeGoCardlessToken(
+    accountId: string,
+    data: GoCardlessTokenData,
+  ): Promise<void> {
+    // Ensure tokens directory exists with restricted permissions
+    const tokensDir = this.getTokensPath()
+    await mkdir(tokensDir, { recursive: true, mode: 0o700 })
+
+    // Write token file with restricted permissions
+    const tokenFile = this.getGoCardlessTokenFile(accountId)
+    await writeFile(
+      tokenFile,
+      JSON.stringify({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: data.expires_at,
+        updatedAt: new Date().toISOString(),
+      }),
+      { mode: 0o600 }, // Owner read/write only
+    )
+  }
+
+  /**
+   * Retrieve GoCardless token data
+   *
+   * @param accountId - Account identifier
+   * @returns Token data or null if not found
+   */
+  async getGoCardlessToken(accountId: string): Promise<GoCardlessTokenData | null> {
+    try {
+      const tokenFile = this.getGoCardlessTokenFile(accountId)
+      const data = await readFile(tokenFile, "utf-8")
+      const parsed = JSON.parse(data) as GoCardlessTokenData
+      return {
+        access_token: parsed.access_token,
+        refresh_token: parsed.refresh_token,
+        expires_at: parsed.expires_at,
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null
+      }
+      throw error
+    }
+  }
+
+  /**
+   * Delete GoCardless token data
+   *
+   * @param accountId - Account identifier
+   */
+  async deleteGoCardlessToken(accountId: string): Promise<void> {
+    const tokenFile = this.getGoCardlessTokenFile(accountId)
     try {
       await unlink(tokenFile)
     } catch (error) {
