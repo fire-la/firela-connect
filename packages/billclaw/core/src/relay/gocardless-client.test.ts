@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { GoCardlessRelayClient, GOCARDLESS_RELAY_BASE } from "./gocardless-client.js"
 import type { Institution, Requisition, Account, TransactionsResponse } from "./gocardless-types.js"
+import { ProviderError } from "./errors.js"
 
 // Mock RelayClient
 vi.mock("./client.js", () => ({
@@ -373,6 +374,20 @@ describe("GoCardlessRelayClient", () => {
           "No token found",
         )
       })
+
+      it("throws ProviderError with token_not_found code when token not found", async () => {
+        mockStorage.getGoCardlessToken.mockResolvedValueOnce(null)
+
+        try {
+          await (client as any).ensureValidToken("account-1")
+          // Should not reach here
+          expect(true).toBe(false)
+        } catch (error) {
+          expect(error).toBeInstanceOf(ProviderError)
+          expect((error as ProviderError).code).toBe("token_not_found")
+          expect((error as ProviderError).provider).toBe("gocardless")
+        }
+      })
     })
 
     describe("refreshToken", () => {
@@ -402,13 +417,48 @@ describe("GoCardlessRelayClient", () => {
         )
       })
 
-      it("throws ProviderError if refresh fails", async () => {
+      it("throws ProviderError with token_refresh_failed code on API failure", async () => {
         mockRequest.mockRejectedValueOnce(new Error("Refresh failed"))
 
-        await expect(
-          (client as any).refreshToken("account-1", "invalid-refresh-token"),
-        ).rejects.toThrow()
+        try {
+          await (client as any).refreshToken("account-1", "invalid-refresh-token")
+          // Should not reach here
+          expect(true).toBe(false)
+        } catch (error) {
+          expect(error).toBeInstanceOf(ProviderError)
+          expect((error as ProviderError).code).toBe("token_refresh_failed")
+          expect((error as ProviderError).provider).toBe("gocardless")
+        }
       })
+    })
+  })
+
+  describe("ensureValidToken without storage", () => {
+    it("throws ProviderError when storage not configured", async () => {
+      // Create client without storage
+      const clientWithoutStorage = new GoCardlessRelayClient(
+        {
+          relayUrl: "https://relay.firela.io",
+          relayApiKey: "test-api-key",
+        },
+        {
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+        } as any,
+        // No storage parameter
+      )
+
+      try {
+        await (clientWithoutStorage as any).ensureValidToken("account-1")
+        // Should not reach here
+        expect(true).toBe(false)
+      } catch (error) {
+        expect(error).toBeInstanceOf(ProviderError)
+        expect((error as ProviderError).code).toBe("storage_not_configured")
+        expect((error as ProviderError).provider).toBe("gocardless")
+      }
     })
   })
 })
