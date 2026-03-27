@@ -17,6 +17,7 @@ import type { RelayTokenStorage, GoCardlessTokenStorage } from "./types.js"
 function createMockD1Database() {
   const tables: Map<string, Map<string, Record<string, unknown>>> = new Map()
   tables.set("relay_tokens", new Map())
+  tables.set("gocardless_tokens", new Map())
 
   return {
     prepare: (query: string) => {
@@ -28,6 +29,23 @@ function createMockD1Database() {
           return this
         },
         run: async function () {
+          // gocardless_tokens table operations
+          if (lowerQuery.includes("insert or replace into gocardless_tokens")) {
+            const [accountId, accessToken, refreshToken, expiresAt] = this.values as [string, string, string, string]
+            tables.get("gocardless_tokens")!.set(accountId, {
+              account_id: accountId,
+              access_token: accessToken,
+              refresh_token: refreshToken,
+              expires_at: expiresAt,
+              updated_at: new Date().toISOString(),
+            })
+            return { success: true }
+          }
+          if (lowerQuery.includes("delete from gocardless_tokens")) {
+            const [accountId] = this.values as [string]
+            tables.get("gocardless_tokens")!.delete(accountId)
+            return { success: true }
+          }
           // relay_tokens table operations
           if (lowerQuery.includes("insert or replace into relay_tokens")) {
             const [provider, accountId, token] = this.values as [string, string, string]
@@ -49,8 +67,21 @@ function createMockD1Database() {
           return { success: true }
         },
         first: async function <T = unknown>(): Promise<T | null> {
+          // gocardless_tokens table queries
+          if (lowerQuery.includes("from gocardless_tokens where account_id = ?")) {
+            const [accountId] = this.values as [string]
+            const row = tables.get("gocardless_tokens")!.get(accountId)
+            return row
+              ? {
+                access_token: row.access_token,
+                refresh_token: row.refresh_token,
+                expires_at: row.expires_at,
+              } as T
+              : null
+          }
+
           // relay_tokens table queries
-          if (lowerQuery.includes("select token from relay_tokens")) {
+          if (lowerQuery.includes("from relay_tokens where provider = ? and account_id = ?")) {
             const [provider, accountId] = this.values as [string, string]
             const key = `${provider}:${accountId}`
             const row = tables.get("relay_tokens")!.get(key)
@@ -343,6 +374,92 @@ describe("GoCardlessTokenStorage", () => {
 
       it("handles missing file gracefully", async () => {
         // Should not throw when deleting nonexistent token
+        await expect(
+          adapter.deleteGoCardlessToken("nonexistent"),
+        ).resolves.not.toThrow()
+      })
+    })
+  })
+
+  describe("D1StorageAdapter", () => {
+    let adapter: D1StorageAdapter & GoCardlessTokenStorage
+    let mockDb: ReturnType<typeof createMockD1Database>
+
+    beforeEach(() => {
+      mockDb = createMockD1Database()
+      adapter = new D1StorageAdapter({ db: mockDb as D1StorageAdapterOptions }) as D1StorageAdapter & GoCardlessTokenStorage
+    })
+
+    describe("storeGoCardlessToken", () => {
+      it("stores token data with all fields", async () => {
+        const tokenData = {
+          access_token: "access-123",
+          refresh_token: "refresh-456",
+          expires_at: "2024-01-15T10:30:00Z",
+        }
+        await adapter.storeGoCardlessToken("account-1", tokenData)
+
+        const retrieved = await adapter.getGoCardlessToken("account-1")
+        expect(retrieved).toEqual({
+          access_token: "access-123",
+          refresh_token: "refresh-456",
+          expires_at: "2024-01-15T10:30:00Z",
+        })
+      })
+
+      it("updates existing token data (upsert)", async () => {
+        await adapter.storeGoCardlessToken("account-1", {
+          access_token: "old-access",
+          refresh_token: "old-refresh",
+          expires_at: "2024-01-15T10:00:00Z",
+        })
+        await adapter.storeGoCardlessToken("account-1", {
+          access_token: "new-access",
+          refresh_token: "new-refresh",
+          expires_at: "2024-01-16T10:00:00Z",
+        })
+
+        const token = await adapter.getGoCardlessToken("account-1")
+        expect(token?.access_token).toBe("new-access")
+        expect(token?.refresh_token).toBe("new-refresh")
+      })
+    })
+
+    describe("getGoCardlessToken", () => {
+      it("returns null for missing account", async () => {
+        const token = await adapter.getGoCardlessToken("nonexistent")
+        expect(token).toBeNull()
+      })
+
+      it("returns GoCardlessTokenData when row exists", async () => {
+        await adapter.storeGoCardlessToken("account-2", {
+          access_token: "my-access",
+          refresh_token: "my-refresh",
+          expires_at: "2024-06-15T08:30:00Z",
+        })
+        const token = await adapter.getGoCardlessToken("account-2")
+        expect(token).toEqual({
+          access_token: "my-access",
+          refresh_token: "my-refresh",
+          expires_at: "2024-06-15T08:30:00Z",
+        })
+      })
+    })
+
+    describe("deleteGoCardlessToken", () => {
+      it("deletes stored token", async () => {
+        await adapter.storeGoCardlessToken("account-3", {
+          access_token: "to-delete",
+          refresh_token: "refresh-to-delete",
+          expires_at: "2024-01-01T12:00:00Z",
+        })
+        await adapter.deleteGoCardlessToken("account-3")
+
+        const token = await adapter.getGoCardlessToken("account-3")
+        expect(token).toBeNull()
+      })
+
+      it("does not throw when deleting nonexistent token", async () => {
         await expect(
           adapter.deleteGoCardlessToken("nonexistent"),
         ).resolves.not.toThrow()
