@@ -102,7 +102,8 @@ export function classifyRelayError(
     category: "network",
     message: `Connection failed: ${healthResult.error}`,
     action: `Check your network connection
-  Verify the URL is correct: ${config?.url}`,
+  Verify the URL is correct: ${config?.url}
+  If URL is wrong, run: export FIRELA_RELAY_URL=correct_url`,
   }
 }
 

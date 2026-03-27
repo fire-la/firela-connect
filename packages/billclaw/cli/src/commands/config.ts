@@ -112,12 +112,10 @@ async function displayRelayConfig(
   } else {
     console.log(`  Status: ${formatStatus("Failed")}`)
 
-    // Show error guidance
+    // Show error guidance (action always visible for fix commands)
     const guidance = classifyRelayError(healthResult, relay)
     error(guidance.message)
-    if (verbose) {
-      console.log(guidance.action)
-    }
+    console.log(guidance.action)
 
     // Show fallback warning
     warn("Relay unavailable, falling back to direct/polling mode")
