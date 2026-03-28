@@ -40,6 +40,6 @@ pnpm -r --filter './packages/**' run lint || exit 1
 # echo "Checking code formatting..."
 # pnpm -r --filter './packages/**' run format || exit 1
 
-# Run tests
+# Run tests (use --run flag to avoid watch mode)
 echo "Running tests..."
-pnpm -r --filter './packages/**' run test || exit 1
+pnpm -r --filter './packages/**' run test -- --run || exit 1
