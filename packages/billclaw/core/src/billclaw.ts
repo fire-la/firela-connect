@@ -11,7 +11,6 @@ import type { RuntimeContext, ConfigProvider } from "./runtime/types.js"
 import type { Transaction, SyncState } from "./storage/transaction-storage.js"
 import type {
   PlaidSyncResult,
-  PlaidConfig,
   PlaidAccount,
 } from "./sources/plaid/plaid-sync.js"
 import type {
@@ -20,21 +19,28 @@ import type {
   GmailAccount,
 } from "./sources/gmail/gmail-fetch.js"
 import type { SyncResult } from "./sync/sync-service.js"
-import { createUserError, ERROR_CODES, ErrorCategory } from "./errors/errors.js"
+import { createUserError, ERROR_CODES, ErrorCategory, parsePlaidError } from "./errors/errors.js"
+import { emitEvent } from "./services/event-emitter.js"
 
 // Storage
 import {
   readTransactions,
   readSyncStates,
   initializeStorage,
+  appendTransactions,
+  deduplicateTransactions,
+  writeSyncState,
+  writeGlobalCursor,
 } from "./storage/transaction-storage.js"
 
 // Sync
 import { syncDueAccounts } from "./sync/sync-service.js"
 
 // Sources
-import { syncPlaidAccounts } from "./sources/plaid/plaid-sync.js"
+import { convertTransaction } from "./sources/plaid/plaid-sync.js"
 import { fetchGmailBills } from "./sources/gmail/gmail-fetch.js"
+import { createPlaidAdapter } from "./sources/plaid/plaid-adapter.js"
+import type { PlaidSyncAdapter } from "./sources/plaid/plaid-adapter.js"
 
 // Exporters
 import {
@@ -209,18 +215,19 @@ export class Billclaw {
   // ==================== Plaid ====================
 
   /**
-   * Sync Plaid accounts
+   * Sync Plaid accounts using adapter factory for automatic mode selection.
+   *
+   * Supports both direct mode (user's own Plaid credentials) and relay mode
+   * (via firela-relay service). Mode selection is automatic based on configuration.
+   *
+   * Fallback behavior: If relay mode fails and direct credentials exist,
+   * will automatically fall back to direct mode.
    */
   async syncPlaid(accountIds?: string[]): Promise<PlaidSyncResult[]> {
     const config = await this.context.config.getConfig()
     const storageConfig = await this.context.config.getStorageConfig()
 
-    const plaidConfig: PlaidConfig = {
-      clientId: config.plaid.clientId || process.env.PLAID_CLIENT_ID || "",
-      secret: config.plaid.secret || process.env.PLAID_SECRET || "",
-      environment: config.plaid.environment || "sandbox",
-    }
-
+    // Filter accounts to sync
     const accounts: PlaidAccount[] = config.accounts
       .filter((a) => a.type === "plaid" && a.enabled && a.plaidAccessToken)
       .filter((a) => !accountIds || accountIds.includes(a.id))
@@ -234,13 +241,245 @@ export class Billclaw {
       return []
     }
 
-    return syncPlaidAccounts(
-      accounts,
-      plaidConfig,
+    // Create adapter using factory - this handles mode selection automatically
+    let adapter: PlaidSyncAdapter
+    try {
+      adapter = await createPlaidAdapter(this.context)
+    } catch (error) {
+      // If relay mode failed but we have direct credentials, try fallback
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (errorMessage.includes("relay") && config.plaid?.clientId && config.plaid?.secret) {
+        this.logger.warn?.("Relay unavailable, falling back to direct mode")
+        const { DirectPlaidClient } = await import("./sources/plaid/plaid-adapter.js")
+        adapter = new DirectPlaidClient(
+          {
+            clientId: config.plaid.clientId || process.env.PLAID_CLIENT_ID || "",
+            secret: config.plaid.secret || process.env.PLAID_SECRET || "",
+            environment: config.plaid.environment || "sandbox",
+          },
+          this.logger,
+        )
+      } else {
+        // No fallback available - rethrow with actionable guidance
+        throw error
+      }
+    }
+
+    this.logger.info?.(`Syncing Plaid accounts using ${adapter.getMode()} mode`)
+
+    // Sync each account using the adapter interface
+    const results: PlaidSyncResult[] = []
+    for (const account of accounts) {
+      const result = await this.syncPlaidAccountWithAdapter(
+        account,
+        adapter,
+        storageConfig,
+        config.webhooks || [],
+      )
+      results.push(result)
+    }
+
+    // Update global cursor
+    await writeGlobalCursor(
+      { lastSyncTime: new Date().toISOString() },
       storageConfig,
-      this.logger,
-      config.webhooks || [],
     )
+
+    return results
+  }
+
+  /**
+   * Sync a single Plaid account using the adapter interface.
+   *
+   * This internal method handles the cursor-based pagination and transaction
+   * storage using the PlaidSyncAdapter interface.
+   */
+  private async syncPlaidAccountWithAdapter(
+    account: PlaidAccount,
+    adapter: PlaidSyncAdapter,
+    storageConfig: any,
+    webhooks: any[],
+  ): Promise<PlaidSyncResult> {
+    const errors: UserError[] = []
+    let transactionsAdded = 0
+    let transactionsUpdated = 0
+    let cursor = ""
+    let requiresReauth = false
+
+    const syncId = `sync_${Date.now()}`
+    const syncState: SyncState = {
+      syncId,
+      accountId: account.id,
+      startedAt: new Date().toISOString(),
+      status: "running",
+      transactionsAdded: 0,
+      transactionsUpdated: 0,
+      cursor: "",
+    }
+
+    // Emit sync.started event
+    emitEvent(this.logger, webhooks, "sync.started", {
+      accountId: account.id,
+      syncId,
+    }).catch((err) => this.logger.debug?.(`Event emission failed:`, err))
+
+    try {
+      // Get previous sync state for cursor
+      const previousSyncs = await readSyncStates(account.id, storageConfig)
+      const lastSync = previousSyncs.find((s) => s.status === "completed")
+      const initialCursor = lastSync?.cursor || undefined
+
+      // Pagination: Collect all transactions across all pages
+      let currentCursor: string = initialCursor ?? ""
+      let hasMore = true
+      const allAdded: any[] = []
+      const allModified: any[] = []
+      const allRemoved: any[] = []
+
+      while (hasMore) {
+        const response = await adapter.syncTransactions(
+          account.plaidAccessToken,
+          currentCursor || undefined,
+        )
+
+        // Collect transactions from this page
+        allAdded.push(...(response.added || []))
+        allModified.push(...(response.modified || []))
+        allRemoved.push(...(response.removed || []))
+
+        // Update cursor and has_more for next iteration
+        currentCursor = response.next_cursor ?? ""
+        hasMore = response.has_more ?? false
+
+        this.logger.debug?.(
+          `Plaid sync page for ${account.id}: ${allAdded.length} added, ${allModified.length} modified, ${allRemoved.length} removed, hasMore: ${hasMore}`,
+        )
+      }
+
+      // Store cursor after ALL pages retrieved
+      cursor = currentCursor
+
+      this.logger.info?.(
+        `Plaid sync for ${account.id}: ${allAdded.length} added, ${allModified.length} modified, ${allRemoved.length} removed`,
+      )
+
+      // Convert both added AND modified transactions
+      const transactions: Transaction[] = [
+        ...allAdded.map((txn) => convertTransaction(txn, account.id)),
+        ...allModified.map((txn) => convertTransaction(txn, account.id)),
+      ]
+
+      // Deduplicate transactions (24h window)
+      const deduplicated = deduplicateTransactions(transactions, 24)
+
+      // Group by month for storage
+      const byMonth = new Map<string, Transaction[]>()
+      for (const txn of deduplicated) {
+        const date = new Date(txn.date)
+        const key = `${date.getFullYear()}-${date.getMonth()}`
+        if (!byMonth.has(key)) {
+          byMonth.set(key, [])
+        }
+        byMonth.get(key)!.push(txn)
+      }
+
+      // Store transactions per month
+      for (const [monthKey, monthTransactions] of byMonth.entries()) {
+        const [year, month] = monthKey.split("-").map(Number)
+        const result = await appendTransactions(
+          account.id,
+          year,
+          month,
+          monthTransactions,
+          storageConfig,
+        )
+        transactionsAdded += result.added
+        transactionsUpdated += result.updated
+      }
+
+      // Update sync state
+      syncState.status = "completed"
+      syncState.completedAt = new Date().toISOString()
+      syncState.transactionsAdded = transactionsAdded
+      syncState.transactionsUpdated = transactionsUpdated
+      syncState.cursor = cursor
+
+      this.logger.info?.(
+        `Sync completed for ${account.id}: ${transactionsAdded} added, ${transactionsUpdated} updated`,
+      )
+
+      // Emit sync.completed event
+      const syncDuration = Date.now() - new Date(syncState.startedAt).getTime()
+      emitEvent(this.logger, webhooks, "sync.completed", {
+        accountId: account.id,
+        syncId,
+        transactionsAdded,
+        transactionsUpdated,
+        duration: syncDuration,
+      }).catch((err) => this.logger.debug?.(`Event emission failed:`, err))
+    } catch (error) {
+      // Parse error to get UserError
+      let userError: UserError
+      if (error && typeof error === "object") {
+        const plaidError = error as any
+        userError = parsePlaidError(
+          {
+            error_code: plaidError.code || plaidError.error_code,
+            error_message: plaidError.message || plaidError.error_message,
+            error_type: plaidError.error_type,
+            display_message: plaidError.display_message,
+            request_id: plaidError.request_id,
+            item_id: account.id,
+          },
+          account.id,
+        )
+      } else {
+        userError = parsePlaidError(
+          {
+            error_message: error instanceof Error ? error.message : "Unknown error",
+          },
+          account.id,
+        )
+      }
+
+      errors.push(userError)
+      syncState.status = "failed"
+      syncState.error = userError.humanReadable.message
+      this.logger.error?.(`Sync failed for ${account.id}:`, error)
+
+      // Emit sync.failed event
+      emitEvent(this.logger, webhooks, "sync.failed", {
+        accountId: account.id,
+        syncId,
+        error: userError.humanReadable.message,
+        errorCode: userError.errorCode,
+      }).catch((err) => this.logger.debug?.(`Event emission failed:`, err))
+
+      // Check for Plaid-specific errors that require user action
+      if (
+        userError.errorCode === ERROR_CODES.PLAID_ITEM_LOGIN_REQUIRED ||
+        userError.errorCode === ERROR_CODES.PLAID_INVALID_ACCESS_TOKEN
+      ) {
+        this.logger.warn?.(
+          `Account ${account.id} requires re-authentication via Plaid Link`,
+        )
+        syncState.error = `ITEM_LOGIN_REQUIRED: Please re-connect this account via Plaid Link`
+        syncState.requiresReauth = true
+        requiresReauth = true
+      }
+    } finally {
+      await writeSyncState(syncState, storageConfig)
+    }
+
+    return {
+      success: errors.length === 0,
+      accountId: account.id,
+      transactionsAdded,
+      transactionsUpdated,
+      cursor,
+      errors: errors.length > 0 ? errors : undefined,
+      requiresReauth,
+    }
   }
 
   /**
