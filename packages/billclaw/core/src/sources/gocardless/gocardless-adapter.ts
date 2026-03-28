@@ -13,6 +13,7 @@
  */
 
 import type { RuntimeContext } from "../../runtime/types.js"
+import type { GoCardlessTokenStorage } from "../../storage/types.js"
 import { selectConnectionMode } from "../../connection/mode-selector.js"
 import {
   GoCardlessRelayClient,
@@ -129,6 +130,12 @@ export async function createGoCardlessAdapter(
       throw new Error("Relay mode selected but relay configuration is missing")
     }
 
+    if (!context.storage) {
+      throw new Error(
+        "Token storage required for GoCardless. Configure storage adapter.",
+      )
+    }
+
     context.logger.info("Using GoCardless relay mode")
     return new GoCardlessRelayClient(
       {
@@ -136,6 +143,7 @@ export async function createGoCardlessAdapter(
         relayApiKey: config.relay.apiKey,
       },
       context.logger,
+      context.storage as GoCardlessTokenStorage,
     )
   }
 

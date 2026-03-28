@@ -21,7 +21,7 @@ vi.mock("../../connection/mode-selector.js", () => ({
 vi.mock("../../relay/gocardless-client.js", () => ({
   GoCardlessRelayClient: vi.fn().mockImplementation(function (
     this: any,
-    ...args: any[]
+    ..._args: any[]
   ) {
     return {
       getInstitutions: vi.fn(),
