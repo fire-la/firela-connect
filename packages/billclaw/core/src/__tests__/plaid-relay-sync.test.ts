@@ -115,7 +115,7 @@ describe("Plaid Relay Sync Flow (Integration)", () => {
         // But we can verify the mode selection happened
         try {
           await billclaw.syncPlaid(["test-account-1"])
-        } catch (error) {
+        } catch {
           // Expected - the sync will fail with invalid token
           // But mode selection should have happened
         }
@@ -166,7 +166,7 @@ describe("Plaid Relay Sync Flow (Integration)", () => {
 
         try {
           await billclaw.syncPlaid(["test-account-2"])
-        } catch (error) {
+        } catch {
           // Expected
         }
 
@@ -222,7 +222,7 @@ describe("Plaid Relay Sync Flow (Integration)", () => {
 
         try {
           await billclaw.syncPlaid(["test-account-3"])
-        } catch (error) {
+        } catch {
           // Expected - sync will fail, but we're testing the fallback logic
         }
 

@@ -17,20 +17,14 @@
  */
 
 import type { CliCommand, CliContext } from "../registry.js"
-import { success, logError } from "../../utils/format.js"
+import { logError } from "../../utils/format.js"
 import { Spinner } from "../../utils/progress.js"
 import {
   createGoCardlessAdapter,
   type GoCardlessSyncAdapter,
 } from "@firela/billclaw-core"
 import { parseGoCardlessRelayError } from "@firela/billclaw-core/relay"
-import type { AccountConfig } from "@firela/billclaw-core"
 
-/**
- * Default OAuth timeout in milliseconds (5 minutes)
- * GoCardless OAuth may require multi-factor auth, so 5 min is reasonable
- */
-const DEFAULT_OAUTH_TIMEOUT = 5 * 60 * 1000
 
 /**
  * Polling interval in milliseconds (1 second)
@@ -52,7 +46,6 @@ export async function runGoCardlessConnect(
 ): Promise<void> {
   const { runtime } = context
   const institutionId = args.institution
-  const accountName = args.name ?? "GoCardless Bank Account"
   const timeoutMs = (args.timeout ?? 5) * 60 * 1000
 
   console.log("")
@@ -109,7 +102,7 @@ export async function runGoCardlessConnect(
   }).start()
 
   let requisitionLink: string
-  let requisitionId: string
+  let _requisitionId: string
   try {
     const requisition = await adapter.createRequisition({
       institution_id: institutionId,
@@ -117,7 +110,7 @@ export async function runGoCardlessConnect(
       reference: `billclaw-${Date.now()}`,
     })
     requisitionLink = requisition.link
-    requisitionId = requisition.id
+    _requisitionId = requisition.id
     requisitionSpinner.succeed("Requisition created")
   } catch (err) {
     requisitionSpinner.fail("Failed to create requisition")
@@ -207,24 +200,6 @@ export async function runGoCardlessConnect(
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-/**
- * Save account to configuration
- */
-async function saveAccount(
-  runtime: CliContext["runtime"],
-  account: AccountConfig,
-): Promise<void> {
-  try {
-    const config = await runtime.config.getConfig()
-    config.accounts.push(account)
-    await runtime.config.saveConfig(config)
-  } catch (err) {
-    const saveError = parseGoCardlessRelayError(err)
-    logError(runtime.logger, saveError, { operation: "gocardless_save_account" })
-    throw saveError
-  }
 }
 
 /**

@@ -461,13 +461,13 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
         })
 
         // Mock successful refresh
-        let capturedBody = ""
+        let _capturedBody = ""
         const originalFetch = global.fetch
         vi.stubGlobal(
           "fetch",
           (url: string, options: RequestInit) => {
             if (url.includes("/refresh")) {
-              capturedBody = options?.body as string
+              _capturedBody = options?.body as string
               return Promise.resolve({
                 ok: true,
                 text: async () =>
@@ -574,7 +574,7 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
 
         vi.stubGlobal(
           "fetch",
-          (url: string, options: RequestInit) => {
+          (url: string, _options: RequestInit) => {
             capturedUrl = url
             // Return a quick error to avoid actual API call
             return Promise.resolve({

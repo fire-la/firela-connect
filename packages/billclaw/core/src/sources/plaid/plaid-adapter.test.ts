@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
-  type PlaidSyncAdapter,
   DirectPlaidClient,
   createPlaidAdapter,
 } from "./plaid-adapter.js"
