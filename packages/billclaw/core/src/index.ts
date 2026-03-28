@@ -106,6 +106,3 @@ export * from "./upload/index.js"
 
 // Parsers (CSV file format detection and parsing)
 export * from "./parsers/index.js"
-
-// Version
-export const VERSION = "0.0.1" as const

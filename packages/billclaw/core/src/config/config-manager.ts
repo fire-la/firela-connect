@@ -1,9 +1,8 @@
 /**
  * Unified configuration manager for BillClaw
  *
- * Provides thread-safe configuration management with:
+ * Provides configuration management with:
  * - Singleton pattern
- * - File locking for concurrent access
  * - Hybrid caching (TTL + mtime validation)
  * - Environment variable overrides
  * - Schema validation
@@ -19,7 +18,7 @@ import { z } from "zod"
 import type { Logger } from "../errors/errors.js"
 import { BillclawConfigSchema, type BillclawConfig } from "../models/config.js"
 import type { ConfigProvider, StorageConfig } from "../runtime/types.js"
-import { withLock } from "../storage/locking.js"
+// File locking removed - operations islined inline
 import { MemoryCache } from "../storage/cache.js"
 import { loadEnvOverrides } from "./env-loader.js"
 import { deepMerge } from "../utils/merge.js"
@@ -316,21 +315,15 @@ export class ConfigManager implements ConfigProvider {
       await fs.writeFile(this.configPath, JSON.stringify({}, null, 2), "utf-8")
     }
 
-    await withLock(
-      this.configPath,
-      async () => {
-        // Atomic write: temp file + rename
-        const tmpPath = `${this.configPath}.tmp`
-        await fs.writeFile(tmpPath, JSON.stringify(config, null, 2), "utf-8")
-        await fs.rename(tmpPath, this.configPath)
+    // Atomic write: temp file + rename
+    const tmpPath = `${this.configPath}.tmp`
+    await fs.writeFile(tmpPath, JSON.stringify(config, null, 2), "utf-8")
+    await fs.rename(tmpPath, this.configPath)
 
-        // Invalidate cache
-        this.cache.delete(this.cacheKey)
+    // Invalidate cache
+    this.cache.delete(this.cacheKey)
 
-        this.logger?.info(`Configuration saved to ${this.configPath}`)
-      },
-      { logger: this.logger },
-    )
+    this.logger?.info(`Configuration saved to ${this.configPath}`)
   }
 
   /**

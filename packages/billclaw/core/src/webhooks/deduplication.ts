@@ -2,18 +2,15 @@
  * Webhook deduplication cache (P0)
  *
  * File-based deduplication cache for webhook nonce tracking.
- * Uses proper-lockfile for concurrent access safety.
  *
  * Design decisions:
  * - File-based (NOT in-memory) for multi-process safety
  * - TTL-based cleanup to prevent unbounded growth
- * - Uses existing locking infrastructure
  */
 
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import type { Logger } from "../errors/errors.js"
-import { withLock } from "../storage/locking.js"
 
 /**
  * Deduplication cache data structure
@@ -61,7 +58,6 @@ export interface WebhookDeduplicationConfig {
  */
 export class WebhookDeduplication {
   private readonly cachePath: string
-  private readonly lockPath: string
   private readonly logger: Logger
   private cache: DeduplicationCache | null = null
 
@@ -71,7 +67,6 @@ export class WebhookDeduplication {
       "cache",
       config.cacheFile || CACHE_FILE,
     )
-    this.lockPath = `${this.cachePath}.lock`
     this.logger = config.logger
   }
 
@@ -120,19 +115,17 @@ export class WebhookDeduplication {
    * @param ttl - Time-to-live in milliseconds
    */
   async markProcessed(nonce: string, ttl: number): Promise<void> {
-    await withLock(this.lockPath, async () => {
-      await this.loadCacheIfNeeded()
+    await this.loadCacheIfNeeded()
 
-      if (!this.cache) {
-        this.cache = { nonces: {}, lastCleanup: Date.now() }
-      }
+    if (!this.cache) {
+      this.cache = { nonces: {}, lastCleanup: Date.now() }
+    }
 
-      this.cache.nonces[nonce] = {
-        expiresAt: Date.now() + ttl,
-      }
+    this.cache.nonces[nonce] = {
+      expiresAt: Date.now() + ttl,
+    }
 
-      await this.saveCache()
-    }, { logger: this.logger })
+    await this.saveCache()
   }
 
   /**
@@ -141,44 +134,40 @@ export class WebhookDeduplication {
    * @param nonce - Nonce to remove
    */
   async removeNonce(nonce: string): Promise<void> {
-    await withLock(this.lockPath, async () => {
-      await this.loadCacheIfNeeded()
+    await this.loadCacheIfNeeded()
 
-      if (this.cache && this.cache.nonces[nonce]) {
-        delete this.cache.nonces[nonce]
-        await this.saveCache()
-      }
-    }, { logger: this.logger })
+    if (this.cache && this.cache.nonces[nonce]) {
+      delete this.cache.nonces[nonce]
+      await this.saveCache()
+    }
   }
 
   /**
    * Clean up expired entries
    */
   async cleanup(): Promise<void> {
-    await withLock(this.lockPath, async () => {
-      await this.loadCacheIfNeeded()
+    await this.loadCacheIfNeeded()
 
-      if (!this.cache) {
-        return
+    if (!this.cache) {
+      return
+    }
+
+    const now = Date.now()
+    let removedCount = 0
+
+    for (const nonce in this.cache.nonces) {
+      if (now > this.cache.nonces[nonce].expiresAt) {
+        delete this.cache.nonces[nonce]
+        removedCount++
       }
+    }
 
-      const now = Date.now()
-      let removedCount = 0
+    if (removedCount > 0) {
+      this.logger.debug?.(`Cleaned up ${removedCount} expired nonces`)
+    }
 
-      for (const nonce in this.cache.nonces) {
-        if (now > this.cache.nonces[nonce].expiresAt) {
-          delete this.cache.nonces[nonce]
-          removedCount++
-        }
-      }
-
-      if (removedCount > 0) {
-        this.logger.debug?.(`Cleaned up ${removedCount} expired nonces`)
-      }
-
-      this.cache.lastCleanup = now
-      await this.saveCache()
-    }, { logger: this.logger })
+    this.cache.lastCleanup = now
+    await this.saveCache()
   }
 
   /**

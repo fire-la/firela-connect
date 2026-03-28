@@ -16,6 +16,3 @@ export * from "./file-adapter.js"
 // Legacy file-based storage (backward compatible)
 export * from "./transaction-storage.js"
 export * from "./cache.js"
-export * from "./indexes.js"
-export * from "./streaming.js"
-export * from "./locking.js"
