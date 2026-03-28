@@ -25,6 +25,7 @@ export {
 export { uploadCommand } from "./upload.js"
 export { uiCommand } from "./ui.js"
 export { importCommand } from "./import.js"
+export { discoverCommand } from "./discover.js"
 /**
  * All commands to register
  */
@@ -42,4 +43,5 @@ export const allCommands = [
   { upload: () => import("./upload.js").then((m) => m.uploadCommand) },
   { ui: () => import("./ui.js").then((m) => m.uiCommand) },
   { import: () => import("./import.js").then((m) => m.importCommand) },
+  { discover: () => import("./discover.js").then((m) => m.discoverCommand) },
 ]
