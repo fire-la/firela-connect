@@ -1,29 +1,59 @@
 #!/bin/sh
 
+# pre-push hook - Run full CI/CD checks with timeout protection
 echo "🚀 Running pre-push checks..."
 
-# Run full lint check
-echo "🔧 Running full lint..."
-pnpm -r --filter './packages/**' run lint
-if [ $? -ne 0 ]; then
-  echo "❌ Lint check failed"
-  exit 1
-fi
+# Temporary files for captured output (preserved for debugging)
+TEMP_DIR="/tmp/pre-push-log"
+mkdir -p "$TEMP_DIR"
+TIMESTAMP=$(date +%s)
+LOG_PREFIX="$TEMP_DIR/run-$TIMESTAMP"
+echo "📁 Logs: $LOG_PREFIX-*.log"
 
-# Run full test suite
-echo "🧪 Running full test suite..."
-pnpm -r --filter './packages/**' run test
-if [ $? -ne 0 ]; then
-  echo "❌ Tests failed"
-  exit 1
-fi
+# Helper function: Cross-platform timeout execution
+run_with_timeout() {
+  local timeout_seconds=$1
+  shift
 
-# Build project
-echo "📦 Building project..."
-pnpm build
-if [ $? -ne 0 ]; then
-  echo "❌ Build failed"
-  exit 1
-fi
+  if command -v gtimeout > /dev/null 2>&1; then
+    gtimeout "$timeout_seconds" "$@"
+  elif command -v perl > /dev/null 2>&1; then
+    perl -e 'alarm shift @ARGV; exec @ARGV' "$timeout_seconds" "$@"
+  else
+    "$@"
+  fi
+}
 
-echo "✅ All pre-push checks passed! Ready to push."
+# Helper function: Run command with minimal output
+run_silent() {
+  local step_name=$1
+  local output_file=$2
+  shift 2
+
+  if "$@" > "$output_file" 2>&1; then
+    echo "✔ $step_name"
+    return 0
+  else
+    echo "✘ $step_name (log: $output_file)"
+    exit 1
+  fi
+}
+
+# 1. Full lint check
+run_silent "lint" "$LOG_PREFIX-lint.log" \
+  run_with_timeout 120 pnpm -r --filter './packages/**' run lint
+
+# 2. Format check (currently disabled due to oxfmt bug)
+# run_silent "format-check" "$LOG_PREFIX-format.log" \
+#   run_with_timeout 60 pnpm -r --filter './packages/**' run format
+
+# 3. Test suite (extended timeout for full suite)
+# Uses --run flag to prevent watch mode and orphan processes
+run_silent "tests" "$LOG_PREFIX-tests.log" \
+  run_with_timeout 600 pnpm -r --filter './packages/**' run test -- --run
+
+# 4. Production build
+run_silent "build" "$LOG_PREFIX-build.log" \
+  run_with_timeout 300 pnpm build
+
+echo "✅ Ready to push"

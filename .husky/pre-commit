@@ -1,7 +1,11 @@
 #!/bin/sh
 
+# Pre-commit hook - Fast checks only (no tests)
+# Tests run in pre-push for full CI validation
+echo "🚀 Running pre-commit checks..."
+
 # Check for Chinese characters in staged code files
-echo "Checking for Chinese characters in code..."
+echo "🔍 Checking for Chinese characters in code..."
 staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|json|yaml|yml)$' || true)
 
 if [ -n "$staged_files" ]; then
@@ -18,7 +22,7 @@ if [ -n "$staged_files" ]; then
   done
 
   if [ -n "$chinese_files" ]; then
-    echo "Error: Chinese characters detected in code files:"
+    echo "❌ Chinese characters detected in code files:"
     echo "$chinese_files"
     echo ""
     echo "Code comments, variable names, and strings must be in English."
@@ -27,19 +31,17 @@ if [ -n "$staged_files" ]; then
   fi
 fi
 
-echo "No Chinese characters in code files"
+echo "✅ No Chinese characters in code files"
 
-# Run lint on all packages
-echo "Running linter..."
+# Run lint on all packages (fast)
+echo "🔧 Running linter..."
 pnpm -r --filter './packages/**' run lint || exit 1
 
 # Run format check
 # NOTE: Format check disabled due to oxfmt bug with type guard return types
 # https://github.com/oxc-project/oxc/issues/...
 # The formatter strips `event is TransactionEvent` to just `{`
-# echo "Checking code formatting..."
+# echo "🎨 Checking code formatting..."
 # pnpm -r --filter './packages/**' run format || exit 1
 
-# Run tests (use --run flag to avoid watch mode)
-echo "Running tests..."
-pnpm -r --filter './packages/**' run test -- --run || exit 1
+echo "✅ All pre-commit checks passed!"

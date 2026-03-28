@@ -5,6 +5,26 @@
  */
 
 import { defineConfig } from 'vitest/config';
+import path from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+
+// Load test environment variables from .env.test (project root)
+const envTestPath = path.resolve(import.meta.dirname, '../../.env.test');
+if (existsSync(envTestPath)) {
+  const envContent = readFileSync(envTestPath, 'utf-8');
+  envContent.split('\n').forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && valueParts.length > 0) {
+        const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+}
 
 export default defineConfig({
   test: {
@@ -34,13 +54,5 @@ export default defineConfig({
     // Setup files
     setupFiles: [],
 
-    // Environment variables for tests
-    env: {
-      TEST_DISCORD_PUBLIC_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      TEST_DISCORD_BOT_TOKEN: 'test-bot-token',
-      TEST_DISCORD_APPLICATION_ID: '123456789012345678',
-      TEST_FIRELA_BOT_API_KEY: 'test-api-key-12345',
-      TEST_SETUP_PASSWORD: 'test-setup-password',
-    },
   },
 });
