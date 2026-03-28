@@ -17,19 +17,25 @@ vi.mock("../../connection/mode-selector.js", () => ({
   selectConnectionMode: vi.fn(),
 }))
 
-// Mock the GoCardlessRelayClient
+// Mock the GoCardlessRelayClient -- capture constructor arguments
 vi.mock("../../relay/gocardless-client.js", () => ({
-  GoCardlessRelayClient: vi.fn().mockImplementation(() => ({
-    getInstitutions: vi.fn(),
-    createRequisition: vi.fn(),
-    getRequisition: vi.fn(),
-    getAccounts: vi.fn(),
-    getTransactions: vi.fn(),
-    getMode: vi.fn().mockReturnValue("relay"),
-  })),
+  GoCardlessRelayClient: vi.fn().mockImplementation(function (
+    this: any,
+    ...args: any[]
+  ) {
+    return {
+      getInstitutions: vi.fn(),
+      createRequisition: vi.fn(),
+      getRequisition: vi.fn(),
+      getAccounts: vi.fn(),
+      getTransactions: vi.fn(),
+      getMode: vi.fn().mockReturnValue("relay"),
+    }
+  }),
 }))
 
 import { selectConnectionMode } from "../../connection/mode-selector.js"
+import { GoCardlessRelayClient } from "../../relay/gocardless-client.js"
 
 describe("createGoCardlessAdapter", () => {
   let mockContext: RuntimeContext
@@ -51,6 +57,14 @@ describe("createGoCardlessAdapter", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
+      },
+      storage: {
+        storeGoCardlessToken: vi.fn().mockResolvedValue(undefined),
+        getGoCardlessToken: vi.fn().mockResolvedValue(null),
+        deleteGoCardlessToken: vi.fn().mockResolvedValue(undefined),
+        storeRelayToken: vi.fn().mockResolvedValue(undefined),
+        getRelayToken: vi.fn().mockResolvedValue(null),
+        deleteRelayToken: vi.fn().mockResolvedValue(undefined),
       },
     } as any
   })
@@ -94,6 +108,38 @@ describe("createGoCardlessAdapter", () => {
 
       await expect(createGoCardlessAdapter(mockContext)).rejects.toThrow(
         "Relay mode selected but relay configuration is missing",
+      )
+    })
+
+    it("passes context.storage to GoCardlessRelayClient", async () => {
+      vi.mocked(selectConnectionMode).mockResolvedValueOnce({
+        mode: "relay",
+        reason: "Relay URL and API key configured",
+      })
+
+      await createGoCardlessAdapter(mockContext)
+
+      expect(GoCardlessRelayClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relayUrl: "https://relay.firela.io",
+          relayApiKey: "test-api-key",
+        }),
+        mockContext.logger,
+        mockContext.storage,
+      )
+    })
+
+    it("throws error when storage is not configured", async () => {
+      vi.mocked(selectConnectionMode).mockResolvedValueOnce({
+        mode: "relay",
+        reason: "Relay URL and API key configured",
+      })
+
+      // Remove storage from context
+      delete (mockContext as any).storage
+
+      await expect(createGoCardlessAdapter(mockContext)).rejects.toThrow(
+        "Token storage required for GoCardless",
       )
     })
   })
