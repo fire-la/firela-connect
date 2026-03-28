@@ -16,11 +16,22 @@ describe("env-loader", () => {
   const originalEnv = { ...process.env }
 
   beforeEach(() => {
-    // Clear any test env vars
+    // Clear all env-loader managed vars (including those from .env.test)
     delete process.env.FIRELA_RELAY_URL
     delete process.env.FIRELA_RELAY_API_KEY
     delete process.env.FIRELA_RELAY_TIMEOUT
     delete process.env.FIRELA_RELAY_MAX_RETRIES
+    delete process.env.PORT
+    delete process.env.HOST
+    delete process.env.PLAID_CLIENT_ID
+    delete process.env.PLAID_SECRET
+    delete process.env.PLAID_ENVIRONMENT
+    delete process.env.GMAIL_CLIENT_ID
+    delete process.env.GMAIL_CLIENT_SECRET
+    delete process.env.PUBLIC_URL
+    delete process.env.TLS_ENABLED
+    delete process.env.TLS_KEY_PATH
+    delete process.env.TLS_CERT_PATH
   })
 
   afterEach(() => {

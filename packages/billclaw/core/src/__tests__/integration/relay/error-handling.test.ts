@@ -228,7 +228,7 @@ describe.sequential("Error Handling (Integration)", () => {
     })
 
     it(
-      "should reject request with invalid API key against real server",
+      "should return error response for invalid API key against real server",
       async () => {
         if (!shouldRunTests) return
 
@@ -240,26 +240,21 @@ describe.sequential("Error Handling (Integration)", () => {
           testLogger,
         )
 
-        try {
-          await badClient.request("/api/open-banking/plaid/link/token/create", {
-            method: "POST",
-            body: JSON.stringify({
-              client_name: "Test",
-              language: "en",
-              country_codes: ["US"],
-              user: { client_user_id: "test" },
-            }),
-          })
-          // Should not reach here
-          expect(true).toBe(false)
-        } catch (error) {
-          expect(error).toBeDefined()
-          // Parse and verify error type
-          const parsedError = parseRelayError(error as Error, {
-            endpoint: "/api/open-banking/plaid/link/token/create",
-          })
-          expect(parsedError).toBeInstanceOf(RelayError)
-        }
+        const result = await badClient.request("/api/open-banking/plaid/link/token/create", {
+          method: "POST",
+          body: JSON.stringify({
+            client_name: "Test",
+            language: "en",
+            country_codes: ["US"],
+            user: { client_user_id: "test" },
+          }),
+        })
+
+        // API returns error JSON object instead of throwing
+        expect(result).toBeDefined()
+        expect((result as Record<string, unknown>).error).toBeDefined()
+        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
+        expect(errorObj.code).toBe("UNAUTHORIZED")
       },
       30000,
     )

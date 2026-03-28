@@ -364,6 +364,23 @@ describe("env-loader", () => {
 
   describe("loadEnvOverrides", () => {
     it("should load all environment variable mappings", () => {
+      // Clear all env vars first to ensure clean state
+      delete process.env.PORT
+      delete process.env.HOST
+      delete process.env.PLAID_CLIENT_ID
+      delete process.env.PLAID_SECRET
+      delete process.env.PLAID_ENVIRONMENT
+      delete process.env.GMAIL_CLIENT_ID
+      delete process.env.GMAIL_CLIENT_SECRET
+      delete process.env.FIRELA_RELAY_URL
+      delete process.env.FIRELA_RELAY_API_KEY
+      delete process.env.FIRELA_RELAY_TIMEOUT
+      delete process.env.FIRELA_RELAY_MAX_RETRIES
+      delete process.env.PUBLIC_URL
+      delete process.env.TLS_ENABLED
+      delete process.env.TLS_KEY_PATH
+      delete process.env.TLS_CERT_PATH
+
       process.env.PORT = "3000"
       process.env.HOST = "example.com"
       process.env.PLAID_CLIENT_ID = "test-id"
@@ -394,6 +411,14 @@ describe("env-loader", () => {
       delete process.env.PLAID_ENVIRONMENT
       delete process.env.GMAIL_CLIENT_ID
       delete process.env.GMAIL_CLIENT_SECRET
+      delete process.env.FIRELA_RELAY_URL
+      delete process.env.FIRELA_RELAY_API_KEY
+      delete process.env.FIRELA_RELAY_TIMEOUT
+      delete process.env.FIRELA_RELAY_MAX_RETRIES
+      delete process.env.PUBLIC_URL
+      delete process.env.TLS_ENABLED
+      delete process.env.TLS_KEY_PATH
+      delete process.env.TLS_CERT_PATH
 
       const overrides = loadEnvOverrides()
 
