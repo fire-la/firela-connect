@@ -20,11 +20,11 @@ async function runConnect(_context: CliContext): Promise<void> {
  * Main connect command definition
  *
  * This command serves as a parent for provider-specific subcommands.
- * Actual handling is done by subcommands (plaid, gmail, status).
+ * Actual handling is done by subcommands (plaid, gmail, gocardless, status).
  */
 export const connectCommand: CliCommand = {
   name: "connect",
-  description: "Connect OAuth providers (Plaid, Gmail)",
+  description: "Connect OAuth providers (Plaid, Gmail, GoCardless)",
   arguments: "[provider]",
   handler: runConnect,
 }
@@ -38,7 +38,7 @@ export const connectCommand: CliCommand = {
 export function registerConnectSubcommands(program: Command): void {
   const connectCmd = program
     .command("connect")
-    .description("Connect OAuth providers (Plaid, Gmail)")
+    .description("Connect OAuth providers (Plaid, Gmail, GoCardless)")
 
   // Plaid subcommand
   connectCmd
@@ -80,6 +80,32 @@ export function registerConnectSubcommands(program: Command): void {
       try {
         await runGmailConnect(context, {
           email: options.email,
+          timeout: parseInt(options.timeout, 10),
+        })
+      } catch (error) {
+        runtime.logger.error("Command failed:", error)
+        process.exit(1)
+      }
+    })
+
+  // GoCardless subcommand
+  connectCmd
+    .command("gocardless")
+    .description("Connect a bank account via GoCardless (relay mode only)")
+    .option("-i, --institution <id>", "GoCardless institution ID (from discover command)")
+    .option("-n, --name <name>", "Account name", "GoCardless Bank Account")
+    .option("-t, --timeout <minutes>", "OAuth timeout in minutes", "5")
+    .action(async (options) => {
+      const { createRuntimeContext } = await import("../runtime/context.js")
+      const { runGoCardlessConnect } = await import("./connect/gocardless.js")
+
+      const runtime = createRuntimeContext()
+      const context: CliContext = { runtime, program }
+
+      try {
+        await runGoCardlessConnect(context, {
+          institution: options.institution,
+          name: options.name,
           timeout: parseInt(options.timeout, 10),
         })
       } catch (error) {
