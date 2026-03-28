@@ -143,7 +143,7 @@ export async function createGoCardlessAdapter(
         relayApiKey: config.relay.apiKey,
       },
       context.logger,
-      context.storage as GoCardlessTokenStorage,
+      context.storage as unknown as GoCardlessTokenStorage,
     )
   }
 
