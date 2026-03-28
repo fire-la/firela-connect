@@ -29,6 +29,21 @@ export {
   type PlaidAccount,
   type PlaidSyncResult,
 } from "./sources/plaid/plaid-sync.js"
+
+// Plaid adapter (dual mode: direct + relay)
+export {
+  createPlaidAdapter,
+  type PlaidSyncAdapter,
+} from "./sources/plaid/plaid-adapter.js"
+export { DirectPlaidClient, RelayPlaidClient } from "./sources/plaid/plaid-adapter.js"
+
+// GoCardless adapter (relay only)
+export {
+  createGoCardlessAdapter,
+  type GoCardlessSyncAdapter,
+} from "./sources/gocardless/gocardless-adapter.js"
+
+// Gmail source
 export {
   fetchGmailBills,
   fetchGmailEmails,
