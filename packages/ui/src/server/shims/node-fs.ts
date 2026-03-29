@@ -30,6 +30,21 @@ export const promises = {
   rmdir: () => notAvailable("rmdir"),
 }
 
+// Top-level exports for "node:fs/promises" (used by core dist imports)
+// These are destructured imports like: import { readFile } from "node:fs/promises"
+export const readFile = () => notAvailable("readFile")
+export const writeFile = () => notAvailable("writeFile")
+export const mkdir = () => notAvailable("mkdir")
+export const readdir = () => notAvailable("readdir")
+export const stat = () => notAvailable("stat")
+export const unlink = () => notAvailable("unlink")
+export const access = () => notAvailable("access")
+export const chmod = () => notAvailable("chmod")
+export const copyFile = () => notAvailable("copyFile")
+export const rename = () => notAvailable("rename")
+export const rmdir = () => notAvailable("rmdir")
+export const appendFile = () => notAvailable("appendFile")
+
 export const readFileSync = () => notAvailable("readFileSync")
 export const writeFileSync = () => notAvailable("writeFileSync")
 export const existsSync = () => false

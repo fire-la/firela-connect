@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.5
+
+### Patch Changes
+
+- Patch release with bug fixes and deployment improvements
+
 ## 0.5.4
 
 ### Patch Changes

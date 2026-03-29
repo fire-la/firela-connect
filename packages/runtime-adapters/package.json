@@ -1,6 +1,6 @@
 {
   "name": "@firela/runtime-adapters",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Platform-agnostic runtime adapters for Cloudflare Workers, Node.js, and edge runtimes",
   "type": "module",
   "main": "./dist/index.js",

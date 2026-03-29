@@ -49,7 +49,7 @@ jobs:
 
       - name: Publish packages
         run: |
-          for package in packages/*; do
+          for package in packages/runtime-adapters packages/billclaw/core packages/billclaw/cli; do
             if [ -f "$package/package.json" ]; then
               cd "$package"
               PACKAGE_NAME=$(node -p "require('./package.json').name")
