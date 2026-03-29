@@ -128,3 +128,12 @@ export {
   mapGoCardlessError,
   parseGoCardlessRelayError,
 } from "./gocardless-errors.js"
+
+// Webhook types (relay webhook forwarding)
+export type {
+  WebhookCallbackRegistration,
+  RelayHealthCheckRequestBody,
+  RelayHealthCheckResponse,
+  RelayJwkProxyResponse,
+  RelayWebhookForwarding,
+} from "./types.js"
