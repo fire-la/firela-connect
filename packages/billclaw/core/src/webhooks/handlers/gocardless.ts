@@ -1,11 +1,17 @@
 /**
  * GoCardless webhook handler
  *
- * Processes webhooks from GoCardless:
- * - mandate events (created, cancelled)
- * - payment events (paid_out)
+ * NOTE: GoCardless Bank Account Data API (formerly Nordigen) is POLL-ONLY.
+ * There are NO webhook notifications for new transactions, account updates,
+ * or requisition status changes. This handler exists as a placeholder for:
+ * - Future-proofing if GoCardless adds webhook support to Bank Account Data
+ * - Direct Debit product webhooks (mandates/payments) if used in future
  *
- * NOTE: This is a stub implementation for future use.
+ * For transaction sync, use polling via the transactions endpoint:
+ * GET /api/v2/accounts/{id}/transactions/
+ *
+ * The existing handler structure handles GoCardless Direct Debit events
+ * (mandates, payments) which are a SEPARATE product from Bank Account Data.
  */
 
 import type {
@@ -15,9 +21,7 @@ import type {
 } from "../types.js"
 import type { Logger } from "../../errors/errors.js"
 
-/**
- * GoCardless webhook body structure
- */
+/** GoCardless Direct Debit webhook body structure (NOT Bank Account Data) */
 interface GoCardlessWebhookBody {
   action: string
   resource_type: string
@@ -38,10 +42,12 @@ export interface GoCardlessWebhookHandlerConfig {
 }
 
 /**
- * GoCardless webhook handler (stub)
+ * GoCardless webhook handler (stub for Direct Debit events)
  *
- * Handles inbound webhooks from GoCardless.
- * This is a placeholder implementation for future use.
+ * Handles inbound webhooks from GoCardless Direct Debit product.
+ * Bank Account Data API does NOT send webhooks - it is poll-only.
+ * This handler is a placeholder for potential future Direct Debit integration
+ * or if GoCardless adds webhook support to Bank Account Data.
  */
 export class GoCardlessWebhookHandler implements WebhookHandler {
   readonly source = "gocardless" as const
@@ -56,7 +62,10 @@ export class GoCardlessWebhookHandler implements WebhookHandler {
       const body = request.body as GoCardlessWebhookBody
       const action = body.action
 
-      this.logger.info?.(`Received GoCardless webhook: ${action}`)
+      this.logger.info?.(
+        `Received GoCardless webhook: ${action}. ` +
+          `Note: Bank Account Data API is poll-only. This may be a Direct Debit event.`,
+      )
 
       // Stub implementation
       switch (action) {
@@ -92,6 +101,10 @@ export class GoCardlessWebhookHandler implements WebhookHandler {
     return true
   }
 
+  /**
+   * Direct Debit event types only.
+   * Bank Account Data has no webhook events.
+   */
   getSupportedEvents(): string[] {
     return [
       "mandates.created",
