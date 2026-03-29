@@ -47,3 +47,72 @@ export interface RelayApiResponse<T> {
     message: string
   }
 }
+
+/**
+ * Webhook callback registration (piggybacked on health check)
+ */
+export interface WebhookCallbackRegistration {
+  /** BillClaw instance callback URL for webhook forwarding */
+  callback_url: string
+  /** Account ID for routing webhooks to the correct instance */
+  account_id: string
+}
+
+/**
+ * Extended health check request body (backward-compatible)
+ *
+ * The health check endpoint accepts an optional body with callback_url.
+ * If provided, relay registers the callback URL for webhook forwarding.
+ * If omitted, relay performs health check only (backward-compatible).
+ */
+export interface RelayHealthCheckRequestBody {
+  callback_url?: string
+  account_id?: string
+}
+
+/**
+ * Health check response (extended with webhook registration status)
+ */
+export interface RelayHealthCheckResponse {
+  status: 'ok'
+  version: string
+  webhook_registered?: boolean
+}
+
+/**
+ * Relay JWK proxy response
+ *
+ * Proxies Plaid's /webhook_verification_key/get response.
+ */
+export interface RelayJwkProxyResponse {
+  key: {
+    kid: string
+    kty: string
+    alg: string
+    use: string
+    crv: string
+    x: string
+    y: string
+    created_at: number
+    expired_at: number | null
+  }
+}
+
+/**
+ * Relay webhook forwarding specification
+ *
+ * Describes how relay forwards webhooks to BillClaw instances.
+ */
+export interface RelayWebhookForwarding {
+  /** Original provider (e.g., 'plaid') */
+  provider: string
+  /** Raw body bytes forwarded without re-serialization */
+  raw_body: string
+  /** Original headers preserved from provider */
+  headers: Record<string, string>
+  /** Relay metadata */
+  relay_meta?: {
+    forwarded_at: string
+    account_id: string
+  }
+}
