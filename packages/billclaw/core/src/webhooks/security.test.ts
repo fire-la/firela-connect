@@ -33,13 +33,13 @@ describe("PlaidWebhookVerifier", () => {
   let logger: Logger
   let fetchVerificationKey: ReturnType<typeof createMockFetchKey>
 
-  const fakeJWK = { kty: "EC", crv: "P-256", x: "test", y: "test" }
+  const fakeJWK = { kty: "EC", crv: "P-256", x: "test", y: "test", kid: "key-1" }
   const fakePublicKey = Symbol("publicKey") as unknown as Awaited<
     ReturnType<typeof jose.importJWK>
   >
   const fakePayload = {
     request_body_sha256:
-      "a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
+      "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f",
     iat: Math.floor(Date.now() / 1000),
   }
 
@@ -146,7 +146,7 @@ describe("PlaidWebhookVerifier", () => {
     })
 
     it("Test 7: fetches new key when kid changes", async () => {
-      const newJWK = { kty: "EC", crv: "P-256", x: "new", y: "new" }
+      const newJWK = { kty: "EC", crv: "P-256", x: "new", y: "new", kid: "key-2" }
 
       mockDecodeProtectedHeader.mockReturnValue({ kid: "key-1", alg: "ES256" })
       fetchVerificationKey.mockResolvedValue({ key: fakeJWK })
@@ -169,6 +169,8 @@ describe("PlaidWebhookVerifier", () => {
     })
 
     it("Test 8: fetches new key when cache TTL expires (>1 hour)", async () => {
+      vi.useFakeTimers()
+
       mockDecodeProtectedHeader.mockReturnValue({ kid: "key-1", alg: "ES256" })
       fetchVerificationKey.mockResolvedValue({ key: fakeJWK })
       mockImportJWK.mockResolvedValue(fakePublicKey)
@@ -187,6 +189,8 @@ describe("PlaidWebhookVerifier", () => {
       // Second call - cache should be expired, should re-fetch
       await verifier.verify("Hello, World!", "jwt-2")
       expect(fetchVerificationKey).toHaveBeenCalledTimes(2)
+
+      vi.useRealTimers()
     })
   })
 })

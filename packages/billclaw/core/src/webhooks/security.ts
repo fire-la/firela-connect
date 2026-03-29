@@ -11,6 +11,7 @@
  */
 
 import * as crypto from "node:crypto"
+import * as jose from "jose"
 import type { Logger } from "../errors/errors.js"
 import type { WebhookDeduplication } from "./deduplication.js"
 
@@ -198,5 +199,150 @@ export function createWebhookSecurity(
     deduplication,
     logger,
   })
+}
+
+/**
+ * Cached JWK entry for Plaid webhook verification
+ */
+interface CachedJWK {
+  key: jose.JWK
+  expiresAt: number | null
+  fetchedAt: number
+}
+
+/** JWK cache TTL: 1 hour */
+const JWK_CACHE_TTL = 60 * 60 * 1000
+
+/**
+ * Plaid webhook verifier using ES256 JWT with JWK
+ *
+ * Verifies Plaid webhook signatures using:
+ * 1. ES256 JWT from Plaid-Verification header
+ * 2. JWK fetched from Plaid's verification key endpoint
+ * 3. SHA-256 body hash comparison (request_body_sha256 claim)
+ * 4. Timing-safe comparison to prevent timing attacks
+ *
+ * JWK caching:
+ * - Caches fetched keys with 1-hour TTL
+ * - Respects expired_at from key response
+ * - Re-fetches when kid changes or cache expires
+ */
+export class PlaidWebhookVerifier {
+  private cachedKey: CachedJWK | null = null
+  private readonly logger: Logger
+  private readonly fetchVerificationKey: (
+    kid: string,
+  ) => Promise<{ key: jose.JWK }>
+
+  constructor(
+    logger: Logger,
+    fetchVerificationKey: (kid: string) => Promise<{ key: jose.JWK }>,
+  ) {
+    this.logger = logger
+    this.fetchVerificationKey = fetchVerificationKey
+  }
+
+  /**
+   * Verify a Plaid webhook JWT against raw body
+   *
+   * @param rawBody - Raw request body string
+   * @param verificationHeader - Plaid-Verification header value (JWT)
+   * @returns True if verification passes, false otherwise
+   */
+  async verify(rawBody: string, verificationHeader: string): Promise<boolean> {
+    try {
+      // Decode JWT header to extract kid and alg
+      const protectedHeader = jose.decodeProtectedHeader(verificationHeader)
+      const kid = (protectedHeader as Record<string, unknown>)?.kid as
+        | string
+        | undefined
+      const alg = (protectedHeader as Record<string, unknown>)?.alg as
+        | string
+        | undefined
+
+      if (alg !== "ES256" || !kid) {
+        this.logger.warn?.(
+          `Invalid Plaid JWT: alg=${alg}, kid=${kid ?? "missing"}`,
+        )
+        return false
+      }
+
+      // Fetch and cache JWK
+      const jwk = await this.getOrFetchKey(kid)
+      const publicKey = await jose.importJWK(jwk, "ES256")
+
+      // Verify JWT signature and claims (maxTokenAge rejects stale JWTs)
+      const { payload } = await jose.jwtVerify(
+        verificationHeader,
+        publicKey,
+        { maxTokenAge: "5m" },
+      )
+
+      // Extract claimed body hash
+      const claimedHash = (payload as Record<string, unknown>)
+        .request_body_sha256 as string | undefined
+
+      if (!claimedHash) {
+        this.logger.warn?.("Plaid JWT missing request_body_sha256 claim")
+        return false
+      }
+
+      // Compute actual body hash
+      const bodyHash = crypto
+        .createHash("sha256")
+        .update(rawBody)
+        .digest("hex")
+
+      // Timing-safe comparison of hex hashes
+      return crypto.timingSafeEqual(
+        Buffer.from(bodyHash, "hex"),
+        Buffer.from(claimedHash, "hex"),
+      )
+    } catch (error) {
+      this.logger.error?.("Plaid webhook verification failed:", error)
+      return false
+    }
+  }
+
+  /**
+   * Get cached JWK or fetch a new one
+   *
+   * Cache invalidation:
+   * - kid changes: re-fetch
+   * - expired_at from key response exceeded: re-fetch
+   * - fetchedAt + JWK_CACHE_TTL exceeded: re-fetch
+   */
+  private async getOrFetchKey(kid: string): Promise<jose.JWK> {
+    // Check cache validity
+    if (this.cachedKey) {
+      const now = Date.now()
+      const isExpired =
+        this.cachedKey.expiresAt !== null &&
+        now > this.cachedKey.expiresAt * 1000
+      const isStale = now - this.cachedKey.fetchedAt > JWK_CACHE_TTL
+
+      if (!isExpired && !isStale) {
+        const cachedKid = (this.cachedKey.key as Record<string, unknown>)
+          .kid as string | undefined
+        if (cachedKid === kid) {
+          return this.cachedKey.key
+        }
+      }
+    }
+
+    // Fetch fresh key
+    const response = await this.fetchVerificationKey(kid)
+    const key = response.key
+    const expiredAt = (key as Record<string, unknown>).expired_at as
+      | number
+      | undefined
+
+    this.cachedKey = {
+      key,
+      expiresAt: expiredAt ?? null,
+      fetchedAt: Date.now(),
+    }
+    return key
+  }
 }
 
