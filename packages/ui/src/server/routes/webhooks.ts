@@ -8,49 +8,110 @@
  */
 
 import { Hono } from "hono"
+import { PlaidWebhookVerifier } from "@firela/billclaw-core"
 import type { Env } from "../index.js"
 
 export const webhookRoutes = new Hono<{ Bindings: Env }>()
+
+/**
+ * Create a PlaidWebhookVerifier instance with stub JWK fetch.
+ *
+ * TODO(22.1-03): Wire to relay JWK proxy endpoint for production key fetching.
+ */
+function createPlaidVerifier(): PlaidWebhookVerifier {
+  return new PlaidWebhookVerifier(
+    {
+      debug: (...args: unknown[]) => console.debug("[webhook:plaid]", ...args),
+      info: (...args: unknown[]) => console.info("[webhook:plaid]", ...args),
+      warn: (...args: unknown[]) => console.warn("[webhook:plaid]", ...args),
+      error: (...args: unknown[]) => console.error("[webhook:plaid]", ...args),
+    },
+    async (kid: string) => {
+      // TODO(22.1-03): Wire to relay JWK proxy endpoint
+      console.warn(
+        `[webhook:plaid] JWK fetch not wired — cannot verify kid=${kid}. Implement in Plan 03.`,
+      )
+      throw new Error("JWK fetch not implemented — relay JWK proxy pending (Plan 03)")
+    },
+  )
+}
 
 /**
  * POST /webhook/plaid
  *
  * Receive and process a Plaid webhook.
  *
- * This endpoint receives Plaid webhooks and processes them.
- * For Cloudflare Workers, the actual verification and sync triggering
- * is handled by the cloudflare-worker service.
+ * Verification flow:
+ * 1. Read raw body via c.req.raw.text() (preserves bytes for SHA-256 hash)
+ * 2. Parse JSON manually (graceful 400 on invalid JSON)
+ * 3. When Plaid-Verification header present: verify JWT signature via PlaidWebhookVerifier
+ * 4. When Plaid-Verification header absent: reject in production, warn in sandbox
  *
  * Request body: Plaid webhook JSON payload
  * Headers:
- * - Plaid-Verification: JWT signature
+ * - Plaid-Verification: JWT signature for webhook authenticity
  * - Plaid-Timestamp: Timestamp for replay protection
  *
  * Response:
  * - 200: Webhook received and will be processed
- * - 400: Invalid payload
+ * - 400: Invalid payload (malformed JSON)
+ * - 401: Invalid signature or missing verification header in production
  * - 500: Server error
  */
 webhookRoutes.post("/plaid", async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}))
+    // Read raw body FIRST — required for SHA-256 body hash verification
+    const rawBody = await c.req.raw.text()
     const verificationHeader = c.req.header("Plaid-Verification")
     const timestampHeader = c.req.header("Plaid-Timestamp")
 
+    // Parse JSON manually after raw body access
+    let body: Record<string, unknown>
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      return c.json({ received: false, error: "Invalid JSON" }, 400)
+    }
+
     // Log webhook receipt for debugging
     console.log("[webhook] Received Plaid webhook:", {
-      webhookType: (body as Record<string, unknown>).webhook_type,
-      webhookCode: (body as Record<string, unknown>).webhook_code,
-      itemId: (body as Record<string, unknown>).item_id,
+      webhookType: body.webhook_type,
+      webhookCode: body.webhook_code,
+      itemId: body.item_id,
       hasVerification: !!verificationHeader,
       timestamp: timestampHeader,
     })
 
-    // TODO: Integrate with cloudflare-worker processPlaidWebhook for full verification
-    // For now, just acknowledge receipt
-    // The actual implementation would use:
-    // import { processPlaidWebhook } from "@firela/billclaw-cloudflare-worker/services/webhook"
-    // const result = await processPlaidWebhook(c.env, rawBody, verificationHeader, c.executionCtx)
+    // Plaid JWT verification
+    if (verificationHeader) {
+      const verifier = createPlaidVerifier()
+      const isValid = await verifier.verify(rawBody, verificationHeader)
+
+      if (!isValid) {
+        console.warn("[webhook] Plaid webhook rejected: invalid signature")
+        return c.json(
+          { received: false, error: "Invalid signature" },
+          401,
+        )
+      }
+    } else {
+      // No verification header — reject in production, allow in sandbox with warning
+      console.warn(
+        "[webhook] Plaid webhook received without verification header",
+      )
+
+      if (c.env.PLAID_ENV !== "sandbox") {
+        return c.json(
+          { received: false, error: "Missing verification header" },
+          401,
+        )
+      }
+
+      // Sandbox mode: allow through with warning
+      console.warn(
+        "[webhook] Plaid webhook accepted without verification (sandbox mode)",
+      )
+    }
 
     return c.json({
       received: true,
@@ -73,29 +134,43 @@ webhookRoutes.post("/plaid", async (c) => {
  *
  * Receive and process a GoCardless webhook.
  *
+ * Note: GoCardless Bank Account Data is a poll-only API — webhooks are not
+ * expected for transaction data. This endpoint remains as a placeholder for
+ * future-proofing (e.g., GoCardless Direct Debit is a separate product).
+ *
  * Request body: GoCardless webhook JSON payload
  * Headers:
- * - Webhook-Signature: HMAC signature
+ * - Webhook-Signature: HMAC signature (for future Direct Debit verification)
  *
  * Response:
  * - 200: Webhook received
- * - 400: Invalid payload
+ * - 400: Invalid payload (malformed JSON)
  * - 500: Server error
  */
 webhookRoutes.post("/gocardless", async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}))
+    // Read raw body FIRST — required for future HMAC signature verification
+    const rawBody = await c.req.raw.text()
     const signatureHeader = c.req.header("Webhook-Signature")
+
+    // Parse JSON manually after raw body access
+    let body: Record<string, unknown>
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      return c.json({ received: false, error: "Invalid JSON" }, 400)
+    }
 
     // Log webhook receipt for debugging
     console.log("[webhook] Received GoCardless webhook:", {
       hasSignature: !!signatureHeader,
-      events: Array.isArray((body as Record<string, unknown>).events)
-        ? ((body as Record<string, unknown>).events as unknown[]).length
+      events: Array.isArray(body.events)
+        ? (body.events as unknown[]).length
         : 0,
     })
 
     // TODO: Implement GoCardless webhook verification and processing
+    // GoCardless Bank Account Data is poll-only — webhooks not expected
     // For now, just acknowledge receipt
 
     return c.json({
