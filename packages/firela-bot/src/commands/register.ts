@@ -43,14 +43,14 @@ const commands: ApplicationCommand[] = [
     name: 'chat',
     description: 'Chat with Firela Bot',
     description_localizations: {
-      'zh-CN': '与 Firela Bot 对话',
+      'zh-CN': '\u4E0E Firela Bot \u5BF9\u8BDD',
     },
     options: [
       {
         name: 'message',
         description: 'Your message',
         description_localizations: {
-          'zh-CN': '你的消息',
+          'zh-CN': '\u4F60\u7684\u6D88\u606F',
         },
         type: 3, // STRING
         required: true,
@@ -61,7 +61,7 @@ const commands: ApplicationCommand[] = [
     name: 'help',
     description: 'Get help information',
     description_localizations: {
-      'zh-CN': '获取帮助信息',
+      'zh-CN': '\u83B7\u53D6\u5E2E\u52A9\u4FE1\u606F',
     },
   },
 ];
@@ -162,6 +162,8 @@ export async function deleteCommands(
 }
 
 // CLI entry point (for Node.js environment)
+// Declare process for Node.js CLI usage (tsconfig only includes @cloudflare/workers-types)
+declare const process: { argv: string[]; exit: (code: number) => never } | undefined;
 if (typeof process !== 'undefined' && process.argv[1]?.includes('register')) {
   const args = process.argv.slice(2);
   const command = args[0];

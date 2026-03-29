@@ -36,9 +36,9 @@ export class RelayError extends Error {
     const { message, type, code } = errorResponse.error;
     super(message);
     this.name = 'RelayError';
-    this.code = code;
+    this.code = code ?? 'unknown';
     this.type = type;
-    const messageKey = ERROR_CODE_TO_KEY[code];
+    const messageKey = code ? ERROR_CODE_TO_KEY[code] : undefined;
     this.userMessage = messageKey
       ? getMessage(messageKey, locale)
       : getMessage('errors.internal_error', locale, { message });
@@ -49,7 +49,7 @@ export class RelayError extends Error {
    *
    * Used when the response body doesn't contain a valid error JSON.
    */
-  static fromHttpStatus(status: number, body?: string, locale?: string): RelayError {
+  static fromHttpStatus(status: number, _body?: string, locale?: string): RelayError {
     let code = 'internal_error';
     let message = 'Unknown error';
 

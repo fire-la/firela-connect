@@ -15,8 +15,12 @@ export type SupportedLocale = 'en' | 'en-US' | 'en-GB' | 'zh-CN' | 'zh-TW';
 
 /**
  * Translation dictionary type
+ *
+ * Uses a mapped type to widen literal string types to `string`,
+ * so translations in any language can be assigned.
  */
-type TranslationDict = typeof en;
+type DeepStringify<T> = { [K in keyof T]: T[K] extends string ? string : DeepStringify<T[K]> };
+type TranslationDict = DeepStringify<typeof en>;
 
 /**
  * All translations keyed by locale
@@ -26,7 +30,7 @@ const translations: Record<string, TranslationDict> = {
   'en-US': en,
   'en-GB': en,
   'zh-CN': zhCN,
-  'zh-TW': zhCN, // Fall back to simplified Chinese for traditional
+  'zh-TW': zhCN, // Fall back to zh-CN for zh-TW
 };
 
 /**
@@ -72,7 +76,7 @@ export type MessageKey =
  *
  * @example
  * getMessage('errors.invalid_api_key', 'zh-CN')
- * // Returns: 'API Key 无效，请检查配置'
+ * // Returns: the zh-CN localized error message for invalid_api_key
  *
  * getMessage('errors.internal_error', 'en', { message: 'Timeout' })
  * // Returns: 'Service error: Timeout'

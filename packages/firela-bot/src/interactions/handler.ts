@@ -12,6 +12,7 @@ import {
   handleModalSubmit,
 } from './commands';
 import { InteractionType, type DiscordInteraction } from '../types/index.js';
+import type { Env } from '../types/env.js';
 
 /**
  * Handles incoming Discord Interaction requests

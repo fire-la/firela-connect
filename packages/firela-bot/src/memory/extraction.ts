@@ -6,7 +6,7 @@
  */
 
 import { storeMemory } from './d1';
-import type { MemoryEntry } from './types';
+import type { Env } from '../types/env.js';
 
 /**
  * Patterns that indicate a message is worth remembering long-term

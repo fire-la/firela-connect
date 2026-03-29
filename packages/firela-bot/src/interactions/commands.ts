@@ -17,6 +17,7 @@ import {
   ChatButtonCustomId,
   type DiscordInteraction,
 } from '../types/index.js';
+import type { Env } from '../types/env.js';
 
 // Re-export types for backward compatibility
 export {
@@ -336,7 +337,7 @@ export function handleButtonInteraction(
 /**
  * Show a modal for continuing the conversation
  */
-function showChatModal(interaction: DiscordInteraction, locale?: string): Response {
+function showChatModal(_interaction: DiscordInteraction, locale?: string): Response {
   return Response.json({
     type: InteractionResponseType.MODAL,
     data: {
