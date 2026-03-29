@@ -4,58 +4,8 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { createSyncRateLimiter } from "./sync-rate-limiter.js"
-import type { KVStore, Logger } from "../runtime/index.js"
-
-/**
- * In-memory KVStore for testing
- */
-class TestKVStore implements KVStore {
-  private store = new Map<string, { value: unknown; expiresAt?: number }>()
-
-  async get<T = unknown>(key: string): Promise<T | null> {
-    const entry = this.store.get(key)
-
-    if (!entry) {
-      return null
-    }
-
-    // Check TTL expiration
-    if (entry.expiresAt !== undefined && Date.now() > entry.expiresAt) {
-      this.store.delete(key)
-      return null
-    }
-
-    return entry.value as T
-  }
-
-  async set<T>(key: string, value: T, options?: { ttl?: number }): Promise<void> {
-    const entry: { value: unknown; expiresAt?: number } = { value }
-
-    if (options?.ttl !== undefined) {
-      entry.expiresAt = Date.now() + options.ttl
-    }
-
-    this.store.set(key, entry)
-  }
-
-  async delete(key: string): Promise<boolean> {
-    return this.store.delete(key)
-  }
-
-  /**
-   * Clear all entries (for testing)
-   */
-  clear(): void {
-    this.store.clear()
-  }
-
-  /**
-   * Get number of entries (for testing)
-   */
-  get size(): number {
-    return this.store.size
-  }
-}
+import type { Logger } from "../runtime/index.js"
+import { MemoryKVStore } from "@firela/runtime-adapters/node"
 
 /**
  * Test logger
@@ -68,11 +18,11 @@ const createTestLogger = (): Logger => ({
 })
 
 describe("SyncRateLimiter", () => {
-  let kv: TestKVStore
+  let kv: MemoryKVStore
   let logger: Logger
 
   beforeEach(() => {
-    kv = new TestKVStore()
+    kv = new MemoryKVStore()
     logger = createTestLogger()
   })
 
@@ -261,7 +211,7 @@ describe("SyncRateLimiter", () => {
 
 describe("createSyncRateLimiter", () => {
   it("should create limiter with default config", async () => {
-    const kv = new TestKVStore()
+    const kv = new MemoryKVStore()
     const logger = createTestLogger()
 
     const limiter = createSyncRateLimiter(kv, logger)
@@ -275,7 +225,7 @@ describe("createSyncRateLimiter", () => {
   })
 
   it("should merge custom config with defaults", async () => {
-    const kv = new TestKVStore()
+    const kv = new MemoryKVStore()
     const logger = createTestLogger()
 
     const limiter = createSyncRateLimiter(kv, logger, {

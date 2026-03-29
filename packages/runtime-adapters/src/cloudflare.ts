@@ -82,20 +82,20 @@ export class CloudflareCryptoAdapter implements CryptoAdapter {
  * ConsoleLogger - Console-based logger for Cloudflare Workers
  */
 export class ConsoleLogger implements Logger {
-  debug(message: string, ...args: unknown[]): void {
-    console.debug(message, ...args)
+  debug(...args: unknown[]): void {
+    console.debug(...args)
   }
 
-  info(message: string, ...args: unknown[]): void {
-    console.info(message, ...args)
+  info(...args: unknown[]): void {
+    console.info(...args)
   }
 
-  warn(message: string, ...args: unknown[]): void {
-    console.warn(message, ...args)
+  warn(...args: unknown[]): void {
+    console.warn(...args)
   }
 
-  error(message: string, ...args: unknown[]): void {
-    console.error(message, ...args)
+  error(...args: unknown[]): void {
+    console.error(...args)
   }
 }
 

@@ -47,7 +47,7 @@ describe('CloudflareKVStore', () => {
 
       await store.set('test-key', testData)
 
-      expect(mockKV.put).toHaveBeenCalledWith('test-key', JSON.stringify(testData), undefined)
+      expect(mockKV.put).toHaveBeenCalledWith('test-key', JSON.stringify(testData))
     })
 
     it('should convert TTL ms to seconds for expirationTtl', async () => {
