@@ -43,7 +43,7 @@ export function GmailConnectPage() {
           requestBody.sessionId = effectiveSessionId
         }
 
-        const res = await fetch("/oauth/gmail/exchange", {
+        const res = await fetch("/api/oauth/gmail/exchange", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestBody),

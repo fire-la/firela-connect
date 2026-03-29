@@ -18,7 +18,6 @@ export const configRoutes = new Hono<{ Bindings: Env }>()
 
 // KV key for config storage
 const CONFIG_KEY = "billclaw:config"
-const ACCOUNTS_KEY = "billclaw:accounts"
 
 /**
  * Mask sensitive configuration fields
@@ -151,64 +150,6 @@ configRoutes.put(
 )
 
 /**
- * GET /api/accounts
- * Lists all connected accounts from KV storage
- */
-configRoutes.get("/accounts", async (c) => {
-  try {
-    // Check if CONFIG KV namespace is available
-    if (!c.env.CONFIG) {
-      return c.json({
-        success: true,
-        data: [],
-        message: "KV storage not configured",
-      })
-    }
-
-    const accounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
-
-    // Transform accounts for UI display
-    const accountList = Array.isArray(accounts) ? accounts : []
-    const transformedAccounts = accountList.map((account: Record<string, unknown>) => ({
-      id: account.id,
-      name: account.name,
-      type: account.type,
-      enabled: account.enabled,
-      lastSync: account.lastSync || null,
-      lastStatus: account.lastStatus || null,
-      status:
-        account.type === "plaid"
-          ? account.plaidAccessToken
-            ? "connected"
-            : "disconnected"
-          : account.type === "gmail"
-            ? account.gmailRefreshToken
-              ? "connected"
-              : "disconnected"
-            : account.type === "gocardless"
-              ? account.gocardlessAccessToken
-                ? "connected"
-                : "disconnected"
-              : "unknown",
-    }))
-
-    return c.json({
-      success: true,
-      data: transformedAccounts,
-    })
-  } catch (error) {
-    return c.json(
-      {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to list accounts",
-      },
-      500,
-    )
-  }
-})
-
-/**
  * GET /api/system/status
  * Returns system status information
  */
@@ -231,54 +172,6 @@ configRoutes.get("/system/status", async (c) => {
           error instanceof Error
             ? error.message
             : "Failed to get system status",
-      },
-      500,
-    )
-  }
-})
-
-/**
- * DELETE /api/accounts/:id
- * Remove an account from configuration
- */
-configRoutes.delete("/accounts/:id", async (c) => {
-  try {
-    const { id } = c.req.param()
-
-    // Check if CONFIG KV namespace is available
-    if (!c.env.CONFIG) {
-      return c.json(
-        {
-          success: false,
-          error: "KV storage not configured",
-        },
-        400,
-      )
-    }
-
-    const accounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
-    const accountList: Record<string, unknown>[] = Array.isArray(accounts)
-      ? accounts
-      : []
-
-    const accountIndex = accountList.findIndex(
-      (account) => account.id === id,
-    )
-
-    if (accountIndex === -1) {
-      return c.json({ success: false, error: "Account not found" }, 404)
-    }
-
-    accountList.splice(accountIndex, 1)
-    await c.env.CONFIG.put(ACCOUNTS_KEY, JSON.stringify(accountList))
-
-    return c.body(null, 204)
-  } catch (error) {
-    return c.json(
-      {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to delete account",
       },
       500,
     )

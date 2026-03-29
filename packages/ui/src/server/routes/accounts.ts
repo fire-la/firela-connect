@@ -162,3 +162,62 @@ accountsRoutes.get("/", async (c) => {
     )
   }
 })
+
+/**
+ * DELETE /api/accounts/:id
+ * Remove an account from configuration
+ */
+accountsRoutes.delete(
+  "/:id",
+  zValidator("param", accountIdSchema),
+  async (c) => {
+    try {
+      const { id: accountId } = c.req.valid("param")
+
+      // Check if CONFIG KV namespace is available
+      if (!c.env.CONFIG) {
+        return c.json(
+          {
+            success: false,
+            error: "KV storage not configured",
+            errorCode: "KV_NOT_CONFIGURED",
+          },
+          500,
+        )
+      }
+
+      const storedAccounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
+      const accountList: Account[] = Array.isArray(storedAccounts)
+        ? storedAccounts
+        : []
+
+      const accountIndex = accountList.findIndex((acc) => acc.id === accountId)
+
+      if (accountIndex === -1) {
+        return c.json(
+          {
+            success: false,
+            error: "Account not found",
+            errorCode: "ACCOUNT_NOT_FOUND",
+          },
+          404,
+        )
+      }
+
+      accountList.splice(accountIndex, 1)
+      await c.env.CONFIG.put(ACCOUNTS_KEY, JSON.stringify(accountList))
+
+      return c.body(null, 204)
+    } catch (error) {
+      console.error("Error deleting account:", error)
+      return c.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to delete account",
+          errorCode: "INTERNAL_ERROR",
+        },
+        500,
+      )
+    }
+  },
+)

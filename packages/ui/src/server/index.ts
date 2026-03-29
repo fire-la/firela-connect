@@ -11,6 +11,7 @@ import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 import { authMiddleware } from "./middleware/auth.js"
+import { serviceToggleMiddleware } from "./middleware/service-toggle.js"
 
 /**
  * Environment bindings for Cloudflare Workers
@@ -49,7 +50,7 @@ app.use("*", logger())
 app.use(
   cors({
     origin: "*",
-    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
   }),
 )
@@ -85,6 +86,9 @@ app.route("/webhook", webhookRoutes)
 // Apply JWT authentication middleware to all /api/* routes
 app.use("/api/*", authMiddleware)
 
+// Apply service toggle middleware — blocks routes for disabled services (503)
+app.use("/api/*", serviceToggleMiddleware())
+
 // ============================================================================
 // API Routes
 // ============================================================================
@@ -110,6 +114,10 @@ app.route("/api/sync", syncRoutes)
 // Accounts routes (Plan 13.3.3-02)
 import { accountsRoutes } from "./routes/accounts.js"
 app.route("/api/accounts", accountsRoutes)
+
+// Config routes (config management, system status, test endpoints)
+import { configRoutes } from "./routes/config.js"
+app.route("/api", configRoutes)
 
 // ============================================================================
 // SPA Fallback - handled by Cloudflare Workers Assets
