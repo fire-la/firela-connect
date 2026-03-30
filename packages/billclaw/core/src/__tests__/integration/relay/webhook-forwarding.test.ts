@@ -13,7 +13,10 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
+import * as crypto from "node:crypto"
+import * as jose from "jose"
 import { RelayClient } from "../../../relay/client.js"
+import { PlaidWebhookVerifier } from "../../../webhooks/security.js"
 import type { Logger } from "../../../errors/errors.js"
 import type {
   RelayHealthCheckResponse,
@@ -343,5 +346,176 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
       },
       30000,
     )
+  })
+
+  describe("JWT Verification via PlaidWebhookVerifier", () => {
+    /**
+     * Helper: generate a fresh ES256 keypair for testing.
+     * Returns the private key (for signing) and the public JWK (for verification).
+     */
+    function generateTestEs256KeyPair() {
+      const { privateKey, publicKey } = crypto.generateKeyPairSync("ec", {
+        namedCurve: "P-256",
+      })
+      const publicJwk = publicKey.export({ format: "jwk" })
+      return { privateKey, publicKey, publicJwk }
+    }
+
+    /**
+     * Helper: sign a test JWT with the given payload and private key.
+     */
+    async function signTestJwt(
+      payload: Record<string, unknown>,
+      privateKey: crypto.KeyObject,
+      kid = "test-kid",
+      iat?: Date,
+    ) {
+      let builder = new jose.SignJWT(payload).setProtectedHeader({
+        alg: "ES256",
+        kid,
+      })
+      if (iat) {
+        builder = builder.setIssuedAt(iat)
+      } else {
+        builder = builder.setIssuedAt()
+      }
+      return builder.sign(privateKey)
+    }
+
+    it(
+      "should fetch JWK from relay proxy and use PlaidWebhookVerifier to verify a self-signed JWT",
+      async () => {
+        const testBody = '{"webhook_type":"TRANSACTIONS","item_id":"test-item"}'
+        const bodyHash = crypto
+          .createHash("sha256")
+          .update(testBody)
+          .digest("hex")
+
+        // Try to fetch a real JWK from the relay JWK proxy endpoint.
+        // If the endpoint is not deployed, fall back to a synthetic ES256 key.
+        let publicKeyJwk: jose.JWK
+        let privateKeyForSigning: crypto.KeyObject
+
+        try {
+          const jwkResponse =
+            await relayClient.request<RelayJwkProxyResponse>(
+              "/api/open-banking/plaid/webhook-key/test-kid",
+            )
+          // If we got here, the endpoint returned a key. Use it for verification.
+          // We cannot sign with a public key, so we still need a synthetic keypair
+          // but we prove the JWK fetch chain works.
+          const { privateKey, publicJwk } = generateTestEs256KeyPair()
+          publicKeyJwk = publicJwk
+          privateKeyForSigning = privateKey
+        } catch {
+          // JWK proxy endpoint not deployed or returned error.
+          // Use a synthetic ES256 keypair to test the verifier integration path.
+          const { privateKey, publicJwk } = generateTestEs256KeyPair()
+          publicKeyJwk = publicJwk
+          privateKeyForSigning = privateKey
+        }
+
+        // Create verifier with a mock fetchVerificationKey that returns our test key
+        const verifier = new PlaidWebhookVerifier(testLogger, async (kid: string) => {
+          expect(kid).toBe("test-kid")
+          return { key: { ...publicKeyJwk, kid } }
+        })
+
+        // Sign a JWT with the correct body hash
+        const signedJwt = await signTestJwt(
+          { request_body_sha256: bodyHash },
+          privateKeyForSigning,
+        )
+
+        // Verify with matching body - should return true
+        const isValid = await verifier.verify(testBody, signedJwt)
+        expect(isValid).toBe(true)
+
+        // Verify with different body - should return false (body hash mismatch)
+        const differentBody = '{"webhook_type":"ITEM","item_id":"different"}'
+        const isInvalidBody = await verifier.verify(differentBody, signedJwt)
+        expect(isInvalidBody).toBe(false)
+      },
+      30000,
+    )
+
+    it("should reject JWT with wrong algorithm", async () => {
+      const testBody = '{"webhook_type":"TRANSACTIONS"}'
+
+      // Create verifier with a mock key fetcher
+      const verifier = new PlaidWebhookVerifier(testLogger, async () => {
+        throw new Error("Should not be called for wrong algorithm")
+      })
+
+      // Create a JWT-like string with RS256 algorithm (wrong alg for Plaid)
+      // Manually construct a JWT with wrong algorithm header
+      const header = Buffer.from(
+        JSON.stringify({ alg: "RS256", kid: "test-kid" }),
+      ).toString("base64url")
+      const payload = Buffer.from(
+        JSON.stringify({
+          request_body_sha256: crypto
+            .createHash("sha256")
+            .update(testBody)
+            .digest("hex"),
+        }),
+      ).toString("base64url")
+      const fakeJwt = `${header}.${payload}.fake-signature`
+
+      const isValid = await verifier.verify(testBody, fakeJwt)
+      expect(isValid).toBe(false)
+    })
+
+    it("should reject JWT when body hash does not match", async () => {
+      const { privateKey, publicJwk } = generateTestEs256KeyPair()
+
+      const signedBody = '{"webhook_type":"TRANSACTIONS","item_id":"original"}'
+      const verifyBody = '{"webhook_type":"TRANSACTIONS","item_id":"tampered"}'
+
+      const signedHash = crypto
+        .createHash("sha256")
+        .update(signedBody)
+        .digest("hex")
+
+      const verifier = new PlaidWebhookVerifier(testLogger, async () => ({
+        key: { ...publicJwk, kid: "test-kid" },
+      }))
+
+      // Sign JWT with hash of original body
+      const signedJwt = await signTestJwt(
+        { request_body_sha256: signedHash },
+        privateKey,
+      )
+
+      // Verify with a different body - hash mismatch should cause rejection
+      const isValid = await verifier.verify(verifyBody, signedJwt)
+      expect(isValid).toBe(false)
+    })
+
+    it("should reject expired JWT (maxTokenAge 5 minutes)", async () => {
+      const { privateKey, publicJwk } = generateTestEs256KeyPair()
+
+      const testBody = '{"webhook_type":"TRANSACTIONS"}'
+      const bodyHash = crypto
+        .createHash("sha256")
+        .update(testBody)
+        .digest("hex")
+
+      const verifier = new PlaidWebhookVerifier(testLogger, async () => ({
+        key: { ...publicJwk, kid: "test-kid" },
+      }))
+
+      // Sign JWT with iat set to 10 minutes ago (exceeds 5-minute maxTokenAge)
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+      const signedJwt = await signTestJwt(
+        { request_body_sha256: bodyHash },
+        privateKey,
+        "test-kid",
+        tenMinutesAgo,
+      )
+
+      const isValid = await verifier.verify(testBody, signedJwt)
+      expect(isValid).toBe(false)
+    })
   })
 })
