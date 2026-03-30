@@ -397,10 +397,10 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
         let privateKeyForSigning: crypto.KeyObject
 
         try {
-          const jwkResponse =
-            await relayClient.request<RelayJwkProxyResponse>(
-              "/api/open-banking/plaid/webhook-key/test-kid",
-            )
+          // Fetch from relay JWK proxy to prove the chain works
+          await relayClient.request<RelayJwkProxyResponse>(
+            "/api/open-banking/plaid/webhook-key/test-kid",
+          )
           // If we got here, the endpoint returned a key. Use it for verification.
           // We cannot sign with a public key, so we still need a synthetic keypair
           // but we prove the JWK fetch chain works.
