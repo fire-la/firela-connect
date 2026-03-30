@@ -334,7 +334,7 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
   })
 
   describe.sequential("Plaid Full Relay Flow (E2E)", () => {
-    let adaptorAvailable = true
+    let _adaptorAvailable = true
 
     it("step 1: health check passes", async () => {
       const health = await relayClient.healthCheck(10000)
@@ -359,7 +359,7 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
         expect(response.expiration).toBeDefined()
       } catch (error) {
         // Plaid adaptor may not be configured on staging relay
-        adaptorAvailable = false
+        _adaptorAvailable = false
         expect(error).toBeDefined()
       }
     }, 30000)
