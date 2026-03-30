@@ -583,8 +583,8 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
   })
 
   describe.sequential("GoCardless Full Relay Flow (E2E)", () => {
-    let institutionsResult: unknown
-    let requisitionId: string
+    let _institutionsResult: unknown
+    let _requisitionId: string
 
     it("step 1: health check passes", async () => {
       const health = await relayClient.healthCheck(10000)
@@ -593,9 +593,9 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     }, 30000)
 
     it("step 2: discover institutions for DE", async () => {
-      institutionsResult = await gocardlessClient.getInstitutions("DE")
+      _institutionsResult = await gocardlessClient.getInstitutions("DE")
       // Accept either array or error object (provider may not be configured)
-      expect(institutionsResult).toBeDefined()
+      expect(_institutionsResult).toBeDefined()
     }, 30000)
 
     it("step 3: create requisition with sandbox institution", async () => {
@@ -605,7 +605,7 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
           redirect: "https://example.com/callback",
           reference: `e2e-test-${Date.now()}`,
         })
-        requisitionId = (req as Record<string, unknown>).id as string
+        _requisitionId = (req as Record<string, unknown>).id as string
         expect((req as Record<string, unknown>).id).toBeDefined()
         expect((req as Record<string, unknown>).link).toMatch(/^https?:\/\//)
       } catch (error) {
@@ -699,7 +699,7 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
 
         vi.stubGlobal(
           "fetch",
-          (url: string, options: RequestInit) => {
+          (url: string, _options: RequestInit) => {
             capturedUrls.push(url)
             return Promise.resolve({
               ok: true,
