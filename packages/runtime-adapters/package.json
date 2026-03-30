@@ -39,7 +39,7 @@
     "lint": "oxlint",
     "format": "oxfmt src/",
     "format:write": "oxfmt -w src/",
-    "test": "vitest",
+    "test": "vitest run",
     "test:coverage": "vitest --coverage",
     "clean": "rm -rf dist"
   },

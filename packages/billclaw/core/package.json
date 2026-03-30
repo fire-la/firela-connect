@@ -58,7 +58,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "test:coverage": "vitest --coverage",
     "lint": "oxlint",
     "format": "oxfmt src/",

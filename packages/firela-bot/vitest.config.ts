@@ -40,6 +40,9 @@ export default defineConfig({
     // Exclude patterns
     exclude: ['node_modules', 'dist', '.wrangler'],
 
+    // Process isolation (forks are easier to clean up than threads)
+    pool: 'forks',
+
     // Test timeout
     testTimeout: 10000,
 
