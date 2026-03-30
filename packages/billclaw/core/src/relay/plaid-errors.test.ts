@@ -16,7 +16,6 @@ import {
   ERROR_CODES,
   ErrorCategory,
   type UserError,
-  isUserError,
 } from "../errors/errors.js"
 
 // ============================================================================
