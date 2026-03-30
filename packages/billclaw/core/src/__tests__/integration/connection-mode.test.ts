@@ -9,11 +9,16 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { IntegrationTestHelpers } from "./setup.js"
 import {
   selectConnectionMode,
+  isRelayAvailable,
   isDirectAvailable,
   getFallbackMode,
   canUpgradeMode,
   getBestAvailableMode,
 } from "../../connection/mode-selector.js"
+
+// Real relay configuration for integration tests
+const RELAY_URL = process.env.FIRELA_RELAY_URL || "https://napi-dev.firela.io"
+const RELAY_API_KEY = process.env.FIRELA_RELAY_API_KEY || ""
 
 describe("Connection Mode Integration", () => {
   const helpers = new IntegrationTestHelpers()
@@ -25,6 +30,7 @@ describe("Connection Mode Integration", () => {
   afterEach(async () => {
     await helpers.cleanup()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   describe("Health Checks", () => {
@@ -315,5 +321,198 @@ describe("Connection Mode Integration", () => {
       expect(oauthMode.mode).toBe("relay")
       expect(oauthMode.reason).toContain("OAuth requires Relay or Direct mode")
     })
+  })
+})
+
+describe("Real Relay Integration", () => {
+  const helpers = new IntegrationTestHelpers()
+
+  beforeEach(async () => {
+    await helpers.setupTempDir("billclaw-real-relay-test")
+  })
+
+  afterEach(async () => {
+    await helpers.cleanup()
+    vi.restoreAllMocks()
+  })
+
+  describe("Relay Availability", () => {
+    it(
+      "should detect relay available with real health check",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: RELAY_API_KEY },
+        })
+
+        const result = await isRelayAvailable(context, 10000)
+
+        expect(result.available).toBe(true)
+        expect(result.latency).toBeGreaterThan(0)
+      },
+      30000,
+    )
+
+    it(
+      "should include relay latency in availability result",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: RELAY_API_KEY },
+        })
+
+        const result = await isRelayAvailable(context, 10000)
+
+        expect(result.available).toBe(true)
+        expect(typeof result.latency).toBe("number")
+        expect(result.latency!).toBeGreaterThan(0)
+      },
+      30000,
+    )
+
+    it(
+      "should reach relay health endpoint even with unverified credentials",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: "invalid-key-12345" },
+        })
+
+        const result = await isRelayAvailable(context, 10000)
+
+        // Health endpoint is typically unauthenticated - returns available
+        // even with invalid API key (auth is checked on actual API calls, not health)
+        expect(result.available).toBe(true)
+        expect(result.latency).toBeGreaterThan(0)
+      },
+      30000,
+    )
+  })
+
+  describe("Mode Selection with Real Relay", () => {
+    it(
+      "should select relay mode for OAuth when relay is available",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: RELAY_API_KEY },
+          connect: {
+            port: 4456,
+            host: "localhost",
+            connection: {
+              mode: "auto",
+            },
+          },
+        })
+
+        const result = await selectConnectionMode(context, "oauth")
+
+        expect(result.mode).toBe("relay")
+      },
+      30000,
+    )
+
+    it(
+      "should select relay mode for webhooks when relay is available",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: RELAY_API_KEY },
+          connect: {
+            port: 4456,
+            host: "localhost",
+            connection: {
+              mode: "auto",
+            },
+          },
+        })
+
+        const result = await selectConnectionMode(context, "webhook")
+
+        expect(result.mode).toBe("relay")
+      },
+      30000,
+    )
+  })
+
+  describe("Best Available Mode with Real Relay", () => {
+    it(
+      "should get relay as best available mode",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: RELAY_API_KEY },
+        })
+
+        const best = await getBestAvailableMode(context, "webhook")
+
+        expect(best).toBe("relay")
+      },
+      30000,
+    )
+  })
+
+  describe("Mode Upgrade with Real Relay", () => {
+    it(
+      "should allow mode upgrade from polling to relay",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: RELAY_API_KEY },
+        })
+
+        const canUpgrade = await canUpgradeMode("polling", context)
+
+        expect(canUpgrade).toBe(true)
+      },
+      30000,
+    )
+
+    it(
+      "should not allow mode upgrade from relay",
+      async () => {
+        if (!RELAY_API_KEY) {
+          console.log("Skipping: FIRELA_RELAY_API_KEY required")
+          return
+        }
+
+        const context = helpers.createMockContext({
+          relay: { url: RELAY_URL, apiKey: RELAY_API_KEY },
+        })
+
+        const canUpgrade = await canUpgradeMode("relay", context)
+
+        expect(canUpgrade).toBe(false)
+      },
+      30000,
+    )
   })
 })
