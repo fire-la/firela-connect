@@ -2,7 +2,7 @@
  * Integration tests for GoCardless relay flow
  *
  * Tests real HTTP calls to staging relay server for GoCardless operations.
- * Tests are skipped if FIRELA_RELAY_API_KEY is not set.
+ * Tests FAIL if FIRELA_RELAY_API_KEY is not set or staging relay is unreachable.
  *
  * Run with: pnpm --filter @firela/billclaw-core test -- --run gocardless-flow
  */
@@ -18,9 +18,6 @@ import type { Logger } from "../../../errors/errors.js"
 // Test configuration from environment
 const RELAY_URL = process.env.FIRELA_RELAY_URL || "https://napi-dev.firela.io"
 const RELAY_API_KEY = process.env.FIRELA_RELAY_API_KEY || ""
-
-// Skip all tests if API key not available
-const shouldRunTests = RELAY_API_KEY.length > 0
 
 // Mock logger for tests
 const testLogger: Logger = {
@@ -41,10 +38,12 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
   let relayClient: RelayClient
   let gocardlessClient: GoCardlessRelayClient
 
-  beforeAll(() => {
-    if (!shouldRunTests) {
-      console.log("Skipping GoCardless relay integration tests: FIRELA_RELAY_API_KEY not set")
-      return
+  beforeAll(async () => {
+    if (!RELAY_API_KEY) {
+      throw new Error(
+        "FIRELA_RELAY_API_KEY is required for integration tests. " +
+          "Set it in .env.test or CI environment variables.",
+      )
     }
 
     relayClient = new RelayClient(
@@ -55,6 +54,13 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
       },
       testLogger,
     )
+
+    const health = await relayClient.healthCheck(10000)
+    if (!health.available) {
+      throw new Error(
+        `Staging relay (${RELAY_URL}) unreachable: ${health.error}. Integration tests cannot proceed.`,
+      )
+    }
 
     gocardlessClient = new GoCardlessRelayClient(
       {
@@ -73,8 +79,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should connect to staging relay server",
       async () => {
-        if (!shouldRunTests) return
-
         const result = await relayClient.healthCheck(10000)
 
         expect(result.available).toBe(true)
@@ -89,8 +93,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should fetch institutions for a country",
       async () => {
-        if (!shouldRunTests) return
-
         const result = await gocardlessClient.getInstitutions("DE")
 
         // API may return institutions array or error object
@@ -113,8 +115,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should handle country filtering",
       async () => {
-        if (!shouldRunTests) return
-
         // Fetch GB institutions
         const result = await gocardlessClient.getInstitutions("GB")
 
@@ -135,8 +135,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should handle empty results for invalid country",
       async () => {
-        if (!shouldRunTests) return
-
         // Invalid country code might return empty or error
         try {
           const institutions = await gocardlessClient.getInstitutions("XX")
@@ -155,8 +153,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should create requisition with link",
       async () => {
-        if (!shouldRunTests) return
-
         // Use a test institution ID (sandbox if available)
         const testInstitutionId = "SANDBOXFINANCE_SFIN0000"
         const testReference = `test-ref-${Date.now()}`
@@ -187,8 +183,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should pass access_token in body, never in URL for requisition retrieval",
       async () => {
-        if (!shouldRunTests) return
-
         let capturedUrl = ""
         let capturedBody = ""
         const originalFetch = global.fetch
@@ -228,8 +222,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should handle non-existent requisition",
       async () => {
-        if (!shouldRunTests) return
-
         const result = await gocardlessClient.getRequisition("non-existent-req-id", "test-access-token")
 
         // API returns error JSON object instead of throwing
@@ -243,8 +235,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token for accounts",
       async () => {
-        if (!shouldRunTests) return
-
         const result = await gocardlessClient.getAccounts("invalid-access-token")
 
         // API returns error JSON object instead of throwing
@@ -256,8 +246,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should pass access_token in body, never in URL",
       async () => {
-        if (!shouldRunTests) return
-
         let capturedUrl = ""
         let capturedBody = ""
         const originalFetch = global.fetch
@@ -295,8 +283,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token for transactions",
       async () => {
-        if (!shouldRunTests) return
-
         const result = await gocardlessClient.getTransactions({
           access_token: "invalid-access-token",
           account_id: "test-account-id",
@@ -311,8 +297,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should pass access_token in body for transactions",
       async () => {
-        if (!shouldRunTests) return
-
         let capturedUrl = ""
         let capturedBody = ""
         const originalFetch = global.fetch
@@ -359,8 +343,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should handle invalid refresh token",
       async () => {
-        if (!shouldRunTests) return
-
         const mockStorage = createMockStorage()
         const clientWithStorage = new GoCardlessRelayClient(
           {
@@ -381,8 +363,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should return relay mode from getMode",
       () => {
-        if (!shouldRunTests) return
-
         expect(gocardlessClient.getMode()).toBe("relay")
       },
       30000,
@@ -393,8 +373,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should throw error when storage not configured",
       async () => {
-        if (!shouldRunTests) return
-
         // Client without storage
         await expect(
           (gocardlessClient as any).ensureValidToken("account-1"),
@@ -406,8 +384,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should throw error when token not found",
       async () => {
-        if (!shouldRunTests) return
-
         const mockStorage = createMockStorage()
         mockStorage.getGoCardlessToken.mockResolvedValueOnce(null)
 
@@ -430,8 +406,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should return valid token when not expired",
       async () => {
-        if (!shouldRunTests) return
-
         const mockStorage = createMockStorage()
         const futureDate = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes from now
 
@@ -462,8 +436,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should trigger refresh when token expires within 5 minutes",
       async () => {
-        if (!shouldRunTests) return
-
         const mockStorage = createMockStorage()
         const nearExpiryDate = new Date(Date.now() + 3 * 60 * 1000).toISOString() // 3 minutes from now
 
@@ -529,8 +501,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should return error response for 401 (invalid API key)",
       async () => {
-        if (!shouldRunTests) return
-
         const badClient = new RelayClient(
           {
             url: RELAY_URL,
@@ -555,8 +525,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should handle timeout gracefully",
       async () => {
-        if (!shouldRunTests) return
-
         // Create client with very short timeout
         const shortTimeoutClient = new GoCardlessRelayClient(
           {
@@ -584,8 +552,6 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
     it(
       "should verify correct endpoint paths",
       async () => {
-        if (!shouldRunTests) return
-
         let capturedUrl = ""
         const originalFetch = global.fetch
 
@@ -615,18 +581,171 @@ describe.sequential("GoCardless Relay Flow (Integration)", () => {
       30000,
     )
   })
-})
 
-// Conditional describe for when API key is not available
-describe("GoCardless Relay Flow (No API Key)", () => {
-  it("should skip tests gracefully when FIRELA_RELAY_API_KEY not set", () => {
-    if (RELAY_API_KEY) {
-      // If API key is set, this test is not applicable
-      return
-    }
+  describe.sequential("GoCardless Full Relay Flow (E2E)", () => {
+    let institutionsResult: unknown
+    let requisitionId: string
 
-    // This documents the expected behavior
-    expect(shouldRunTests).toBe(false)
-    console.log("Integration tests require FIRELA_RELAY_API_KEY environment variable")
+    it("step 1: health check passes", async () => {
+      const health = await relayClient.healthCheck(10000)
+      expect(health.available).toBe(true)
+      expect(health.latency).toBeGreaterThan(0)
+    }, 30000)
+
+    it("step 2: discover institutions for DE", async () => {
+      institutionsResult = await gocardlessClient.getInstitutions("DE")
+      // Accept either array or error object (provider may not be configured)
+      expect(institutionsResult).toBeDefined()
+    }, 30000)
+
+    it("step 3: create requisition with sandbox institution", async () => {
+      try {
+        const req = await gocardlessClient.createRequisition({
+          institution_id: "SANDBOXFINANCE_SFIN0000",
+          redirect: "https://example.com/callback",
+          reference: `e2e-test-${Date.now()}`,
+        })
+        requisitionId = (req as Record<string, unknown>).id as string
+        expect((req as Record<string, unknown>).id).toBeDefined()
+        expect((req as Record<string, unknown>).link).toMatch(/^https?:\/\//)
+      } catch (error) {
+        // Sandbox institution may not be available on staging
+        expect(error).toBeDefined()
+      }
+    }, 30000)
+
+    it("step 4: reject invalid access token for accounts", async () => {
+      const result = await gocardlessClient.getAccounts("invalid-access-token")
+      expect((result as Record<string, unknown>).error).toBeDefined()
+    }, 30000)
+
+    it("step 5: reject invalid access token for transactions", async () => {
+      const result = await gocardlessClient.getTransactions({
+        access_token: "invalid",
+        account_id: "test",
+      })
+      expect((result as Record<string, unknown>).error).toBeDefined()
+    }, 30000)
+
+    it("step 6: verify relay mode from getMode", () => {
+      expect(gocardlessClient.getMode()).toBe("relay")
+    }, 30000)
+  })
+
+  describe("GoCardless Edge Cases", () => {
+    it(
+      "should handle date range filtering in transactions",
+      async () => {
+        let capturedBody = ""
+        const originalFetch = global.fetch
+
+        vi.stubGlobal(
+          "fetch",
+          (url: string, options: RequestInit) => {
+            capturedBody = options?.body as string
+            return Promise.resolve({
+              ok: true,
+              text: async () =>
+                JSON.stringify({
+                  transactions: { booked: [], pending: [] },
+                }),
+            })
+          },
+        )
+
+        try {
+          const dateFrom = "2024-01-01"
+          const dateTo = "2024-01-31"
+
+          await gocardlessClient.getTransactions({
+            access_token: "test-token",
+            account_id: "test-account",
+            date_from: dateFrom,
+            date_to: dateTo,
+          })
+
+          // Verify request body contains both date fields
+          const body = JSON.parse(capturedBody)
+          expect(body.date_from).toBe(dateFrom)
+          expect(body.date_to).toBe(dateTo)
+        } finally {
+          vi.stubGlobal("fetch", originalFetch)
+        }
+      },
+      30000,
+    )
+
+    it(
+      "should handle empty country code",
+      async () => {
+        // Empty country code should be handled gracefully
+        try {
+          const result = await gocardlessClient.getInstitutions("")
+          // May return empty array or error
+          expect(result).toBeDefined()
+        } catch (error) {
+          // Or may throw
+          expect(error).toBeDefined()
+        }
+      },
+      30000,
+    )
+
+    it(
+      "should verify endpoint paths for all operations",
+      async () => {
+        const capturedUrls: string[] = []
+        const originalFetch = global.fetch
+
+        vi.stubGlobal(
+          "fetch",
+          (url: string, options: RequestInit) => {
+            capturedUrls.push(url)
+            return Promise.resolve({
+              ok: true,
+              text: async () =>
+                JSON.stringify({
+                  transactions: { booked: [], pending: [] },
+                }),
+            })
+          },
+        )
+
+        try {
+          await gocardlessClient.getInstitutions("DE")
+          await gocardlessClient.getAccounts("test-token")
+          await gocardlessClient.getTransactions({
+            access_token: "test-token",
+            account_id: "test-account",
+          })
+
+          // All endpoints should hit the gocardless base path
+          for (const url of capturedUrls) {
+            expect(url).toContain("/api/open-banking/gocardless/")
+          }
+        } finally {
+          vi.stubGlobal("fetch", originalFetch)
+        }
+      },
+      30000,
+    )
+
+    it(
+      "should handle concurrent institution requests",
+      async () => {
+        const results = await Promise.allSettled([
+          gocardlessClient.getInstitutions("DE"),
+          gocardlessClient.getInstitutions("GB"),
+          gocardlessClient.getInstitutions("FR"),
+        ])
+
+        // All requests should settle (either resolved or rejected)
+        expect(results).toHaveLength(3)
+        for (const result of results) {
+          expect(result.status).oneOf(["fulfilled", "rejected"])
+        }
+      },
+      30000,
+    )
   })
 })
