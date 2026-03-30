@@ -2,9 +2,9 @@
  * Integration tests for Plaid relay flow
  *
  * Tests real HTTP calls to staging relay server for Plaid operations.
- * Tests are skipped if FIRELA_RELAY_API_KEY is not set.
+ * Tests FAIL if FIRELA_RELAY_API_KEY is not set or staging relay is unreachable.
  *
- * Run with: pnpm --filter @billclaw/core test -- --run plaid-flow
+ * Run with: pnpm --filter @firela/billclaw-core test -- --run plaid-flow
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
@@ -15,9 +15,6 @@ import type { Logger } from "../../../errors/errors.js"
 // Test configuration from environment
 const RELAY_URL = process.env.FIRELA_RELAY_URL || "https://napi-dev.firela.io"
 const RELAY_API_KEY = process.env.FIRELA_RELAY_API_KEY || ""
-
-// Skip all tests if API key not available
-const shouldRunTests = RELAY_API_KEY.length > 0
 
 // Mock logger for tests
 const testLogger: Logger = {
@@ -31,10 +28,12 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
   let relayClient: RelayClient
   let plaidClient: RelayPlaidClient
 
-  beforeAll(() => {
-    if (!shouldRunTests) {
-      console.log("Skipping Plaid relay integration tests: FIRELA_RELAY_API_KEY not set")
-      return
+  beforeAll(async () => {
+    if (!RELAY_API_KEY) {
+      throw new Error(
+        "FIRELA_RELAY_API_KEY is required for integration tests. " +
+          "Set it in .env.test or CI environment variables.",
+      )
     }
 
     relayClient = new RelayClient(
@@ -45,6 +44,13 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
       },
       testLogger,
     )
+
+    const health = await relayClient.healthCheck(10000)
+    if (!health.available) {
+      throw new Error(
+        `Staging relay (${RELAY_URL}) unreachable: ${health.error}. Integration tests cannot proceed.`,
+      )
+    }
 
     plaidClient = new RelayPlaidClient(
       {
@@ -63,8 +69,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should connect to staging relay server",
       async () => {
-        if (!shouldRunTests) return
-
         const result = await relayClient.healthCheck(10000)
 
         expect(result.available).toBe(true)
@@ -79,8 +83,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should create link token via relay or handle adaptor not available",
       async () => {
-        if (!shouldRunTests) return
-
         try {
           const response = await plaidClient.createLinkToken({
             client_name: "BillClaw Integration Test",
@@ -112,8 +114,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should handle invalid request gracefully",
       async () => {
-        if (!shouldRunTests) return
-
         // Missing required fields should fail
         await expect(
           plaidClient.createLinkToken({
@@ -132,8 +132,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject invalid public token",
       async () => {
-        if (!shouldRunTests) return
-
         // Invalid public token should fail
         await expect(
           plaidClient.exchangePublicToken("invalid-public-token"),
@@ -145,8 +143,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should ensure sensitive token value is not in URL",
       async () => {
-        if (!shouldRunTests) return
-
         // Create a client with a fetch wrapper to verify URL
         let capturedUrl = ""
         const originalFetch = global.fetch
@@ -180,8 +176,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token",
       async () => {
-        if (!shouldRunTests) return
-
         // Invalid access token should fail
         await expect(plaidClient.getAccounts("invalid-access-token")).rejects.toThrow()
       },
@@ -191,8 +185,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should pass access_token in body, never in URL",
       async () => {
-        if (!shouldRunTests) return
-
         let capturedUrl = ""
         let capturedBody = ""
         const originalFetch = global.fetch
@@ -229,8 +221,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token for transactions",
       async () => {
-        if (!shouldRunTests) return
-
         await expect(
           plaidClient.syncTransactions("invalid-access-token"),
         ).rejects.toThrow()
@@ -241,8 +231,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should pass access_token in body for transaction sync",
       async () => {
-        if (!shouldRunTests) return
-
         let capturedUrl = ""
         let capturedBody = ""
         const originalFetch = global.fetch
@@ -281,8 +269,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should return error response for 401 (invalid API key)",
       async () => {
-        if (!shouldRunTests) return
-
         const badClient = new RelayClient(
           {
             url: RELAY_URL,
@@ -313,8 +299,6 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should handle timeout gracefully",
       async () => {
-        if (!shouldRunTests) return
-
         // Create client with very short timeout
         const shortTimeoutClient = new RelayClient(
           {
@@ -343,25 +327,133 @@ describe.sequential("Plaid Relay Flow (Integration)", () => {
     it(
       "should return relay mode from getMode",
       () => {
-        if (!shouldRunTests) return
-
         expect(plaidClient.getMode()).toBe("relay")
       },
       30000,
     )
   })
-})
 
-// Conditional describe for when API key is not available
-describe("Plaid Relay Flow (No API Key)", () => {
-  it("should skip tests gracefully when FIRELA_RELAY_API_KEY not set", () => {
-    if (RELAY_API_KEY) {
-      // If API key is set, this test is not applicable
-      return
-    }
+  describe.sequential("Plaid Full Relay Flow (E2E)", () => {
+    let adaptorAvailable = true
 
-    // This documents the expected behavior
-    expect(shouldRunTests).toBe(false)
-    console.log("Integration tests require FIRELA_RELAY_API_KEY environment variable")
+    it("step 1: health check passes", async () => {
+      const health = await relayClient.healthCheck(10000)
+      expect(health.available).toBe(true)
+      expect(health.latency).toBeGreaterThan(0)
+    }, 30000)
+
+    it("step 2: create link token or handle adaptor unavailable", async () => {
+      try {
+        const response = await plaidClient.createLinkToken({
+          client_name: "BillClaw E2E Test",
+          language: "en",
+          country_codes: ["US"],
+          user: {
+            client_user_id: `e2e-user-${Date.now()}`,
+          },
+          products: ["transactions"],
+        })
+
+        expect(response.link_token).toBeDefined()
+        expect(response.link_token).toMatch(/^link-/)
+        expect(response.expiration).toBeDefined()
+      } catch (error) {
+        // Plaid adaptor may not be configured on staging relay
+        adaptorAvailable = false
+        expect(error).toBeDefined()
+      }
+    }, 30000)
+
+    it("step 3: reject invalid public token for exchange", async () => {
+      await expect(
+        plaidClient.exchangePublicToken("invalid-token"),
+      ).rejects.toThrow()
+    }, 30000)
+
+    it("step 4: reject invalid access token for accounts", async () => {
+      await expect(
+        plaidClient.getAccounts("invalid-access-token"),
+      ).rejects.toThrow()
+    }, 30000)
+
+    it("step 5: reject invalid access token for transactions", async () => {
+      await expect(
+        plaidClient.syncTransactions("invalid-access-token"),
+      ).rejects.toThrow()
+    }, 30000)
+
+    it("step 6: verify relay mode from getMode", () => {
+      expect(plaidClient.getMode()).toBe("relay")
+    }, 30000)
+  })
+
+  describe("Plaid Edge Cases", () => {
+    it(
+      "should reject empty client_user_id",
+      async () => {
+        await expect(
+          plaidClient.createLinkToken({
+            client_name: "Test",
+            language: "en",
+            country_codes: ["US"],
+            user: { client_user_id: "" },
+            products: ["transactions"],
+          }),
+        ).rejects.toThrow()
+      },
+      30000,
+    )
+
+    it(
+      "should reject empty country_codes array",
+      async () => {
+        await expect(
+          plaidClient.createLinkToken({
+            client_name: "Test",
+            language: "en",
+            country_codes: [],
+            user: { client_user_id: `test-user-${Date.now()}` },
+            products: ["transactions"],
+          }),
+        ).rejects.toThrow()
+      },
+      30000,
+    )
+
+    it(
+      "should handle concurrent requests",
+      async () => {
+        const results = await Promise.allSettled([
+          plaidClient.createLinkToken({
+            client_name: "Concurrent Test 1",
+            language: "en",
+            country_codes: ["US"],
+            user: { client_user_id: `concurrent-1-${Date.now()}` },
+            products: ["transactions"],
+          }),
+          plaidClient.createLinkToken({
+            client_name: "Concurrent Test 2",
+            language: "en",
+            country_codes: ["US"],
+            user: { client_user_id: `concurrent-2-${Date.now()}` },
+            products: ["transactions"],
+          }),
+          plaidClient.createLinkToken({
+            client_name: "Concurrent Test 3",
+            language: "en",
+            country_codes: ["US"],
+            user: { client_user_id: `concurrent-3-${Date.now()}` },
+            products: ["transactions"],
+          }),
+        ])
+
+        // All requests should settle (either resolved or rejected)
+        expect(results).toHaveLength(3)
+        for (const result of results) {
+          expect(result.status).oneOf(["fulfilled", "rejected"])
+        }
+      },
+      30000,
+    )
   })
 })
