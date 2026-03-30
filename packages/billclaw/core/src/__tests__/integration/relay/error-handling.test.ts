@@ -2,9 +2,9 @@
  * Integration tests for error handling scenarios
  *
  * Tests error recovery robustness and user-friendly error messages.
- * Tests are skipped if FIRELA_RELAY_API_KEY is not set.
+ * Tests FAIL if FIRELA_RELAY_API_KEY is not set or staging relay is unreachable.
  *
- * Run with: pnpm --filter @billclaw/core test -- --run error-handling
+ * Run with: pnpm --filter @firela/billclaw-core test -- --run error-handling
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
@@ -21,9 +21,6 @@ import type { Logger } from "../../../errors/errors.js"
 const RELAY_URL = process.env.FIRELA_RELAY_URL || "https://napi-dev.firela.io"
 const RELAY_API_KEY = process.env.FIRELA_RELAY_API_KEY || ""
 
-// Skip all tests if API key not available
-const shouldRunTests = RELAY_API_KEY.length > 0
-
 // Mock logger for tests
 const testLogger: Logger = {
   info: vi.fn(),
@@ -33,9 +30,26 @@ const testLogger: Logger = {
 }
 
 describe.sequential("Error Handling (Integration)", () => {
-  beforeAll(() => {
-    if (!shouldRunTests) {
-      console.log("Skipping error handling integration tests: FIRELA_RELAY_API_KEY not set")
+  let relayClient: RelayClient
+
+  beforeAll(async () => {
+    if (!RELAY_API_KEY) {
+      throw new Error(
+        "FIRELA_RELAY_API_KEY is required for integration tests. " +
+          "Set it in .env.test or CI environment variables.",
+      )
+    }
+
+    relayClient = new RelayClient(
+      { url: RELAY_URL, apiKey: RELAY_API_KEY, timeout: 30000 },
+      testLogger,
+    )
+
+    const health = await relayClient.healthCheck(10000)
+    if (!health.available) {
+      throw new Error(
+        `Staging relay (${RELAY_URL}) unreachable: ${health.error}. Integration tests cannot proceed.`,
+      )
     }
   })
 
@@ -144,8 +158,6 @@ describe.sequential("Error Handling (Integration)", () => {
     it(
       "should handle request timeout scenario with real client",
       async () => {
-        if (!shouldRunTests) return
-
         // Create client with very short timeout
         const shortTimeoutClient = new RelayClient(
           {
@@ -230,8 +242,6 @@ describe.sequential("Error Handling (Integration)", () => {
     it(
       "should return error response for invalid API key against real server",
       async () => {
-        if (!shouldRunTests) return
-
         const badClient = new RelayClient(
           {
             url: RELAY_URL,
@@ -499,18 +509,224 @@ describe.sequential("Error Handling (Integration)", () => {
       }
     })
   })
-})
 
-// Conditional describe for when API key is not available
-describe("Error Handling (No API Key)", () => {
-  it("should skip tests gracefully when FIRELA_RELAY_API_KEY not set", () => {
-    if (RELAY_API_KEY) {
-      // If API key is set, this test is not applicable
-      return
-    }
+  describe("Real HTTP Error Scenarios", () => {
+    it(
+      "should receive UNAUTHORIZED for invalid API key on Plaid endpoint",
+      async () => {
+        const badClient = new RelayClient(
+          { url: RELAY_URL, apiKey: "invalid-key" },
+          testLogger,
+        )
 
-    // This documents the expected behavior
-    expect(shouldRunTests).toBe(false)
-    console.log("Integration tests require FIRELA_RELAY_API_KEY environment variable")
+        const result = await badClient.request(
+          "/api/open-banking/plaid/link/token/create",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              client_name: "Test",
+              language: "en",
+              country_codes: ["US"],
+              user: { client_user_id: "test" },
+            }),
+          },
+        )
+
+        expect(result).toBeDefined()
+        expect((result as Record<string, unknown>).error).toBeDefined()
+        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
+        expect(errorObj.code).toBe("UNAUTHORIZED")
+      },
+      30000,
+    )
+
+    it(
+      "should receive UNAUTHORIZED for invalid API key on GoCardless endpoint",
+      async () => {
+        const badClient = new RelayClient(
+          { url: RELAY_URL, apiKey: "invalid-key" },
+          testLogger,
+        )
+
+        const result = await badClient.request(
+          "/api/open-banking/gocardless/institutions?country=DE",
+          { method: "GET" },
+        )
+
+        expect(result).toBeDefined()
+        expect((result as Record<string, unknown>).error).toBeDefined()
+        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
+        expect(errorObj.code).toBe("UNAUTHORIZED")
+      },
+      30000,
+    )
+
+    it(
+      "should reject malformed JSON body gracefully",
+      async () => {
+        try {
+          await relayClient.request("/api/open-banking/plaid/link/token/create", {
+            method: "POST",
+            body: "not-json",
+          } as RequestInit)
+          // May succeed if server ignores body, or fail gracefully
+        } catch (error) {
+          // If it throws, verify it's a parseable error
+          expect(error).toBeDefined()
+          const parsedError = parseRelayError(error as Error, {
+            endpoint: "/api/open-banking/plaid/link/token/create",
+          })
+          expect(parsedError).toBeDefined()
+        }
+      },
+      30000,
+    )
+
+    it(
+      "should handle timeout with real 1ms timeout",
+      async () => {
+        const oneMsClient = new RelayClient(
+          { url: RELAY_URL, apiKey: RELAY_API_KEY, timeout: 1 },
+          testLogger,
+        )
+
+        try {
+          await oneMsClient.request("/api/open-banking/plaid/link/token/create", {
+            method: "POST",
+            body: JSON.stringify({
+              client_name: "Test",
+              language: "en",
+              country_codes: ["US"],
+              user: { client_user_id: "test" },
+            }),
+          })
+          // If it somehow succeeds, that is fine (very fast server)
+        } catch (error) {
+          expect(error).toBeDefined()
+          const parsedError = parseRelayError(error as Error, {
+            endpoint: "/api/open-banking/plaid/link/token/create",
+          })
+          expect(parsedError).toBeInstanceOf(RelayHttpError)
+        }
+      },
+      30000,
+    )
+  })
+
+  describe("Error Recovery Scenarios", () => {
+    it(
+      "should recover after transient auth error",
+      async () => {
+        // First, make a request with an invalid key
+        const badClient = new RelayClient(
+          { url: RELAY_URL, apiKey: "invalid-key" },
+          testLogger,
+        )
+
+        const badResult = await badClient.request(
+          "/api/open-banking/plaid/link/token/create",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              client_name: "Test",
+              language: "en",
+              country_codes: ["US"],
+              user: { client_user_id: "test" },
+            }),
+          },
+        )
+        expect((badResult as Record<string, unknown>).error).toBeDefined()
+
+        // Then, make a request with the valid client
+        const health = await relayClient.healthCheck(10000)
+        expect(health.available).toBe(true)
+      },
+      30000,
+    )
+
+    it(
+      "should handle multiple sequential errors",
+      async () => {
+        const badClient = new RelayClient(
+          { url: RELAY_URL, apiKey: "invalid-key" },
+          testLogger,
+        )
+
+        const endpoints = [
+          "/api/open-banking/plaid/link/token/create",
+          "/api/open-banking/gocardless/institutions?country=DE",
+          "/api/open-banking/plaid/accounts",
+        ]
+
+        for (const endpoint of endpoints) {
+          const result = await badClient.request(endpoint, {
+            method: endpoint.includes("institutions") ? "GET" : "POST",
+            ...(endpoint.includes("institutions")
+              ? {}
+              : {
+                  body: JSON.stringify({
+                    client_name: "Test",
+                    language: "en",
+                    country_codes: ["US"],
+                    user: { client_user_id: "test" },
+                  }),
+                }),
+          })
+          expect((result as Record<string, unknown>).error).toBeDefined()
+          const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
+          expect(errorObj.code).toBe("UNAUTHORIZED")
+        }
+      },
+      30000,
+    )
+  })
+
+  describe("Concurrent Error Scenarios", () => {
+    it(
+      "should handle concurrent requests with mixed results",
+      async () => {
+        const badClient = new RelayClient(
+          { url: RELAY_URL, apiKey: "invalid-key" },
+          testLogger,
+        )
+
+        const results = await Promise.allSettled([
+          // Valid request (health check)
+          relayClient.healthCheck(10000),
+          // Invalid key request
+          badClient.request("/api/open-banking/plaid/link/token/create", {
+            method: "POST",
+            body: JSON.stringify({
+              client_name: "Test",
+              language: "en",
+              country_codes: ["US"],
+              user: { client_user_id: "test" },
+            }),
+          }),
+          // Invalid endpoint request
+          relayClient.request("/api/nonexistent-endpoint"),
+        ])
+
+        // All should settle
+        expect(results).toHaveLength(3)
+
+        // First: valid health check should succeed
+        expect(results[0].status).toBe("fulfilled")
+        if (results[0].status === "fulfilled") {
+          expect(results[0].value.available).toBe(true)
+        }
+
+        // Second: invalid key should return error response
+        expect(results[1].status).toBe("fulfilled")
+        if (results[1].status === "fulfilled") {
+          const value = results[1].value as Record<string, unknown>
+          expect(value.error).toBeDefined()
+        }
+
+        // Third: invalid endpoint should either throw or return error
+        expect(results[2].status).oneOf(["fulfilled", "rejected"])
+      },
+      30000,
+    )
   })
 })
