@@ -65,6 +65,10 @@ export function ConnectPage() {
     navigate("/connect/gmail")
   }
 
+  const handleConnectGoCardless = () => {
+    navigate("/connect/gocardless")
+  }
+
   const handleDisconnect = async (accountId: string) => {
     setDisconnecting(accountId)
     try {
@@ -123,7 +127,7 @@ export function ConnectPage() {
         <CardHeader>
           <CardTitle>Connected Accounts</CardTitle>
           <CardDescription>
-            Manage your Plaid and Gmail account connections
+            Manage your account connections
           </CardDescription>
         </CardHeader>
       </Card>
@@ -213,6 +217,10 @@ export function ConnectPage() {
           <Button variant="outline" onClick={handleConnectGmail} className="gap-2">
             <Link className="w-4 h-4" />
             Connect Gmail
+          </Button>
+          <Button variant="outline" onClick={handleConnectGoCardless} className="gap-2">
+            <Landmark className="w-4 h-4" />
+            Connect GoCardless
           </Button>
         </CardContent>
       </Card>
