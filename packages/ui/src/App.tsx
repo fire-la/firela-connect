@@ -19,6 +19,7 @@ import { WebhooksPage } from "@/components/pages/WebhooksPage"
 import { SettingsPage } from "@/components/pages/SettingsPage"
 import { PlaidConnectPage } from "@/components/pages/PlaidConnectPage"
 import { GmailConnectPage } from "@/components/pages/GmailConnectPage"
+import { GoCardlessConnectPage } from "@/components/pages/GoCardlessConnectPage"
 
 /**
  * BillClaw sidebar menu configuration
@@ -124,6 +125,7 @@ export function App() {
           {/* OAuth routes without layout (full-page OAuth flows) - UNPROTECTED */}
           <Route path="/connect/plaid" element={<PlaidConnectPage />} />
           <Route path="/connect/gmail" element={<GmailConnectPage />} />
+          <Route path="/connect/gocardless" element={<GoCardlessConnectPage />} />
           <Route path="/gmail-callback" element={<GmailConnectPage />} />
         </Routes>
         </ServiceStateProvider>
