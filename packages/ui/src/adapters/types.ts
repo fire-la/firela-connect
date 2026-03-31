@@ -5,13 +5,15 @@
  * Enables the same React codebase to work in browser, CLI, and OpenClaw contexts.
  */
 
+import type { RelayHealthInfo, GoCardlessInstitution, GoCardlessRequisition } from "../types/relay"
+
 /**
  * Account information
  */
 export interface Account {
   id: string
   name: string
-  type: "plaid" | "gmail"
+  type: "plaid" | "gmail" | "gocardless"
   enabled: boolean
   lastSync?: string
   status: "connected" | "disconnected" | "error"
@@ -166,4 +168,24 @@ export interface UIAdapter {
     data?: Account
     error?: string
   }>
+
+  /**
+   * Search GoCardless institutions by country code
+   */
+  searchInstitutions(country: string): Promise<GoCardlessInstitution[]>
+
+  /**
+   * Create GoCardless requisition (start OAuth flow)
+   */
+  createRequisition(institutionId: string, redirectUrl: string): Promise<GoCardlessRequisition>
+
+  /**
+   * Poll requisition status after user authorizes
+   */
+  pollRequisitionStatus(requisitionId: string, accessToken: string): Promise<GoCardlessRequisition>
+
+  /**
+   * Get relay service health status
+   */
+  getRelayHealth(): Promise<RelayHealthInfo>
 }

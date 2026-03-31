@@ -12,6 +12,7 @@ import type {
   SyncStatus,
   SystemStatus,
 } from "./types"
+import type { RelayHealthInfo, GoCardlessInstitution, GoCardlessRequisition } from "../types/relay"
 
 // API response wrapper types
 interface ApiResponse<T> {
@@ -122,5 +123,44 @@ export class BrowserAdapter implements UIAdapter {
       body: JSON.stringify({ enabled }),
     })
     return res.json()
+  }
+
+  async searchInstitutions(country: string): Promise<GoCardlessInstitution[]> {
+    const res = await fetch(`${this.baseUrl}/oauth/gocardless/institutions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country }),
+    })
+    const json: ApiResponse<GoCardlessInstitution[]> = await res.json()
+    return json.data || []
+  }
+
+  async createRequisition(institutionId: string, redirectUrl: string): Promise<GoCardlessRequisition> {
+    const res = await fetch(`${this.baseUrl}/oauth/gocardless/requisitions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ institution_id: institutionId, redirect_url: redirectUrl }),
+    })
+    const json: ApiResponse<GoCardlessRequisition> = await res.json()
+    if (!json.data) throw new Error("No requisition data returned")
+    return json.data
+  }
+
+  async pollRequisitionStatus(requisitionId: string, accessToken: string): Promise<GoCardlessRequisition> {
+    const res = await fetch(`${this.baseUrl}/oauth/gocardless/requisitions/${requisitionId}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: accessToken }),
+    })
+    const json: ApiResponse<GoCardlessRequisition> = await res.json()
+    if (!json.data) throw new Error("No requisition status returned")
+    return json.data
+  }
+
+  async getRelayHealth(): Promise<RelayHealthInfo> {
+    const res = await fetch(`${this.baseUrl}/relay/health`)
+    const json: ApiResponse<RelayHealthInfo> = await res.json()
+    // Health endpoint always returns data even when not configured
+    return json.data || { available: false, configured: false }
   }
 }

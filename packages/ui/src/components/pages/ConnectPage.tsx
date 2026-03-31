@@ -15,6 +15,7 @@ import {
   Loader2,
   CreditCard,
   Mail,
+  Landmark,
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
 import { createAdapter } from "@/adapters"
@@ -109,6 +110,8 @@ export function ConnectPage() {
         return <CreditCard className="w-5 h-5" />
       case "gmail":
         return <Mail className="w-5 h-5" />
+      case "gocardless":
+        return <Landmark className="w-5 h-5" />
     }
   }
 
