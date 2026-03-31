@@ -41,6 +41,8 @@ import { convertTransaction } from "./sources/plaid/plaid-sync.js"
 import { fetchGmailBills } from "./sources/gmail/gmail-fetch.js"
 import { createPlaidAdapter } from "./sources/plaid/plaid-adapter.js"
 import type { PlaidSyncAdapter } from "./sources/plaid/plaid-adapter.js"
+import { createGoCardlessAdapter } from "./sources/gocardless/gocardless-adapter.js"
+import { convertGoCardlessTransaction } from "./sources/gocardless/gocardless-sync.js"
 
 // Exporters
 import {
@@ -173,6 +175,9 @@ export class Billclaw {
     switch (account.type) {
       case "plaid":
         return await this.syncPlaidAccount(account)
+
+      case "gocardless":
+        return await this.syncGoCardlessAccount(account)
 
       case "gmail":
         return await this.syncGmailAccount(account)
@@ -631,6 +636,163 @@ export class Billclaw {
       transactionsAdded: result.transactionsAdded,
       transactionsUpdated: result.transactionsUpdated,
       errors: result.errors,
+    }
+  }
+
+  // ==================== GoCardless ====================
+
+  /**
+   * Sync a single GoCardless account using relay adapter
+   *
+   * Uses createGoCardlessAdapter() factory for automatic relay mode selection.
+   * GoCardless is RELAY ONLY - no direct mode available.
+   */
+  private async syncGoCardlessAccount(account: AccountConfig): Promise<SyncResult> {
+    const storageConfig = await this.context.config.getStorageConfig()
+    const errors: UserError[] = []
+    let transactionsAdded = 0
+    let transactionsUpdated = 0
+
+    const syncId = `sync_${Date.now()}`
+    const syncState: SyncState = {
+      syncId,
+      accountId: account.id,
+      startedAt: new Date().toISOString(),
+      status: "running",
+      transactionsAdded: 0,
+      transactionsUpdated: 0,
+      cursor: "",
+    }
+
+    try {
+      // Check for required access token
+      const accessToken = account.gocardlessAccessToken
+      if (!accessToken) {
+        const noTokenError: UserError = createUserError(
+          ERROR_CODES.CONFIG_INVALID,
+          ErrorCategory.CONFIG,
+          "error",
+          false,
+          {
+            title: "Missing GoCardless Access Token",
+            message: `No access token found for GoCardless account ${account.id}. Please complete the OAuth flow first.`,
+            suggestions: [
+              "Run the GoCardless connect command to authenticate",
+              "Ensure the account is properly configured",
+            ],
+          },
+          [],
+          { accountId: account.id },
+        )
+        return {
+          accountId: account.id,
+          success: false,
+          transactionsAdded: 0,
+          transactionsUpdated: 0,
+          errors: [noTokenError],
+        }
+      }
+
+      // Create adapter using factory
+      const adapter = await createGoCardlessAdapter(this.context)
+      this.logger.info?.(`Syncing GoCardless account ${account.id} using ${adapter.getMode()} mode`)
+
+      // Get linked bank accounts
+      const gcAccounts = await adapter.getAccounts(accessToken)
+
+      // Fetch and convert transactions for each linked account
+      const allTransactions: Transaction[] = []
+      for (const gcAccount of gcAccounts) {
+        const response = await adapter.getTransactions({
+          access_token: accessToken,
+          account_id: gcAccount.id,
+        })
+
+        // Convert booked transactions
+        for (const txn of response.transactions.booked) {
+          allTransactions.push(convertGoCardlessTransaction(txn, account.id, false))
+        }
+
+        // Convert pending transactions
+        for (const txn of response.transactions.pending) {
+          allTransactions.push(convertGoCardlessTransaction(txn, account.id, true))
+        }
+      }
+
+      this.logger.info?.(
+        `GoCardless sync for ${account.id}: ${allTransactions.length} total transactions from ${gcAccounts.length} accounts`,
+      )
+
+      // Deduplicate transactions
+      const deduplicated = deduplicateTransactions(allTransactions, 24)
+
+      // Group by month for storage
+      const byMonth = new Map<string, Transaction[]>()
+      for (const txn of deduplicated) {
+        const date = new Date(txn.date)
+        const key = `${date.getFullYear()}-${date.getMonth()}`
+        if (!byMonth.has(key)) {
+          byMonth.set(key, [])
+        }
+        byMonth.get(key)!.push(txn)
+      }
+
+      // Store transactions per month
+      for (const [monthKey, monthTransactions] of byMonth.entries()) {
+        const [year, month] = monthKey.split("-").map(Number)
+        const result = await appendTransactions(
+          account.id,
+          year,
+          month,
+          monthTransactions,
+          storageConfig,
+        )
+        transactionsAdded += result.added
+        transactionsUpdated += result.updated
+      }
+
+      // Update sync state
+      syncState.status = "completed"
+      syncState.completedAt = new Date().toISOString()
+      syncState.transactionsAdded = transactionsAdded
+      syncState.transactionsUpdated = transactionsUpdated
+
+      this.logger.info?.(
+        `Sync completed for ${account.id}: ${transactionsAdded} added, ${transactionsUpdated} updated`,
+      )
+    } catch (error) {
+      const userError: UserError = createUserError(
+        ERROR_CODES.UNKNOWN_ERROR,
+        ErrorCategory.NETWORK,
+        "error",
+        false,
+        {
+          title: "GoCardless Sync Failed",
+          message: error instanceof Error ? error.message : "Unknown error during GoCardless sync",
+          suggestions: [
+            "Check your relay configuration",
+            "Verify the access token is valid",
+            "Try reconnecting the account",
+          ],
+        },
+        [],
+        { accountId: account.id },
+      )
+
+      errors.push(userError)
+      syncState.status = "failed"
+      syncState.error = userError.humanReadable.message
+      this.logger.error?.(`GoCardless sync failed for ${account.id}:`, error)
+    } finally {
+      await writeSyncState(syncState, storageConfig)
+    }
+
+    return {
+      accountId: account.id,
+      success: errors.length === 0,
+      transactionsAdded,
+      transactionsUpdated,
+      errors: errors.length > 0 ? errors : undefined,
     }
   }
 
