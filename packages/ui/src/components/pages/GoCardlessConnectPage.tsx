@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Steps, Step } from "@/components/ui/steps"
+import { Steps } from "@/components/ui/steps"
 
 /** EU/EEA + GB country options for bank selection */
 const COUNTRY_OPTIONS = [
