@@ -98,6 +98,23 @@ class MockEventEmitter {
   }
 }
 
+// Mock GoCardless adapter factory
+vi.mock("./sources/gocardless/gocardless-adapter.js", () => ({
+  createGoCardlessAdapter: vi.fn(),
+}))
+
+// Mock storage functions (file I/O)
+vi.mock("./storage/transaction-storage.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./storage/transaction-storage.js")>()
+  return {
+    ...actual,
+    appendTransactions: vi.fn().mockResolvedValue({ added: 0, updated: 0 }),
+    deduplicateTransactions: vi.fn((txns) => txns),
+    writeSyncState: vi.fn().mockResolvedValue(undefined),
+    readSyncStates: vi.fn().mockResolvedValue([]),
+  }
+})
+
 describe("Billclaw", () => {
   let tempDir: string
   let mockContext: RuntimeContext
@@ -105,6 +122,8 @@ describe("Billclaw", () => {
   let billclaw: Billclaw
 
   beforeEach(async () => {
+    vi.clearAllMocks()
+
     // Create temp directory
     tempDir = path.join(os.tmpdir(), `billclaw-test-${Date.now()}`)
     await fs.mkdir(tempDir, { recursive: true })
@@ -236,6 +255,101 @@ describe("Billclaw", () => {
       mockEvents.emit("test.event")
 
       expect(eventReceived).toBe(true)
+    })
+  })
+
+  describe("syncAccount - gocardless", () => {
+    it("handles happy path with access token", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { appendTransactions, deduplicateTransactions, writeSyncState } = await import("./storage/transaction-storage.js")
+
+      const mockAdapter = {
+        getAccounts: vi.fn().mockResolvedValue([{ id: "gc-acc-1" }]),
+        getTransactions: vi.fn().mockResolvedValue({
+          transactions: {
+            booked: [
+              {
+                transactionId: "gc-txn-1",
+                bookingDate: "2026-03-15",
+                valueDate: "2026-03-15",
+                transactionAmount: { amount: "-50.25", currency: "EUR" },
+                remittanceInformationUnstructured: "SUPERMARKET",
+              },
+            ],
+            pending: [],
+          },
+        }),
+        getMode: vi.fn().mockReturnValue("relay"),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+      vi.mocked(appendTransactions).mockResolvedValue({ added: 1, updated: 0 })
+      vi.mocked(deduplicateTransactions).mockImplementation((txns: any) => txns)
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-1",
+        type: "gocardless",
+        name: "GoCardless Account",
+        enabled: true,
+        syncFrequency: "daily",
+        gocardlessAccessToken: "test-access-token",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-1")
+
+      expect(result.success).toBe(true)
+      expect(result.transactionsAdded).toBeGreaterThan(0)
+      expect(result.accountId).toBe("gocardless-1")
+      expect(createGoCardlessAdapter).toHaveBeenCalled()
+      expect(appendTransactions).toHaveBeenCalled()
+      expect(writeSyncState).toHaveBeenCalled()
+    })
+
+    it("returns error when gocardlessAccessToken is missing", async () => {
+      const testAccount: AccountConfig = {
+        id: "gocardless-no-token",
+        type: "gocardless",
+        name: "GoCardless No Token",
+        enabled: true,
+        syncFrequency: "daily",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-no-token")
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toBeDefined()
+      expect(result.errors![0].humanReadable.message).toContain("access token")
+    })
+
+    it("returns error when adapter throws", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+
+      vi.mocked(createGoCardlessAdapter).mockRejectedValue(new Error("Relay unavailable"))
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-err",
+        type: "gocardless",
+        name: "GoCardless Error",
+        enabled: true,
+        syncFrequency: "daily",
+        gocardlessAccessToken: "test-token",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-err")
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toBeDefined()
     })
   })
 })
