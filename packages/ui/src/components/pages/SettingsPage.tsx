@@ -6,23 +6,31 @@
  */
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
-import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2 } from "lucide-react"
+import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio } from "lucide-react"
 import { SERVICE_CONFIGS, type ServiceState, type ServiceId, type ServicesApiResponse } from "@/types/services"
+import { useRelayStore } from "@/stores/relayStore"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 
 export function SettingsPage() {
   const [serviceState, setServiceState] = useState<ServiceState | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<ServiceId | null>(null)
+  const { health: relayHealth, loading: relayLoading, loadHealth: loadRelayHealth } = useRelayStore()
 
   // Load service state on mount
   useEffect(() => {
     loadServiceState()
   }, [])
+
+  // Load relay health on mount
+  useEffect(() => {
+    loadRelayHealth()
+  }, [loadRelayHealth])
 
   const loadServiceState = async () => {
     setLoading(true)
@@ -166,6 +174,84 @@ export function SettingsPage() {
           })}
         </div>
       )}
+
+      {/* Relay Service status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Radio className="w-5 h-5" />
+            Relay Service
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {relayLoading && !relayHealth && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Loading relay status...</span>
+            </div>
+          )}
+
+          {relayHealth && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Configured</span>
+                <Badge variant={relayHealth.configured ? "default" : "secondary"}>
+                  {relayHealth.configured ? "Yes" : "No"}
+                </Badge>
+              </div>
+
+              {relayHealth.configured && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Status</span>
+                    <Badge variant={relayHealth.available ? "default" : "destructive"}>
+                      {relayHealth.available ? "Connected" : "Unavailable"}
+                    </Badge>
+                  </div>
+
+                  {relayHealth.latency !== undefined && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Latency</span>
+                      <span className="text-sm text-muted-foreground">{relayHealth.latency}ms</span>
+                    </div>
+                  )}
+
+                  {relayHealth.apiKeyMasked && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">API Key</span>
+                      <span className="text-sm font-mono text-muted-foreground">{relayHealth.apiKeyMasked}</span>
+                    </div>
+                  )}
+
+                  {relayHealth.relayUrl && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Relay URL</span>
+                      <span className="text-sm text-muted-foreground">{relayHealth.relayUrl}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {relayHealth.error && (
+                <p className="text-sm text-destructive">{relayHealth.error}</p>
+              )}
+
+              {relayHealth.lastChecked && (
+                <div className="text-xs text-muted-foreground pt-1">
+                  Last checked: {new Date(relayHealth.lastChecked).toLocaleString()}
+                </div>
+              )}
+            </>
+          )}
+
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" onClick={loadRelayHealth}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Refresh
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Info section */}
       {!loading && serviceState && (
