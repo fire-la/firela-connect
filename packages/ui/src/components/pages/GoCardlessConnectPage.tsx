@@ -140,8 +140,9 @@ export function GoCardlessConnectPage() {
       // Start polling for requisition status
       pollIntervalRef.current = setInterval(async () => {
         try {
-          // NOTE: access_token is managed server-side via GoCardlessRelayClient.
-          // The server route creates a token internally when not provided.
+          // NOTE: access_token is auto-created by the relay adaptor when empty.
+          // The relay stores GoCardless credentials and transparently creates
+          // tokens for requests that don't include one.
           const status = await adapter.pollRequisitionStatus(requisition.id, "")
           if (status.status === "DN") {
             // Done - connection successful

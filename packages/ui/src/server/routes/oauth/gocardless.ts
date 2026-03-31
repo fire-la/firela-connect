@@ -57,7 +57,7 @@ const createRequisitionSchema = z.object({
 })
 
 const requisitionStatusSchema = z.object({
-  access_token: z.string().min(1, "Access token is required"),
+  access_token: z.string().optional(),
 })
 
 /**
@@ -157,7 +157,7 @@ gocardlessRoutes.post(
  * SECURITY: access_token is passed in request body, never in URL parameters.
  *
  * Request body:
- * - access_token: GoCardless access token for API authentication (required)
+ * - access_token: GoCardless access token for API authentication (optional, auto-created by relay when empty)
  *
  * Response:
  * - success: boolean
@@ -172,7 +172,8 @@ gocardlessRoutes.post(
       const { access_token } = c.req.valid("json")
       const client = getGoCardlessClient(c.env)
 
-      const requisition = await client.getRequisition(id, access_token)
+      // Pass access_token if provided, empty string triggers auto-creation in relay
+      const requisition = await client.getRequisition(id, access_token ?? "")
 
       return c.json({
         success: true,
