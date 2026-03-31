@@ -17,4 +17,7 @@ export type OAuthEnv = {
   GMAIL_CLIENT_SECRET: string
   GMAIL_REDIRECT_URI: string
   CONFIG: KVNamespace
+  // Relay environment bindings for GoCardless OAuth flow
+  FIRELA_RELAY_URL: string
+  FIRELA_RELAY_API_KEY: string
 }
