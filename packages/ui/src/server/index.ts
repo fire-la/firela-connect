@@ -30,6 +30,9 @@ export type Env = {
   // Service toggles (from wrangler.toml vars)
   BILLCLAW_ENABLED?: string
   FIRELA_BOT_ENABLED?: string
+  // Relay environment bindings for GoCardless OAuth flow via firela-relay
+  FIRELA_RELAY_URL?: string
+  FIRELA_RELAY_API_KEY?: string
   // ASSETS binding for static files (provided by wrangler when [assets] is configured)
   ASSETS?: Fetcher
 }
@@ -97,11 +100,17 @@ app.use("/api/*", serviceToggleMiddleware())
 import plaidRoutes from "./routes/oauth/plaid.js"
 import gmailRoutes from "./routes/oauth/gmail.js"
 import credentialsRoutes from "./routes/oauth/credentials.js"
+import { gocardlessRoutes } from "./routes/oauth/gocardless.js"
 
 // Register OAuth routes
 app.route("/api/oauth/plaid", plaidRoutes)
 app.route("/api/oauth/gmail", gmailRoutes)
 app.route("/api/connect", credentialsRoutes)
+app.route("/api/oauth/gocardless", gocardlessRoutes)
+
+// Relay routes (health check, configuration status)
+import { relayRoutes } from "./routes/relay.js"
+app.route("/api/relay", relayRoutes)
 
 // Service toggle routes (Plan 13.4-01)
 import { serviceRoutes } from "./routes/services.js"
