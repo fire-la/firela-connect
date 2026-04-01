@@ -82,6 +82,9 @@ async function syncAllAccounts(
           case "gmail":
             results = await billclaw.syncGmail([account.id])
             break
+          case "gocardless":
+            results = [await billclaw.syncAccount(account.id)]
+            break
           default:
             throw new Error(`Unknown account type: ${account.type}`)
         }
@@ -189,6 +192,9 @@ async function syncSingleAccount(
         break
       case "gmail":
         results = await billclaw.syncGmail([accountId])
+        break
+      case "gocardless":
+        results = [await billclaw.syncAccount(accountId)]
         break
       default:
         throw new Error(`Unknown account type: ${account.type}`)
