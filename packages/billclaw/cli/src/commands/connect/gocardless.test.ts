@@ -75,11 +75,23 @@ const mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
 })
 
 describe("GoCardless connect polling", () => {
+  let unhandledRejections: Error[] = []
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    unhandledRejections = []
     mockExit.mockImplementation(() => {
       throw new Error("process.exit")
+    })
+
+    // Suppress unhandled rejection warnings from process.exit throws
+    process.on("unhandledRejection", (err: Error) => {
+      if (err instanceof Error && err.message === "process.exit") {
+        unhandledRejections.push(err)
+      } else {
+        throw err
+      }
     })
 
     // Default: createRequisition succeeds
@@ -95,6 +107,8 @@ describe("GoCardless connect polling", () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    // Remove all unhandledRejection listeners added in beforeEach
+    process.removeAllListeners("unhandledRejection")
   })
 
   describe("status DN (Linked) - success", () => {
@@ -245,8 +259,12 @@ describe("GoCardless connect polling", () => {
         timeout: 0.05,
       })
 
-      // Advance past timeout
-      await vi.advanceTimersByTimeAsync(3500)
+      // Advance timers incrementally to allow async resolution chain to complete
+      // Each poll iteration: sleep(2000) -> getRequisition -> next iteration
+      // Need to advance enough total time to exceed 3000ms timeout
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(1000)
+      }
 
       await expect(promise).rejects.toThrow("process.exit")
 

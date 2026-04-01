@@ -27,15 +27,35 @@ import { parseGoCardlessRelayError } from "@firela/billclaw-core/relay"
 
 
 /**
- * Polling interval in milliseconds (1 second)
+ * Polling interval in milliseconds (2 seconds)
  */
-const POLL_INTERVAL = 1000
+const POLL_INTERVAL = 2000
 
 /**
  * Relay callback URL for GoCardless OAuth
  * The relay service handles the callback and stores the requisition status
  */
 const RELAY_CALLBACK_URL = "https://relay.firela.io/callback/gocardless"
+
+/**
+ * Error thrown when bank authorization is rejected (status RJ)
+ */
+class RejectionError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "RejectionError"
+  }
+}
+
+/**
+ * Error thrown when authorization link expires (status EX)
+ */
+class ExpiredError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ExpiredError"
+  }
+}
 
 /**
  * Run GoCardless connect command
@@ -102,7 +122,7 @@ export async function runGoCardlessConnect(
   }).start()
 
   let requisitionLink: string
-  let _requisitionId: string
+  let requisitionId: string
   try {
     const requisition = await adapter.createRequisition({
       institution_id: institutionId,
@@ -110,7 +130,7 @@ export async function runGoCardlessConnect(
       reference: `billclaw-${Date.now()}`,
     })
     requisitionLink = requisition.link
-    _requisitionId = requisition.id
+    requisitionId = requisition.id
     requisitionSpinner.succeed("Requisition created")
   } catch (err) {
     requisitionSpinner.fail("Failed to create requisition")
@@ -155,19 +175,53 @@ export async function runGoCardlessConnect(
   }).start()
 
   try {
-    // Simple polling: check requisition status periodically
-    // For now, we wait for the user to complete OAuth and then timeout
-    // In a production system, the relay would notify the CLI via webhook
     const pollStartTime = Date.now()
 
     while (Date.now() - pollStartTime < timeoutMs) {
       await sleep(POLL_INTERVAL)
-      // Placeholder: In production, would check requisition status here
-      // For this implementation, we rely on the relay callback
+
+      try {
+        const requisition = await adapter.getRequisition(requisitionId, "")
+        const elapsed = Math.round((Date.now() - pollStartTime) / 1000)
+        const status = requisition.status
+
+        if (status === "DN") {
+          // Linked - success
+          const accountCount = requisition.accounts.length
+          pollSpinner.succeed(
+            `Bank account linked (${accountCount} account${accountCount !== 1 ? "s" : ""}, ${elapsed}s)`,
+          )
+          console.log("")
+          console.log("Linked accounts:")
+          for (const accountId of requisition.accounts) {
+            console.log(`  - ${accountId}`)
+          }
+          return
+        } else if (status === "RJ") {
+          // Rejected - throw to be caught by outer catch
+          throw new RejectionError("Bank authorization was rejected")
+        } else if (status === "EX") {
+          // Expired - throw to be caught by outer catch
+          throw new ExpiredError("Authorization link expired")
+        } else {
+          // Non-terminal statuses (CR, GA, UA, SA) - continue polling
+          pollSpinner.update(`Waiting for authorization... (${elapsed}s elapsed)`)
+        }
+      } catch (pollErr) {
+        // Re-throw terminal status errors to outer handler
+        if (pollErr instanceof RejectionError || pollErr instanceof ExpiredError) {
+          throw pollErr
+        }
+        // Individual poll error - log and continue
+        const elapsed = Math.round((Date.now() - pollStartTime) / 1000)
+        console.error(`Poll error (retrying): ${pollErr instanceof Error ? pollErr.message : String(pollErr)}`)
+        pollSpinner.update(`Waiting for authorization... (${elapsed}s elapsed, retrying)`)
+      }
     }
 
     // Timeout reached
-    pollSpinner.fail("OAuth timed out")
+    const totalElapsed = Math.round((Date.now() - pollStartTime) / 1000)
+    pollSpinner.fail(`OAuth timed out (${totalElapsed}s)`)
     console.log("")
     console.error("Error: OAuth authorization timed out")
     console.log("")
@@ -177,6 +231,28 @@ export async function runGoCardlessConnect(
     console.log("  - Make sure pop-up blockers are disabled")
     process.exit(1)
   } catch (err) {
+    if (err instanceof RejectionError) {
+      pollSpinner.fail("Bank authorization was rejected")
+      console.log("")
+      console.error("The bank authorization was rejected by the user or institution.")
+      console.log("")
+      console.log("To try again:")
+      console.log("  - Run the connect command with a new authorization")
+      console.log("  - Make sure to complete all steps in the bank's login flow")
+      process.exit(1)
+    }
+
+    if (err instanceof ExpiredError) {
+      pollSpinner.fail("Authorization link expired")
+      console.log("")
+      console.error("The authorization link has expired.")
+      console.log("")
+      console.log("To reconnect:")
+      console.log("  - Run the connect command again to get a fresh authorization link")
+      console.log("  - Complete the bank login within the timeout period")
+      process.exit(1)
+    }
+
     pollSpinner.fail("OAuth failed")
     const userError = parseGoCardlessRelayError(err)
     logError(runtime.logger, userError, { operation: "gocardless_oauth_polling" })
