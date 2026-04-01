@@ -182,6 +182,7 @@ describe("GoCardlessSyncAdapter interface", () => {
       "getAccounts",
       "getTransactions",
       "getMode",
+      "ensureValidToken",
     ]
 
     // Create a mock adapter to verify interface
@@ -208,10 +209,26 @@ describe("GoCardlessSyncAdapter interface", () => {
       getAccounts: async () => [],
       getTransactions: async () => ({ transactions: { booked: [], pending: [] } }),
       getMode: () => "relay",
+      ensureValidToken: async () => "valid-token",
     }
 
     adapterMethods.forEach((method) => {
       expect(typeof (mockAdapter as any)[method]).toBe("function")
     })
+  })
+
+  it("ensureValidToken is declared in interface", () => {
+    const mockAdapter: GoCardlessSyncAdapter = {
+      getInstitutions: async () => [],
+      createRequisition: async () => ({ id: "test", redirect: "", status: "CR", accounts: [], reference: "", link: "" }) as any,
+      getRequisition: async () => ({ id: "test", redirect: "", status: "DN", accounts: [], reference: "", link: "" }) as any,
+      getAccounts: async () => [],
+      getTransactions: async () => ({ transactions: { booked: [], pending: [] } }),
+      getMode: () => "relay",
+      ensureValidToken: async () => "valid-token",
+    }
+
+    expect(typeof mockAdapter.ensureValidToken).toBe("function")
+    expect(mockAdapter.ensureValidToken).toBeDefined()
   })
 })

@@ -103,6 +103,20 @@ vi.mock("./sources/gocardless/gocardless-adapter.js", () => ({
   createGoCardlessAdapter: vi.fn(),
 }))
 
+// Mock ProviderError for token_not_found tests
+vi.mock("./relay/errors.js", () => ({
+  ProviderError: class ProviderError extends Error {
+    provider: string
+    code: string
+    constructor(provider: string, code: string, message: string) {
+      super(message)
+      this.name = "ProviderError"
+      this.provider = provider
+      this.code = code
+    }
+  },
+}))
+
 // Mock storage functions (file I/O)
 vi.mock("./storage/transaction-storage.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./storage/transaction-storage.js")>()
@@ -280,6 +294,7 @@ describe("Billclaw", () => {
           },
         }),
         getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockResolvedValue("test-access-token"),
       }
       vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
       vi.mocked(appendTransactions).mockResolvedValue({ added: 1, updated: 0 })
@@ -303,12 +318,66 @@ describe("Billclaw", () => {
       expect(result.success).toBe(true)
       expect(result.transactionsAdded).toBeGreaterThan(0)
       expect(result.accountId).toBe("gocardless-1")
+      expect(mockAdapter.ensureValidToken).toHaveBeenCalledWith("gocardless-1")
       expect(createGoCardlessAdapter).toHaveBeenCalled()
       expect(appendTransactions).toHaveBeenCalled()
       expect(writeSyncState).toHaveBeenCalled()
     })
 
-    it("returns error when gocardlessAccessToken is missing", async () => {
+    it("auto-refreshes expired token during sync", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { appendTransactions, deduplicateTransactions } = await import("./storage/transaction-storage.js")
+
+      const mockAdapter = {
+        getAccounts: vi.fn().mockResolvedValue([{ id: "gc-acc-1" }]),
+        getTransactions: vi.fn().mockResolvedValue({
+          transactions: { booked: [], pending: [] },
+        }),
+        getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockResolvedValue("refreshed-access-token"),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+      vi.mocked(appendTransactions).mockResolvedValue({ added: 0, updated: 0 })
+      vi.mocked(deduplicateTransactions).mockImplementation((txns: any) => txns)
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-1",
+        type: "gocardless",
+        name: "GoCardless Account",
+        enabled: true,
+        syncFrequency: "daily",
+        gocardlessAccessToken: "stale-token",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-1")
+
+      expect(result.success).toBe(true)
+      expect(mockAdapter.ensureValidToken).toHaveBeenCalledWith("gocardless-1")
+      // Verify getAccounts receives refreshed token, NOT the stale config token
+      expect(mockAdapter.getAccounts).toHaveBeenCalledWith("refreshed-access-token")
+      expect(mockAdapter.getTransactions).toHaveBeenCalledWith(
+        expect.objectContaining({ access_token: "refreshed-access-token" }),
+      )
+    })
+
+    it("returns actionable error when token not found in storage", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { ProviderError } = await import("./relay/errors.js")
+
+      const mockAdapter = {
+        getAccounts: vi.fn(),
+        getTransactions: vi.fn(),
+        getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockRejectedValue(
+          new ProviderError("gocardless", "token_not_found", "No token found for account"),
+        ),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+
       const testAccount: AccountConfig = {
         id: "gocardless-no-token",
         type: "gocardless",
@@ -325,7 +394,44 @@ describe("Billclaw", () => {
 
       expect(result.success).toBe(false)
       expect(result.errors).toBeDefined()
-      expect(result.errors![0].humanReadable.message).toContain("access token")
+      expect(result.errors![0].humanReadable.message).toContain("re-connect")
+    })
+
+    it("does not read account.gocardlessAccessToken from config", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { appendTransactions, deduplicateTransactions } = await import("./storage/transaction-storage.js")
+
+      const mockAdapter = {
+        getAccounts: vi.fn().mockResolvedValue([{ id: "gc-acc-1" }]),
+        getTransactions: vi.fn().mockResolvedValue({
+          transactions: { booked: [], pending: [] },
+        }),
+        getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockResolvedValue("from-storage-token"),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+      vi.mocked(appendTransactions).mockResolvedValue({ added: 0, updated: 0 })
+      vi.mocked(deduplicateTransactions).mockImplementation((txns: any) => txns)
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-1",
+        type: "gocardless",
+        name: "GoCardless Account",
+        enabled: true,
+        syncFrequency: "daily",
+        gocardlessAccessToken: "should-not-be-used",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-1")
+
+      expect(result.success).toBe(true)
+      // Verify getAccounts receives token from ensureValidToken, NOT from config
+      expect(mockAdapter.getAccounts).toHaveBeenCalledWith("from-storage-token")
+      expect(mockAdapter.getAccounts).not.toHaveBeenCalledWith("should-not-be-used")
     })
 
     it("returns error when adapter throws", async () => {
