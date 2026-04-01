@@ -9,16 +9,28 @@
 
 import { Hono } from "hono"
 import { PlaidWebhookVerifier } from "@firela/billclaw-core"
+import { RelayClient } from "@firela/billclaw-core/relay"
+import type { RelayJwkProxyResponse } from "@firela/billclaw-core/relay"
 import type { Env } from "../index.js"
 
 export const webhookRoutes = new Hono<{ Bindings: Env }>()
 
 /**
- * Create a PlaidWebhookVerifier instance with stub JWK fetch.
+ * Create a PlaidWebhookVerifier with RelayClient-backed JWK fetch.
  *
- * TODO(22.1-03): Wire to relay JWK proxy endpoint for production key fetching.
+ * Creates a RelayClient from environment bindings and uses it to fetch
+ * verification keys from the relay JWK proxy endpoint. This enables
+ * production Plaid webhook verification through the relay service.
+ *
+ * @param env - Server environment bindings with FIRELA_RELAY_URL and FIRELA_RELAY_API_KEY
+ * @returns PlaidWebhookVerifier instance with real JWK fetch
  */
-function createPlaidVerifier(): PlaidWebhookVerifier {
+export function createPlaidVerifier(env: Env): PlaidWebhookVerifier {
+  const client = new RelayClient({
+    url: env.FIRELA_RELAY_URL!,
+    apiKey: env.FIRELA_RELAY_API_KEY!,
+  })
+
   return new PlaidWebhookVerifier(
     {
       debug: (...args: unknown[]) => console.debug("[webhook:plaid]", ...args),
@@ -27,11 +39,10 @@ function createPlaidVerifier(): PlaidWebhookVerifier {
       error: (...args: unknown[]) => console.error("[webhook:plaid]", ...args),
     },
     async (kid: string) => {
-      // TODO(22.1-03): Wire to relay JWK proxy endpoint
-      console.warn(
-        `[webhook:plaid] JWK fetch not wired — cannot verify kid=${kid}. Implement in Plan 03.`,
+      const response = await client.request<RelayJwkProxyResponse>(
+        `/api/open-banking/plaid/webhook-key/${kid}`,
       )
-      throw new Error("JWK fetch not implemented — relay JWK proxy pending (Plan 03)")
+      return { key: response.key }
     },
   )
 }
@@ -84,7 +95,7 @@ webhookRoutes.post("/plaid", async (c) => {
 
     // Plaid JWT verification
     if (verificationHeader) {
-      const verifier = createPlaidVerifier()
+      const verifier = createPlaidVerifier(c.env)
       const isValid = await verifier.verify(rawBody, verificationHeader)
 
       if (!isValid) {

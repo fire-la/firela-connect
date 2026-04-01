@@ -91,9 +91,9 @@ describe("createPlaidVerifier", () => {
     ) => Promise<{ key: unknown }>
     const result = await fetchKey("test-kid-123")
 
-    expect(mockRequest).toHaveBeenCalledWith<
-      [string, RequestInit | undefined]
-    >("/api/open-banking/plaid/webhook-key/test-kid-123", undefined)
+    expect(mockRequest).toHaveBeenCalledWith(
+      "/api/open-banking/plaid/webhook-key/test-kid-123",
+    )
     expect(result).toEqual({ key: mockKeyResponse.key })
   })
 
