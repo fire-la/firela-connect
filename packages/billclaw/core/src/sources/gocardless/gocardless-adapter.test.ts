@@ -30,6 +30,7 @@ vi.mock("../../relay/gocardless-client.js", () => ({
       getAccounts: vi.fn(),
       getTransactions: vi.fn(),
       getMode: vi.fn().mockReturnValue("relay"),
+      ensureValidToken: vi.fn(),
     }
   }),
 }))

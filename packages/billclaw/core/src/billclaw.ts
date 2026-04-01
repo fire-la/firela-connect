@@ -43,6 +43,7 @@ import { createPlaidAdapter } from "./sources/plaid/plaid-adapter.js"
 import type { PlaidSyncAdapter } from "./sources/plaid/plaid-adapter.js"
 import { createGoCardlessAdapter } from "./sources/gocardless/gocardless-adapter.js"
 import { convertGoCardlessTransaction } from "./sources/gocardless/gocardless-sync.js"
+import { ProviderError } from "./relay/errors.js"
 
 // Exporters
 import {
@@ -665,37 +666,46 @@ export class Billclaw {
     }
 
     try {
-      // Check for required access token
-      const accessToken = account.gocardlessAccessToken
-      if (!accessToken) {
-        const noTokenError: UserError = createUserError(
-          ERROR_CODES.CONFIG_INVALID,
-          ErrorCategory.CONFIG,
-          "error",
-          false,
-          {
-            title: "Missing GoCardless Access Token",
-            message: `No access token found for GoCardless account ${account.id}. Please complete the OAuth flow first.`,
-            suggestions: [
-              "Run the GoCardless connect command to authenticate",
-              "Ensure the account is properly configured",
-            ],
-          },
-          [],
-          { accountId: account.id },
-        )
-        return {
-          accountId: account.id,
-          success: false,
-          transactionsAdded: 0,
-          transactionsUpdated: 0,
-          errors: [noTokenError],
-        }
-      }
-
       // Create adapter using factory
       const adapter = await createGoCardlessAdapter(this.context)
       this.logger.info?.(`Syncing GoCardless account ${account.id} using ${adapter.getMode()} mode`)
+
+      // Get valid token with auto-refresh (replaces direct config read)
+      let accessToken: string
+      try {
+        accessToken = await adapter.ensureValidToken(account.id)
+      } catch (tokenError) {
+        if (tokenError instanceof ProviderError && tokenError.code === "token_not_found") {
+          const noTokenError: UserError = createUserError(
+            ERROR_CODES.CONFIG_INVALID,
+            ErrorCategory.CONFIG,
+            "error",
+            false,
+            {
+              title: "GoCardless Token Not Found",
+              message: `No GoCardless token found in storage for account ${account.id}. The token may have been removed or the account needs to be re-connected.`,
+              suggestions: [
+                "Run the GoCardless connect command to re-authenticate",
+                "Ensure the account completed the OAuth flow successfully",
+              ],
+            },
+            [],
+            { accountId: account.id },
+          )
+          errors.push(noTokenError)
+          syncState.status = "failed"
+          syncState.error = noTokenError.humanReadable.message
+          await writeSyncState(syncState, storageConfig)
+          return {
+            accountId: account.id,
+            success: false,
+            transactionsAdded: 0,
+            transactionsUpdated: 0,
+            errors: [noTokenError],
+          }
+        }
+        throw tokenError
+      }
 
       // Get linked bank accounts
       const gcAccounts = await adapter.getAccounts(accessToken)

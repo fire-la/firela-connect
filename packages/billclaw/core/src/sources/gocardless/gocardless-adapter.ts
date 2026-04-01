@@ -81,6 +81,17 @@ export interface GoCardlessSyncAdapter {
    * @returns 'relay' (GoCardless is relay-only)
    */
   getMode(): "relay"
+
+  /**
+   * Ensure a valid access token for the given account.
+   * Checks token expiry and auto-refreshes if needed.
+   * Reads from GoCardlessTokenStorage, not config.
+   *
+   * @param accountId - Account identifier
+   * @returns Valid access token (refreshed if needed)
+   * @throws ProviderError with code "token_not_found" if no token in storage
+   */
+  ensureValidToken(accountId: string): Promise<string>
 }
 
 /**
