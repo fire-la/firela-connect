@@ -44,6 +44,7 @@ describe("sync command", () => {
     getAccounts: ReturnType<typeof vi.fn>
     syncPlaid: ReturnType<typeof vi.fn>
     syncGmail: ReturnType<typeof vi.fn>
+    syncAccount: ReturnType<typeof vi.fn>
   }
 
   beforeEach(() => {
@@ -59,6 +60,7 @@ describe("sync command", () => {
       getAccounts: vi.fn(),
       syncPlaid: vi.fn(),
       syncGmail: vi.fn(),
+      syncAccount: vi.fn(),
     }
 
     // Mock Billclaw constructor to return our mock instance
@@ -116,6 +118,29 @@ describe("sync command", () => {
       expect(mockBillclawInstance.syncGmail).toHaveBeenCalledWith(["gmail-1"])
     })
 
+    it("should sync GoCardless accounts alongside plaid and gmail", async () => {
+      const plaidAccount = createMockAccount({ id: "plaid-1", type: "plaid" })
+      const gocardlessAccount = createMockAccount({ id: "gocardless-1", type: "gocardless" })
+
+      mockBillclawInstance.getAccounts.mockResolvedValue([plaidAccount, gocardlessAccount])
+      mockBillclawInstance.syncPlaid.mockResolvedValue([
+        { accountId: "plaid-1", transactionsAdded: 5, transactionsUpdated: 2, errors: [] },
+      ])
+      mockBillclawInstance.syncAccount.mockResolvedValue({
+        accountId: "gocardless-1",
+        success: true,
+        transactionsAdded: 3,
+        transactionsUpdated: 1,
+        errors: [],
+      })
+
+      const context = createMockCliContext()
+      await syncCommand.handler(context, {})
+
+      expect(mockBillclawInstance.syncPlaid).toHaveBeenCalledWith(["plaid-1"])
+      expect(mockBillclawInstance.syncAccount).toHaveBeenCalledWith("gocardless-1")
+    })
+
     it("should handle no accounts configured", async () => {
       mockBillclawInstance.getAccounts.mockResolvedValue([])
 
@@ -130,6 +155,24 @@ describe("sync command", () => {
   })
 
   describe("sync single account", () => {
+    it("should sync GoCardless account via syncAccount", async () => {
+      const account = createMockAccount({ id: "gocardless-1", type: "gocardless" })
+
+      mockBillclawInstance.getAccounts.mockResolvedValue([account])
+      mockBillclawInstance.syncAccount.mockResolvedValue({
+        accountId: "gocardless-1",
+        success: true,
+        transactionsAdded: 7,
+        transactionsUpdated: 3,
+        errors: [],
+      })
+
+      const context = createMockCliContext()
+      await syncCommand.handler(context, { account: "gocardless-1" })
+
+      expect(mockBillclawInstance.syncAccount).toHaveBeenCalledWith("gocardless-1")
+    })
+
     it("should sync a specific account by ID", async () => {
       const account = createMockAccount({ id: "plaid-1", type: "plaid" })
 
@@ -233,6 +276,25 @@ describe("sync command", () => {
   })
 
   describe("unknown account type", () => {
+    it("should not throw for gocardless account type", async () => {
+      const account = createMockAccount({ id: "gocardless-1", type: "gocardless" })
+
+      mockBillclawInstance.getAccounts.mockResolvedValue([account])
+      mockBillclawInstance.syncAccount.mockResolvedValue({
+        accountId: "gocardless-1",
+        success: true,
+        transactionsAdded: 0,
+        transactionsUpdated: 0,
+        errors: [],
+      })
+
+      const context = createMockCliContext()
+      // Should NOT throw "Unknown account type" for gocardless
+      await expect(
+        syncCommand.handler(context, { account: "gocardless-1" }),
+      ).resolves.not.toThrow()
+    })
+
     it("should throw for unknown account type", async () => {
       const account = createMockAccount({ id: "unknown-1", type: "unknown" as any })
 
