@@ -134,25 +134,13 @@ export function parseGoCardlessRelayError(
   // Parse through relay error hierarchy for generic Errors
   // Only use parseRelayError if the error looks like a relay/HTTP error
   if (error instanceof Error) {
+    // parseRelayError for Error instances always returns RelayHttpError
     const relayError = parseRelayError(error, {
       provider: "gocardless",
       endpoint: context?.endpoint,
     })
 
-    // Handle ProviderError (from GoCardless via relay)
-    if (relayError instanceof ProviderError) {
-      return createProviderUserError(relayError, context)
-    }
-
-    // Handle RelayError (relay service issues)
-    if (relayError instanceof RelayError) {
-      return createRelayUserError(relayError, context)
-    }
-
-    // Handle RelayHttpError (network/HTTP issues)
-    if (relayError instanceof RelayHttpError) {
-      return createHttpUserError(relayError, context)
-    }
+    return createHttpUserError(relayError as RelayHttpError, context)
   }
 
   // Handle raw error response objects

@@ -163,25 +163,10 @@ export function parsePlaidRelayError(
     return createHttpUserError(error, context)
   }
 
-  // Parse through relay error hierarchy for generic Errors
-  const relayError =
-    error instanceof Error
-      ? parseRelayError(error, { provider: "plaid", endpoint: context?.endpoint })
-      : null
-
-  // Handle ProviderError (from Plaid via relay)
-  if (relayError instanceof ProviderError) {
-    return createProviderUserError(relayError, context)
-  }
-
-  // Handle RelayError (relay service issues)
-  if (relayError instanceof RelayError) {
-    return createRelayUserError(relayError, context)
-  }
-
-  // Handle RelayHttpError (network/HTTP issues)
-  if (relayError instanceof RelayHttpError) {
-    return createHttpUserError(relayError, context)
+  // parseRelayError for Error instances always returns RelayHttpError
+  if (error instanceof Error) {
+    const relayError = parseRelayError(error, { provider: "plaid", endpoint: context?.endpoint })
+    return createHttpUserError(relayError as RelayHttpError, context)
   }
 
   // Handle raw error response objects

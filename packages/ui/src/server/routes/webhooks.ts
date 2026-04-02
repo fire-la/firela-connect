@@ -180,7 +180,9 @@ webhookRoutes.post("/gocardless", async (c) => {
         : 0,
     })
 
-    // TODO: Implement GoCardless webhook verification and processing
+    // GoCardless Bank Account Data is poll-only — webhooks not expected.
+    // This endpoint acknowledges receipt for future compatibility.
+    // See: billclaw/core/src/webhooks/handlers/gocardless.ts for details.
     // GoCardless Bank Account Data is poll-only — webhooks not expected
     // For now, just acknowledge receipt
 
