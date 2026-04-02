@@ -11,7 +11,6 @@ import {
   mapGoCardlessError,
   parseGoCardlessRelayError,
 } from "./gocardless-errors.js"
-import { ProviderError, RelayError, RelayHttpError } from "./errors.js"
 import {
   ERROR_CODES,
   ErrorCategory,
@@ -63,265 +62,6 @@ describe("mapGoCardlessError", () => {
     it("should return 'provider_error' for unrelated text", () => {
       expect(mapGoCardlessError("Something went wrong")).toBe("provider_error")
     })
-  })
-})
-
-// ============================================================================
-// parseGoCardlessRelayError - ProviderError branches
-// ============================================================================
-
-describe("parseGoCardlessRelayError - ProviderError branches", () => {
-  describe("token_expired + invalid_access_token", () => {
-    it("should return GOCARDLESS_RELAY_TOKEN_EXPIRED for token_expired code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "token_expired",
-        "Access token expired",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_TOKEN_EXPIRED,
-      )
-      expect(userError.category).toBe(ErrorCategory.RELAY_PROVIDER)
-      expect(userError.severity).toBe("error")
-      expect(userError.recoverable).toBe(true)
-    })
-
-    it("should return GOCARDLESS_RELAY_TOKEN_EXPIRED for invalid_access_token code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "invalid_access_token",
-        "Invalid access token",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_TOKEN_EXPIRED,
-      )
-      expect(userError.recoverable).toBe(true)
-    })
-
-    it("should include accountId in entities when context provided", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "token_expired",
-        "Expired",
-      )
-      const userError = parseGoCardlessRelayError(error, {
-        accountId: "acc-123",
-      })
-
-      expect(userError.entities?.accountId).toBe("acc-123")
-    })
-  })
-
-  describe("requisition_not_found + requisition_expired", () => {
-    it("should return REQUISITION_NOT_FOUND for requisition_not_found code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "requisition_not_found",
-        "Not found",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_REQUISITION_NOT_FOUND,
-      )
-      expect(userError.recoverable).toBe(true)
-    })
-
-    it("should return REQUISITION_NOT_FOUND for requisition_expired code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "requisition_expired",
-        "Expired",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_REQUISITION_NOT_FOUND,
-      )
-      expect(userError.recoverable).toBe(true)
-    })
-  })
-
-  describe("access_denied", () => {
-    it("should return ACCESS_DENIED for access_denied code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "access_denied",
-        "Access denied",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_ACCESS_DENIED,
-      )
-      expect(userError.recoverable).toBe(false)
-    })
-  })
-
-  describe("rate_limit_exceeded", () => {
-    it("should return RATE_LIMITED for rate_limit_exceeded code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "rate_limit_exceeded",
-        "Too many requests",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_RATE_LIMITED,
-      )
-      expect(userError.severity).toBe("warning")
-      expect(userError.recoverable).toBe(true)
-      expect(userError.nextActions?.[0]?.delayMs).toBe(300000)
-    })
-  })
-
-  describe("institution_down + institution_not_found", () => {
-    it("should return INSTITUTION_DOWN for institution_down code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "institution_down",
-        "Bank is down",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_INSTITUTION_DOWN,
-      )
-      expect(userError.severity).toBe("warning")
-      expect(userError.recoverable).toBe(true)
-    })
-
-    it("should return INSTITUTION_DOWN for institution_not_found code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "institution_not_found",
-        "Not found",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.GOCARDLESS_RELAY_INSTITUTION_DOWN,
-      )
-    })
-  })
-
-  describe("generic provider error fallback", () => {
-    it("should return RELAY_PROVIDER_ERROR for unknown provider code", () => {
-      const error = new ProviderError(
-        "gocardless",
-        "unknown_code",
-        "Some error",
-      )
-      const userError = parseGoCardlessRelayError(error)
-
-      expect(userError.errorCode).toBe(ERROR_CODES.RELAY_PROVIDER_ERROR)
-      expect(userError.recoverable).toBe(true)
-    })
-  })
-})
-
-// ============================================================================
-// parseGoCardlessRelayError - RelayError branches
-// ============================================================================
-
-describe("parseGoCardlessRelayError - RelayError branches", () => {
-  it("should handle RELAY_AUTH_FAILED", () => {
-    const error = new RelayError(
-      "RELAY_AUTH_FAILED",
-      "Auth failed",
-      "Check your API key",
-    )
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_AUTH_FAILED)
-    expect(userError.category).toBe(ErrorCategory.RELAY)
-    expect(userError.severity).toBe("error")
-    expect(userError.recoverable).toBe(true)
-  })
-
-  it("should handle RELAY_RATE_LIMITED", () => {
-    const error = new RelayError(
-      "RELAY_RATE_LIMITED",
-      "Rate limited",
-      "Too many requests",
-    )
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_RATE_LIMITED)
-    expect(userError.category).toBe(ErrorCategory.RELAY)
-    expect(userError.severity).toBe("warning")
-    expect(userError.recoverable).toBe(true)
-  })
-
-  it("should handle generic relay error code", () => {
-    const error = new RelayError("OTHER", "Some error", "Generic relay error")
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_PROVIDER_ERROR)
-    expect(userError.category).toBe(ErrorCategory.RELAY)
-    expect(userError.humanReadable.message).toContain("Generic relay error")
-  })
-})
-
-// ============================================================================
-// parseGoCardlessRelayError - RelayHttpError branches
-// ============================================================================
-
-describe("parseGoCardlessRelayError - RelayHttpError branches", () => {
-  it("should handle timeout (statusCode 0)", () => {
-    const error = new RelayHttpError(0, "Request timeout", true)
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_TIMEOUT)
-    expect(userError.category).toBe(ErrorCategory.NETWORK)
-    expect(userError.severity).toBe("warning")
-    expect(userError.recoverable).toBe(true)
-  })
-
-  it("should handle timeout via message containing 'timeout'", () => {
-    const error = new RelayHttpError(500, "Connection timeout occurred", true)
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_TIMEOUT)
-  })
-
-  it("should handle 5xx server error", () => {
-    const error = new RelayHttpError(503, "Service unavailable", true)
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_CONNECTION_FAILED)
-    expect(userError.category).toBe(ErrorCategory.NETWORK)
-    expect(userError.humanReadable.message).toContain("503")
-  })
-
-  it("should handle other HTTP error (4xx)", () => {
-    const error = new RelayHttpError(418, "I'm a teapot", false)
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_CONNECTION_FAILED)
-    expect(userError.category).toBe(ErrorCategory.NETWORK)
-    expect(userError.severity).toBe("error")
-    expect(userError.recoverable).toBe(false)
-  })
-
-  it("should include retry action for non-retryable HTTP errors without nextActions", () => {
-    const error = new RelayHttpError(418, "I'm a teapot", false)
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.nextActions).toBeUndefined()
-  })
-
-  it("should include retry action for retryable HTTP errors", () => {
-    const error = new RelayHttpError(418, "I'm a teapot", true)
-    const userError = parseGoCardlessRelayError(error)
-
-    expect(userError.nextActions).toBeDefined()
-    expect(userError.nextActions?.[0]?.type).toBe("retry")
   })
 })
 
@@ -385,6 +125,68 @@ describe("parseGoCardlessRelayError - raw response objects", () => {
 
     expect(userError.errorCode).toBe(
       ERROR_CODES.GOCARDLESS_RELAY_TOKEN_EXPIRED,
+    )
+  })
+
+  it("should handle { provider: 'gocardless', summary: 'Invalid access token' }", () => {
+    const rawError = {
+      provider: "gocardless" as const,
+      summary: "Invalid access token",
+    }
+    const userError = parseGoCardlessRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.GOCARDLESS_RELAY_TOKEN_EXPIRED,
+    )
+    expect(userError.recoverable).toBe(true)
+  })
+
+  it("should handle { summary: 'Requisition not found' }", () => {
+    const rawError = { summary: "Requisition not found" }
+    const userError = parseGoCardlessRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.GOCARDLESS_RELAY_REQUISITION_NOT_FOUND,
+    )
+    expect(userError.recoverable).toBe(true)
+  })
+
+  it("should handle { summary: 'Requisition expired' }", () => {
+    const rawError = { summary: "Requisition expired" }
+    const userError = parseGoCardlessRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.GOCARDLESS_RELAY_REQUISITION_NOT_FOUND,
+    )
+  })
+
+  it("should handle { summary: 'Access denied' }", () => {
+    const rawError = { summary: "Access denied" }
+    const userError = parseGoCardlessRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.GOCARDLESS_RELAY_ACCESS_DENIED,
+    )
+    expect(userError.recoverable).toBe(false)
+  })
+
+  it("should handle { summary: 'Rate limit exceeded' }", () => {
+    const rawError = { summary: "Rate limit exceeded" }
+    const userError = parseGoCardlessRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.GOCARDLESS_RELAY_RATE_LIMITED,
+    )
+    expect(userError.severity).toBe("warning")
+    expect(userError.nextActions?.[0]?.delayMs).toBe(300000)
+  })
+
+  it("should handle { summary: 'Institution not found' }", () => {
+    const rawError = { summary: "Institution not found" }
+    const userError = parseGoCardlessRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.GOCARDLESS_RELAY_INSTITUTION_DOWN,
     )
   })
 })
@@ -451,26 +253,24 @@ describe("parseGoCardlessRelayError - edge cases", () => {
     expect(userError.errorCode).toBe(ERROR_CODES.UNKNOWN_ERROR)
   })
 
-  it("should include context accountId when provided", () => {
-    const error = new ProviderError(
-      "gocardless",
-      "unknown_code",
-      "Error msg",
-    )
-    const userError = parseGoCardlessRelayError(error, {
+  it("should include context accountId via raw response path", () => {
+    const rawError = {
+      provider: "gocardless" as const,
+      summary: "Unknown provider error",
+    }
+    const userError = parseGoCardlessRelayError(rawError, {
       accountId: "test-account",
     })
 
     expect(userError.entities?.accountId).toBe("test-account")
   })
 
-  it("should work without context parameter", () => {
-    const error = new ProviderError(
-      "gocardless",
-      "token_expired",
-      "Expired",
-    )
-    const userError = parseGoCardlessRelayError(error)
+  it("should work without context parameter via raw response path", () => {
+    const rawError = {
+      provider: "gocardless" as const,
+      summary: "Access token expired",
+    }
+    const userError = parseGoCardlessRelayError(rawError)
 
     expect(userError.errorCode).toBe(
       ERROR_CODES.GOCARDLESS_RELAY_TOKEN_EXPIRED,

@@ -118,21 +118,7 @@ export function parseGoCardlessRelayError(
     return error as UserError
   }
 
-  // Handle known error types directly (before parseRelayError)
-  if (error instanceof ProviderError) {
-    return createProviderUserError(error, context)
-  }
-
-  if (error instanceof RelayError) {
-    return createRelayUserError(error, context)
-  }
-
-  if (error instanceof RelayHttpError) {
-    return createHttpUserError(error, context)
-  }
-
-  // Parse through relay error hierarchy for generic Errors
-  // Only use parseRelayError if the error looks like a relay/HTTP error
+  // Parse through relay error hierarchy for Error instances
   if (error instanceof Error) {
     // parseRelayError for Error instances always returns RelayHttpError
     const relayError = parseRelayError(error, {
@@ -494,32 +480,8 @@ function createHttpUserError(
     )
   }
 
-  // Server error (5xx) - retryable
-  if (error.statusCode >= 500) {
-    return createUserError(
-      ERROR_CODES.RELAY_CONNECTION_FAILED,
-      ErrorCategory.NETWORK,
-      "warning",
-      error.retryable,
-      {
-        title: "Relay Service Unavailable",
-        message: `Relay service returned error ${error.statusCode}.`,
-        suggestions: [
-          "Try again in a few moments",
-          "Check relay service status",
-        ],
-      },
-      [
-        {
-          type: "retry",
-          delayMs: 30000,
-          description: "Retry after 30 seconds",
-        },
-      ],
-    )
-  }
-
-  // Other HTTP error
+  // parseRelayError for Error instances always returns RelayHttpError with statusCode 0,
+  // so only the timeout branch (statusCode === 0) is reachable through this path.
   return createUserError(
     ERROR_CODES.RELAY_CONNECTION_FAILED,
     ErrorCategory.NETWORK,

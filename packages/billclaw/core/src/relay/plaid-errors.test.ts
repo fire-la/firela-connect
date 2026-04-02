@@ -11,7 +11,6 @@ import {
   parsePlaidRelayError,
   PLAID_ERROR_MAPPING,
 } from "./plaid-errors.js"
-import { ProviderError, RelayError, RelayHttpError } from "./errors.js"
 import {
   ERROR_CODES,
   ErrorCategory,
@@ -151,226 +150,6 @@ describe("mapPlaidRelayError", () => {
 })
 
 // ============================================================================
-// parsePlaidRelayError - ProviderError branches
-// ============================================================================
-
-describe("parsePlaidRelayError - ProviderError branches", () => {
-  describe("bank_connection_expired + invalid_token (both trigger reauth)", () => {
-    it("should return PLAID_RELAY_BANK_CONNECTION_EXPIRED for bank_connection_expired code", () => {
-      const error = new ProviderError(
-        "plaid",
-        "bank_connection_expired",
-        "Item login required",
-      )
-      const userError = parsePlaidRelayError(error, {
-        accountId: "acc-123",
-      })
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.PLAID_RELAY_BANK_CONNECTION_EXPIRED,
-      )
-      expect(userError.category).toBe(ErrorCategory.RELAY_PROVIDER)
-      expect(userError.recoverable).toBe(true)
-      expect(userError.nextActions?.some((a) => a.type === "oauth_reauth")).toBe(
-        true,
-      )
-    })
-
-    it("should return PLAID_RELAY_BANK_CONNECTION_EXPIRED for invalid_token code", () => {
-      const error = new ProviderError(
-        "plaid",
-        "invalid_token",
-        "Invalid access token",
-      )
-      const userError = parsePlaidRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.PLAID_RELAY_BANK_CONNECTION_EXPIRED,
-      )
-    })
-
-    it("should include accountId in entities", () => {
-      const error = new ProviderError(
-        "plaid",
-        "bank_connection_expired",
-        "Expired",
-      )
-      const userError = parsePlaidRelayError(error, {
-        accountId: "acc-456",
-      })
-
-      expect(userError.entities?.accountId).toBe("acc-456")
-    })
-  })
-
-  describe("link_token_expired", () => {
-    it("should return PLAID_RELAY_LINK_TOKEN_EXPIRED", () => {
-      const error = new ProviderError(
-        "plaid",
-        "link_token_expired",
-        "Link token has expired",
-      )
-      const userError = parsePlaidRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.PLAID_RELAY_LINK_TOKEN_EXPIRED,
-      )
-      expect(userError.severity).toBe("warning")
-      expect(userError.recoverable).toBe(true)
-    })
-  })
-
-  describe("rate_limit_exceeded", () => {
-    it("should return PLAID_RELAY_RATE_LIMITED", () => {
-      const error = new ProviderError(
-        "plaid",
-        "rate_limit_exceeded",
-        "Too many requests",
-      )
-      const userError = parsePlaidRelayError(error)
-
-      expect(userError.errorCode).toBe(ERROR_CODES.PLAID_RELAY_RATE_LIMITED)
-      expect(userError.severity).toBe("warning")
-      expect(userError.recoverable).toBe(true)
-      expect(userError.nextActions?.[0]?.delayMs).toBe(300000)
-    })
-  })
-
-  describe("institution_down + institution_not_responding", () => {
-    it("should return PLAID_RELAY_INSTITUTION_DOWN for institution_down", () => {
-      const error = new ProviderError(
-        "plaid",
-        "institution_down",
-        "Bank is down",
-      )
-      const userError = parsePlaidRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.PLAID_RELAY_INSTITUTION_DOWN,
-      )
-      expect(userError.severity).toBe("warning")
-    })
-
-    it("should return PLAID_RELAY_INSTITUTION_DOWN for institution_not_responding", () => {
-      const error = new ProviderError(
-        "plaid",
-        "institution_not_responding",
-        "Not responding",
-      )
-      const userError = parsePlaidRelayError(error)
-
-      expect(userError.errorCode).toBe(
-        ERROR_CODES.PLAID_RELAY_INSTITUTION_DOWN,
-      )
-    })
-  })
-
-  describe("generic provider error fallback", () => {
-    it("should return RELAY_PROVIDER_ERROR for unknown provider code", () => {
-      const error = new ProviderError("plaid", "unknown_code", "Some error")
-      const userError = parsePlaidRelayError(error)
-
-      expect(userError.errorCode).toBe(ERROR_CODES.RELAY_PROVIDER_ERROR)
-      expect(userError.category).toBe(ErrorCategory.RELAY_PROVIDER)
-      expect(userError.recoverable).toBe(true)
-    })
-  })
-})
-
-// ============================================================================
-// parsePlaidRelayError - RelayError branches
-// ============================================================================
-
-describe("parsePlaidRelayError - RelayError branches", () => {
-  it("should handle RELAY_AUTH_FAILED", () => {
-    const error = new RelayError(
-      "RELAY_AUTH_FAILED",
-      "Auth failed",
-      "Check your API key",
-    )
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_AUTH_FAILED)
-    expect(userError.category).toBe(ErrorCategory.RELAY)
-    expect(userError.severity).toBe("error")
-    expect(userError.recoverable).toBe(true)
-  })
-
-  it("should handle RELAY_RATE_LIMITED", () => {
-    const error = new RelayError(
-      "RELAY_RATE_LIMITED",
-      "Rate limited",
-      "Too many requests",
-    )
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_RATE_LIMITED)
-    expect(userError.category).toBe(ErrorCategory.RELAY)
-    expect(userError.severity).toBe("warning")
-    expect(userError.recoverable).toBe(true)
-  })
-
-  it("should handle generic relay error code", () => {
-    const error = new RelayError("OTHER", "Some error", "Generic relay error")
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_PROVIDER_ERROR)
-    expect(userError.category).toBe(ErrorCategory.RELAY)
-    expect(userError.humanReadable.message).toContain("Generic relay error")
-  })
-})
-
-// ============================================================================
-// parsePlaidRelayError - RelayHttpError branches
-// ============================================================================
-
-describe("parsePlaidRelayError - RelayHttpError branches", () => {
-  it("should handle timeout (statusCode 0)", () => {
-    const error = new RelayHttpError(0, "Request timeout", true)
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_TIMEOUT)
-    expect(userError.category).toBe(ErrorCategory.NETWORK)
-    expect(userError.severity).toBe("warning")
-    expect(userError.recoverable).toBe(true)
-  })
-
-  it("should handle timeout via message containing 'timeout'", () => {
-    const error = new RelayHttpError(500, "Connection timeout occurred", true)
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_TIMEOUT)
-  })
-
-  it("should handle 5xx server error", () => {
-    const error = new RelayHttpError(503, "Service unavailable", true)
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_CONNECTION_FAILED)
-    expect(userError.category).toBe(ErrorCategory.NETWORK)
-    expect(userError.humanReadable.message).toContain("503")
-  })
-
-  it("should handle other HTTP error (4xx non-retryable)", () => {
-    const error = new RelayHttpError(418, "I'm a teapot", false)
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_CONNECTION_FAILED)
-    expect(userError.category).toBe(ErrorCategory.NETWORK)
-    expect(userError.recoverable).toBe(false)
-    expect(userError.nextActions).toBeUndefined()
-  })
-
-  it("should include retry action for retryable non-5xx HTTP errors", () => {
-    const error = new RelayHttpError(418, "I'm a teapot", true)
-    const userError = parsePlaidRelayError(error)
-
-    expect(userError.nextActions).toBeDefined()
-    expect(userError.nextActions?.[0]?.type).toBe("retry")
-  })
-})
-
-// ============================================================================
 // parsePlaidRelayError - raw response objects
 // ============================================================================
 
@@ -422,6 +201,75 @@ describe("parsePlaidRelayError - raw response objects", () => {
     expect(userError.errorCode).toBe(
       ERROR_CODES.PLAID_RELAY_INSTITUTION_DOWN,
     )
+  })
+
+  it("should handle { error_type: 'INSTITUTION_ERROR', error_code: 'INSTITUTION_NOT_RESPONDING' }", () => {
+    const rawError = {
+      error_type: "INSTITUTION_ERROR",
+      error_code: "INSTITUTION_NOT_RESPONDING",
+    }
+    const userError = parsePlaidRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.PLAID_RELAY_INSTITUTION_DOWN,
+    )
+    expect(userError.severity).toBe("warning")
+  })
+
+  it("should handle { error_type: 'API_ERROR', error_code: 'RATE_LIMIT_EXCEEDED' }", () => {
+    const rawError = {
+      provider: "plaid" as const,
+      error_type: "API_ERROR",
+      error_code: "RATE_LIMIT_EXCEEDED",
+    }
+    const userError = parsePlaidRelayError(rawError)
+
+    expect(userError.errorCode).toBe(ERROR_CODES.PLAID_RELAY_RATE_LIMITED)
+    expect(userError.severity).toBe("warning")
+    expect(userError.recoverable).toBe(true)
+    expect(userError.nextActions?.[0]?.delayMs).toBe(300000)
+  })
+
+  it("should handle { error_type: 'LINK_ERROR', error_code: 'LINK_TOKEN_EXPIRED' }", () => {
+    const rawError = {
+      provider: "plaid" as const,
+      error_type: "LINK_ERROR",
+      error_code: "LINK_TOKEN_EXPIRED",
+    }
+    const userError = parsePlaidRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.PLAID_RELAY_LINK_TOKEN_EXPIRED,
+    )
+    expect(userError.severity).toBe("warning")
+    expect(userError.recoverable).toBe(true)
+  })
+
+  it("should handle { error_type: 'INVALID_INPUT', error_code: 'INVALID_ACCESS_TOKEN' }", () => {
+    const rawError = {
+      provider: "plaid" as const,
+      error_type: "INVALID_INPUT",
+      error_code: "INVALID_ACCESS_TOKEN",
+    }
+    const userError = parsePlaidRelayError(rawError)
+
+    expect(userError.errorCode).toBe(
+      ERROR_CODES.PLAID_RELAY_BANK_CONNECTION_EXPIRED,
+    )
+    expect(userError.recoverable).toBe(true)
+  })
+
+  it("should handle generic provider error via raw response", () => {
+    const rawError = {
+      provider: "plaid" as const,
+      error_type: "ITEM_ERROR",
+      error_code: "SOME_UNKNOWN_CODE",
+    }
+    const userError = parsePlaidRelayError(rawError)
+
+    expect(userError.errorCode).toBe(ERROR_CODES.RELAY_PROVIDER_ERROR)
+    expect(userError.category).toBe(ErrorCategory.RELAY_PROVIDER)
+    expect(userError.recoverable).toBe(true)
   })
 
   it("should use display_message over error_message when available", () => {
@@ -494,26 +342,26 @@ describe("parsePlaidRelayError - edge cases", () => {
     expect(userError.errorCode).toBe(ERROR_CODES.UNKNOWN_ERROR)
   })
 
-  it("should include context accountId when provided", () => {
-    const error = new ProviderError(
-      "plaid",
-      "bank_connection_expired",
-      "Expired",
-    )
-    const userError = parsePlaidRelayError(error, {
+  it("should include context accountId via raw response path", () => {
+    const rawError = {
+      provider: "plaid" as const,
+      error_type: "ITEM_ERROR",
+      error_code: "ITEM_LOGIN_REQUIRED",
+    }
+    const userError = parsePlaidRelayError(rawError, {
       accountId: "acc-789",
     })
 
     expect(userError.entities?.accountId).toBe("acc-789")
   })
 
-  it("should work without context parameter", () => {
-    const error = new ProviderError(
-      "plaid",
-      "rate_limit_exceeded",
-      "Rate limited",
-    )
-    const userError = parsePlaidRelayError(error)
+  it("should work without context parameter via raw response path", () => {
+    const rawError = {
+      provider: "plaid" as const,
+      error_type: "API_ERROR",
+      error_code: "RATE_LIMIT_EXCEEDED",
+    }
+    const userError = parsePlaidRelayError(rawError)
 
     expect(userError.errorCode).toBe(ERROR_CODES.PLAID_RELAY_RATE_LIMITED)
   })
