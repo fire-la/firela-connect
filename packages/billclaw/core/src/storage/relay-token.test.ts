@@ -14,7 +14,7 @@ import { FileStorageAdapter } from "./file-adapter.js"
 import type { RelayTokenStorage, GoCardlessTokenStorage } from "./types.js"
 
 // Helper to create a mock D1 database
-function createMockD1Database() {
+function createMockD1Database(options?: { shouldError?: boolean }) {
   const tables: Map<string, Map<string, Record<string, unknown>>> = new Map()
   tables.set("relay_tokens", new Map())
   tables.set("gocardless_tokens", new Map())
@@ -22,6 +22,23 @@ function createMockD1Database() {
   return {
     prepare: (query: string) => {
       const lowerQuery = query.toLowerCase()
+
+      // Error simulation path: when shouldError is true, run() and first() throw
+      if (options?.shouldError) {
+        return {
+          bind: function (...values: unknown[]) {
+            this.values = values
+            return this
+          },
+          run: async () => {
+            throw new Error("D1 database error")
+          },
+          first: async () => {
+            throw new Error("D1 database error")
+          },
+          values: [] as unknown[],
+        }
+      }
 
       return {
         bind: function (...values: unknown[]) {
