@@ -1,7 +1,7 @@
 /**
  * Tests for Upload Service
  *
- * Orchestrates the upload flow from BillClaw transactions to IGN.
+ * Orchestrates the upload flow from BillClaw transactions to VLT.
  * Handles loading, transformation, upload, and status tracking.
  *
  * On upload failure, local data is always preserved
@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { UploadService } from "./upload-service.js"
-import type { IgnConfig, StorageConfig } from "../models/config.js"
+import type { VltConfig, StorageConfig } from "../models/config.js"
 import type { Logger } from "../errors/errors.js"
 import {
   createCredentialStore,
@@ -30,7 +30,7 @@ const mockLogger: Logger = {
 }
 
 // Mock config
-const ignConfig: IgnConfig = {
+const vltConfig: VltConfig = {
   apiUrl: "http://localhost:3000/api/v1",
   accessToken: "test-access-token",
   region: "us",
@@ -65,7 +65,7 @@ describe("UploadService", () => {
 
     beforeEach(() => {
       service = new UploadService(
-        ignConfig,
+        vltConfig,
         storageConfig,
         mockCredentialStore,
         mockLogger,
@@ -79,9 +79,9 @@ describe("UploadService", () => {
 
     it("should return false when accessToken is missing", async () => {
       const configWithoutToken = {
-        ...ignConfig,
+        ...vltConfig,
         accessToken: undefined,
-      } as IgnConfig
+      } as VltConfig
       const serviceWithoutToken = new UploadService(
         configWithoutToken,
         storageConfig,
@@ -94,7 +94,7 @@ describe("UploadService", () => {
     })
 
     it("should return false when upload config is missing", async () => {
-      const configWithoutUpload = { ...ignConfig }
+      const configWithoutUpload = { ...vltConfig }
       configWithoutUpload.upload = undefined
       const serviceWithoutUpload = new UploadService(
         configWithoutUpload,
@@ -108,7 +108,7 @@ describe("UploadService", () => {
     })
 
     it("should return false when mode is disabled", async () => {
-      const configDisabled = { ...ignConfig }
+      const configDisabled = { ...vltConfig }
       configDisabled.upload!.mode = "disabled"
       const serviceDisabled = new UploadService(
         configDisabled,
@@ -127,7 +127,7 @@ describe("UploadService", () => {
 
     beforeEach(() => {
       _service = new UploadService(
-        ignConfig,
+        vltConfig,
         storageConfig,
         mockCredentialStore,
         mockLogger,
@@ -136,9 +136,9 @@ describe("UploadService", () => {
 
     it("should throw when accessToken is missing", async () => {
       const configWithoutToken = {
-        ...ignConfig,
+        ...vltConfig,
         accessToken: undefined,
-      } as IgnConfig
+      } as VltConfig
       const serviceWithoutToken = new UploadService(
         configWithoutToken,
         storageConfig,
@@ -156,7 +156,7 @@ describe("UploadService", () => {
     })
 
     it("should throw when upload config is missing", async () => {
-      const configWithoutUpload = { ...ignConfig }
+      const configWithoutUpload = { ...vltConfig }
       configWithoutUpload.upload = undefined
       const serviceWithoutUpload = new UploadService(
         configWithoutUpload,
@@ -180,7 +180,7 @@ describe("UploadService", () => {
 
     beforeEach(() => {
       service = new UploadService(
-        ignConfig,
+        vltConfig,
         storageConfig,
         mockCredentialStore,
         mockLogger,

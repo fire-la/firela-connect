@@ -3,7 +3,7 @@
     "connect": "连接账户",
     "sync": "同步设置",
     "export": "导出设置",
-    "ign": "IGN 设置",
+    "vlt": "VLT 设置",
     "webhook": "Webhook 设置",
     "advanced": "高级设置"
   },
@@ -36,9 +36,9 @@
     "outputDir": "输出目录",
     "accountMapping": "账户映射"
   },
-  "ign": {
-    "title": "IGN 设置",
-    "description": "配置 IGN Beancount SaaS 平台集成。",
+  "vlt": {
+    "title": "VLT 设置",
+    "description": "配置 Firela VLT Beancount SaaS 平台集成。",
     "apiUrl": "API 地址",
     "accessToken": "Access Token",
     "region": "区域",

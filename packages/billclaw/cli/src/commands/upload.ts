@@ -1,7 +1,7 @@
 /**
  * Upload command
  *
- * Upload transactions to Firela Vault (IGN Beancount SaaS).
+ * Upload transactions to Firela Vault (Firela VLT Beancount SaaS).
  */
 
 import type { CliCommand, CliContext } from "./registry.js"
@@ -25,11 +25,11 @@ async function runUpload(
   const config = await runtime.config.getConfig()
 
   // Check if Firela Vault is configured
-  if (!config.ign?.accessToken) {
+  if (!config.vlt?.accessToken) {
     console.log("Firela Vault is not configured. Please add your access token to the configuration.")
     console.log("")
     console.log("Configuration example:")
-    console.log("  ign:")
+    console.log("  vlt:")
     console.log("    apiUrl: https://ign-dev.firela.io/api/v1")
     console.log("    accessToken: your-access-token-from-app")
     console.log("    region: cn")
@@ -38,11 +38,11 @@ async function runUpload(
     return
   }
 
-  if (!config.ign?.upload) {
+  if (!config.vlt?.upload) {
     console.log("Firela Vault upload is not configured. Please add upload configuration.")
     console.log("")
     console.log("Configuration example:")
-    console.log("  ign:")
+    console.log("  vlt:")
     console.log("    upload:")
     console.log("      sourceAccount: Assets:Bank:Chase")
     console.log("      defaultCurrency: USD")
@@ -62,11 +62,11 @@ async function runUpload(
   })
 
   console.log("")
-  console.log(`Uploading transactions to Firela Vault (region: ${config.ign.region})...`)
+  console.log(`Uploading transactions to Firela Vault (region: ${config.vlt.region})...`)
   console.log("")
 
   const uploadService = new UploadService(
-    config.ign,
+    config.vlt,
     storageConfig,
     credentialStore,
     runtime.logger,
@@ -169,7 +169,7 @@ async function runUpload(
  */
 export const uploadCommand: CliCommand = {
   name: "upload",
-  description: "Upload transactions to Firela Vault (IGN Beancount SaaS)",
+  description: "Upload transactions to Firela Vault (Firela VLT Beancount SaaS)",
   options: [
     {
       flags: "-a, --account <id>",

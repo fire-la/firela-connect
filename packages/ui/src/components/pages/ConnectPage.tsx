@@ -218,9 +218,9 @@ export function ConnectPage() {
             <Link className="w-4 h-4" />
             Connect Gmail
           </Button>
-          <Button variant="outline" onClick={handleConnectGoCardless} className="gap-2">
+          <Button variant="outline" disabled className="gap-2 opacity-60 cursor-not-allowed" title="GoCardless Bank Account Data is temporarily unavailable">
             <Landmark className="w-4 h-4" />
-            Connect GoCardless
+            Connect GoCardless (Unavailable)
           </Button>
         </CardContent>
       </Card>

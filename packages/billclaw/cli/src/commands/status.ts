@@ -206,7 +206,7 @@ async function runStatus(context: CliContext): Promise<void> {
   )
 
   // Firela Vault Upload Status (if configured)
-  if (config.ign?.accessToken) {
+  if (config.vlt?.accessToken) {
     console.log("")
     console.log("Firela Vault Upload Status")
 
@@ -269,14 +269,14 @@ async function runStatus(context: CliContext): Promise<void> {
     printTable(syncTable)
   }
 
-  // IGN Configuration Section
-  if (config.ign) {
+  // VLT Configuration Section
+  if (config.vlt) {
     console.log("")
     console.log("Firela Vault Integration:")
-    console.log(`  Region: ${config.ign.region}`)
-    console.log(`  Upload mode: ${config.ign.upload?.mode || "not configured"}`)
-    console.log(`  API URL: ${config.ign.apiUrl}`)
-    console.log(`  Configured: ${config.ign.accessToken ? "Yes" : "No"}`)
+    console.log(`  Region: ${config.vlt.region}`)
+    console.log(`  Upload mode: ${config.vlt.upload?.mode || "not configured"}`)
+    console.log(`  API URL: ${config.vlt.apiUrl}`)
+    console.log(`  Configured: ${config.vlt.accessToken ? "Yes" : "No"}`)
   }
 
   // Status summary

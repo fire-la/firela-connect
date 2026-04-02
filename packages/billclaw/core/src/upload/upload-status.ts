@@ -1,5 +1,5 @@
 /**
- * Upload status tracking for IGN integration
+ * Upload status tracking for Firela VLT integration
  *
  * Persists upload status per account for visibility and debugging.
  * Uses file-based storage with atomic writes.
@@ -11,18 +11,18 @@ import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import * as os from "node:os"
 import type { StorageConfig } from "../models/config.js"
-import type { IgnUploadResult } from "./ign-client.js"
+import type { VltUploadResult } from "./vlt-client.js"
 
 /**
- * IGN upload status for an account
+ * VLT upload status for an account
  */
-export interface IgnUploadStatus {
+export interface VltUploadStatus {
   /** Account ID */
   accountId: string
   /** Last upload timestamp (ISO) */
   lastUploadAt?: string
   /** Result of last upload */
-  lastUploadResult?: IgnUploadResult
+  lastUploadResult?: VltUploadResult
   /** Current status */
   status: "success" | "failed" | "disabled"
   /** Error message if failed */
@@ -39,7 +39,7 @@ async function getUploadStatusDir(config?: StorageConfig): Promise<string> {
 }
 
 /**
- * Store for tracking IGN upload status per account
+ * Store for tracking VLT upload status per account
  *
  * Persists upload status to `.billclaw/upload-status/{accountId}.json`
  * Uses atomic writes for safety.
@@ -69,13 +69,13 @@ export class UploadStatusStore {
    * @param accountId - Account ID
    * @returns Upload status or null if not found
    */
-  async readStatus(accountId: string): Promise<IgnUploadStatus | null> {
+  async readStatus(accountId: string): Promise<VltUploadStatus | null> {
     const dir = await getUploadStatusDir(this.config)
     const filePath = path.join(dir, `${accountId}.json`)
 
     try {
       const content = await fs.readFile(filePath, "utf-8")
-      return JSON.parse(content) as IgnUploadStatus
+      return JSON.parse(content) as VltUploadStatus
     } catch {
       return null
     }
@@ -89,7 +89,7 @@ export class UploadStatusStore {
    * @param accountId - Account ID
    * @param status - Upload status to persist
    */
-  async writeStatus(accountId: string, status: IgnUploadStatus): Promise<void> {
+  async writeStatus(accountId: string, status: VltUploadStatus): Promise<void> {
     const dir = await getUploadStatusDir(this.config)
     const filePath = path.join(dir, `${accountId}.json`)
 

@@ -13,7 +13,7 @@ import {
   UploadService,
   createCredentialStore,
   CredentialStrategy,
-  type IgnUploadResult,
+  type VltUploadResult,
 } from "@firela/billclaw-core"
 
 /**
@@ -66,7 +66,7 @@ async function syncAllAccounts(
     let totalAdded = 0
     let totalUpdated = 0
     const errors: string[] = []
-    const uploadResults: Array<{ accountId: string; result?: IgnUploadResult; error?: string }> = []
+    const uploadResults: Array<{ accountId: string; result?: VltUploadResult; error?: string }> = []
 
     for (const account of accounts) {
       const accountSpinner = new Spinner({
@@ -135,7 +135,7 @@ async function syncAllAccounts(
     // Display upload results
     if (uploadResults.length > 0) {
       console.log("")
-      console.log("IGN Upload Results:")
+      console.log("VLT Upload Results:")
       for (const { accountId, result, error } of uploadResults) {
         if (result) {
           console.log(
@@ -219,13 +219,13 @@ async function syncSingleAccount(
       if (uploadResult) {
         if (uploadResult.result) {
           console.log("")
-          console.log("IGN Upload:")
+          console.log("VLT Upload:")
           console.log(
             `  Uploaded: ${uploadResult.result.imported} imported, ${uploadResult.result.skipped} skipped, ${uploadResult.result.pendingReview} pending review, ${uploadResult.result.failed} failed`,
           )
         } else if (uploadResult.error) {
           console.log("")
-          console.log(`IGN Upload failed: ${uploadResult.error}`)
+          console.log(`VLT Upload failed: ${uploadResult.error}`)
           console.log("  (Local data preserved)")
         }
       }
@@ -237,7 +237,7 @@ async function syncSingleAccount(
 }
 
 /**
- * Handle IGN upload after sync
+ * Handle VLT upload after sync
  *
  * @param accountId - Account ID
  * @param runtime - CLI runtime context
@@ -248,16 +248,16 @@ async function handleUpload(
   accountId: string,
   runtime: any,
   forceUpload: boolean,
-): Promise<{ accountId: string; result?: IgnUploadResult; error?: string } | null> {
+): Promise<{ accountId: string; result?: VltUploadResult; error?: string } | null> {
   const config = await runtime.config.getConfig()
 
-  // Check if IGN is configured (accessToken required for auth)
-  if (!config.ign?.accessToken || !config.ign?.upload) {
+  // Check if VLT is configured (accessToken required for auth)
+  if (!config.vlt?.accessToken || !config.vlt?.upload) {
     return null
   }
 
   // Check upload mode
-  const uploadMode = config.ign.upload.mode
+  const uploadMode = config.vlt.upload.mode
   const shouldUpload = forceUpload || uploadMode === "auto"
 
   if (!shouldUpload) {
@@ -273,7 +273,7 @@ async function handleUpload(
   })
 
   const uploadService = new UploadService(
-    config.ign,
+    config.vlt,
     storageConfig,
     credentialStore,
     runtime.logger,
@@ -311,7 +311,7 @@ export const syncCommand: CliCommand = {
     },
     {
       flags: "-u, --upload",
-      description: "Upload to IGN after sync",
+      description: "Upload to VLT after sync",
     },
     {
       flags: "--local-only",

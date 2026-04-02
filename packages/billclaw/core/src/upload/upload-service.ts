@@ -1,14 +1,14 @@
 /**
- * Upload service for IGN integration
+ * Upload service for Firela VLT integration
  *
- * Orchestrates the upload flow from BillClaw transactions to IGN.
+ * Orchestrates the upload flow from BillClaw transactions to VLT.
  * Handles loading, transformation, upload, and status tracking.
  *
  * Key principle: Local data is ALWAYS preserved, even on upload failure.
  *
  * Authentication:
- * - Uses IgnAuthManager for automatic JWT token management
- * - User provides accessToken (from Firela Vault app) in config
+ * - Uses VltAuthManager for automatic JWT token management
+ * - User provides accessToken (from Firela VLT app) in config
  * - JWT token is cached in keychain and auto-refreshed
  *
  * @packageDocumentation
@@ -16,14 +16,14 @@
 
 import type { CredentialStore } from "../credentials/store.js"
 import type { Logger } from "../errors/errors.js"
-import type { IgnConfig, StorageConfig } from "../models/config.js"
+import type { VltConfig, StorageConfig } from "../models/config.js"
 import type { Transaction } from "../storage/transaction-storage.js"
-import type { IgnUploadResult, ProviderSyncConfig } from "./ign-client.js"
-import { IgnAuthManager } from "./ign-auth.js"
-import { uploadTransactions } from "./ign-client.js"
+import type { VltUploadResult, ProviderSyncConfig } from "./vlt-client.js"
+import { VltAuthManager } from "./vlt-auth.js"
+import { uploadTransactions } from "./vlt-client.js"
 import { transformTransactionsToPlaidFormat } from "./transform.js"
-import { UploadStatusStore, type IgnUploadStatus } from "./upload-status.js"
-import { parseIgnError, createUserError, ERROR_CODES, ErrorCategory } from "../errors/errors.js"
+import { UploadStatusStore, type VltUploadStatus } from "./upload-status.js"
+import { parseVltError, createUserError, ERROR_CODES, ErrorCategory } from "../errors/errors.js"
 import { getStorageDir } from "../storage/transaction-storage.js"
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
@@ -36,8 +36,8 @@ export interface UploadServiceResult {
   accountId: string
   /** Whether upload succeeded */
   success: boolean
-  /** Upload result from IGN (if successful) */
-  result?: IgnUploadResult
+  /** Upload result from VLT (if successful) */
+  result?: VltUploadResult
   /** Error message (if failed) */
   error?: string
   /** Number of transactions uploaded */
@@ -55,13 +55,13 @@ export interface UploadOptions {
 }
 
 /**
- * Upload service for IGN integration
+ * Upload service for Firela VLT integration
  *
  * Coordinates the upload flow:
- * 1. Check IGN configuration
+ * 1. Check VLT configuration
  * 2. Load transactions from storage
  * 3. Transform to Plaid format
- * 4. Upload to IGN
+ * 4. Upload to VLT
  * 5. Store upload status
  *
  * On upload failure, local data is always preserved.
@@ -69,7 +69,7 @@ export interface UploadOptions {
  * @example
  * ```typescript
  * const credentialStore = await createCredentialStore({ strategy: CredentialStrategy.KEYCHAIN })
- * const service = new UploadService(ignConfig, storageConfig, credentialStore, logger)
+ * const service = new UploadService(vltConfig, storageConfig, credentialStore, logger)
  *
  * if (await service.shouldUpload()) {
  *   const result = await service.uploadAccountTransactions('account-123')
@@ -79,16 +79,16 @@ export interface UploadOptions {
  */
 export class UploadService {
   private readonly statusStore: UploadStatusStore
-  private readonly authManager: IgnAuthManager
+  private readonly authManager: VltAuthManager
 
   constructor(
-    private readonly ignConfig: IgnConfig,
+    private readonly vltConfig: VltConfig,
     private readonly storageConfig: StorageConfig | undefined,
     credentialStore: CredentialStore,
     private readonly logger: Logger,
   ) {
     this.statusStore = new UploadStatusStore(storageConfig)
-    this.authManager = new IgnAuthManager(ignConfig, credentialStore, logger)
+    this.authManager = new VltAuthManager(vltConfig, credentialStore, logger)
   }
 
   /**
@@ -97,21 +97,21 @@ export class UploadService {
    * @returns true if upload should proceed
    */
   async shouldUpload(): Promise<boolean> {
-    // Check if IGN is configured (accessToken required for auth)
-    if (!this.ignConfig.accessToken) {
-      this.logger.debug?.("Firela Vault upload disabled: no access token configured")
+    // Check if VLT is configured (accessToken required for auth)
+    if (!this.vltConfig.accessToken) {
+      this.logger.debug?.("Firela VLT upload disabled: no access token configured")
       return false
     }
 
     // Check if upload is enabled
-    if (!this.ignConfig.upload) {
-      this.logger.debug?.("Firela Vault upload disabled: no upload configuration")
+    if (!this.vltConfig.upload) {
+      this.logger.debug?.("Firela VLT upload disabled: no upload configuration")
       return false
     }
 
     // Check upload mode
-    if (this.ignConfig.upload.mode === "disabled") {
-      this.logger.debug?.("Firela Vault upload disabled: mode is 'disabled'")
+    if (this.vltConfig.upload.mode === "disabled") {
+      this.logger.debug?.("Firela VLT upload disabled: mode is 'disabled'")
       return false
     }
 
@@ -136,14 +136,14 @@ export class UploadService {
   }
 
   /**
-   * Upload transactions for an account to IGN
+   * Upload transactions for an account to VLT
    *
    * Flow:
-   * 1. Check IGN config
+   * 1. Check VLT config
    * 2. Load transactions from storage
    * 3. Filter by date (optional)
    * 4. Transform to Plaid format
-   * 5. Upload to IGN
+   * 5. Upload to VLT
    * 6. Store upload status
    *
    * On failure: stores failed status, preserves local data, throws error.
@@ -159,19 +159,19 @@ export class UploadService {
   ): Promise<UploadServiceResult> {
     const { days = 30, dryRun = false } = options
 
-    // 1. Check IGN config
-    if (!this.ignConfig.accessToken) {
+    // 1. Check VLT config
+    if (!this.vltConfig.accessToken) {
       throw createUserError(
-        ERROR_CODES.IGN_AUTH_FAILED,
-        ErrorCategory.IGN,
+        ERROR_CODES.VLT_AUTH_FAILED,
+        ErrorCategory.VLT,
         "error",
         false,
         {
-          title: "Firela Vault Not Configured",
-          message: "Firela Vault access token is not configured. Please add your access token to the configuration.",
+          title: "Firela VLT Not Configured",
+          message: "Firela VLT access token is not configured. Please add your access token to the configuration.",
           suggestions: [
-            "Add ign.accessToken to your configuration file",
-            "Get your access token from the Firela Vault app",
+            "Add vlt.accessToken to your configuration file",
+            "Get your access token from the Firela VLT app",
           ],
         },
         [],
@@ -179,17 +179,17 @@ export class UploadService {
       )
     }
 
-    if (!this.ignConfig.upload) {
+    if (!this.vltConfig.upload) {
       throw createUserError(
         ERROR_CODES.CONFIG_INVALID,
         ErrorCategory.CONFIG,
         "error",
         false,
         {
-          title: "Firela Vault Upload Not Configured",
-          message: "Firela Vault upload configuration is missing. Please configure the upload settings.",
+          title: "Firela VLT Upload Not Configured",
+          message: "Firela VLT upload configuration is missing. Please configure the upload settings.",
           suggestions: [
-            "Add ign.upload to your configuration file",
+            "Add vlt.upload to your configuration file",
             "Set sourceAccount, defaultExpenseAccount, and defaultIncomeAccount",
           ],
         },
@@ -244,21 +244,21 @@ export class UploadService {
     // 4. Transform to Plaid format
     const plaidTransactions = transformTransactionsToPlaidFormat(transactions)
 
-    // 5. Build ProviderSyncConfig from IGN config
+    // 5. Build ProviderSyncConfig from VLT config
     const syncConfig: ProviderSyncConfig = {
-      sourceAccount: this.ignConfig.upload.sourceAccount,
-      defaultCurrency: this.ignConfig.upload.defaultCurrency || "USD",
+      sourceAccount: this.vltConfig.upload.sourceAccount,
+      defaultCurrency: this.vltConfig.upload.defaultCurrency || "USD",
       defaultExpenseAccount:
-        this.ignConfig.upload.defaultExpenseAccount || "Expenses:Unknown",
+        this.vltConfig.upload.defaultExpenseAccount || "Expenses:Unknown",
       defaultIncomeAccount:
-        this.ignConfig.upload.defaultIncomeAccount || "Income:Unknown",
-      filterPending: this.ignConfig.upload.filterPending ?? true,
+        this.vltConfig.upload.defaultIncomeAccount || "Income:Unknown",
+      filterPending: this.vltConfig.upload.filterPending ?? true,
     }
 
-    // 6. Upload to IGN
+    // 6. Upload to VLT
     try {
       this.logger.info?.(
-        `Uploading ${plaidTransactions.length} transactions to Firela Vault (${this.ignConfig.region})...`,
+        `Uploading ${plaidTransactions.length} transactions to Firela VLT (${this.vltConfig.region})...`,
       )
 
       // Get valid JWT token (auto-refresh if needed)
@@ -266,9 +266,9 @@ export class UploadService {
 
       const result = await uploadTransactions(
         {
-          apiUrl: this.ignConfig.apiUrl,
+          apiUrl: this.vltConfig.apiUrl,
           apiToken,
-          region: this.ignConfig.region,
+          region: this.vltConfig.region,
         },
         plaidTransactions,
         syncConfig,
@@ -276,7 +276,7 @@ export class UploadService {
       )
 
       // 7. Store success status
-      const status: IgnUploadStatus = {
+      const status: VltUploadStatus = {
         accountId,
         status: "success",
         lastUploadAt: new Date().toISOString(),
@@ -285,7 +285,7 @@ export class UploadService {
       await this.statusStore.writeStatus(accountId, status)
 
       this.logger.info?.(
-        `Firela Vault upload complete: ${result.imported} imported, ${result.skipped} skipped, ${result.pendingReview} pending review, ${result.failed} failed`,
+        `Firela VLT upload complete: ${result.imported} imported, ${result.skipped} skipped, ${result.pendingReview} pending review, ${result.failed} failed`,
       )
 
       return {
@@ -299,7 +299,7 @@ export class UploadService {
       const errorMessage =
         error instanceof Error ? error.message : String(error)
 
-      const status: IgnUploadStatus = {
+      const status: VltUploadStatus = {
         accountId,
         status: "failed",
         lastUploadAt: new Date().toISOString(),
@@ -308,15 +308,15 @@ export class UploadService {
       await this.statusStore.writeStatus(accountId, status)
 
       this.logger.error?.(
-        `Firela Vault upload failed for account ${accountId}. Local data preserved:`,
+        `Firela VLT upload failed for account ${accountId}. Local data preserved:`,
         errorMessage,
       )
 
       // Parse and re-throw as UserError
-      throw parseIgnError(
+      throw parseVltError(
         error instanceof Error ? error : new Error(errorMessage),
         {
-          region: this.ignConfig.region,
+          region: this.vltConfig.region,
           endpoint: "/bean/import/provider/plaid/sync",
         },
       )
@@ -394,7 +394,7 @@ export class UploadService {
    * @param accountId - Account ID
    * @returns Upload status or null if not found
    */
-  async getUploadStatus(accountId: string): Promise<IgnUploadStatus | null> {
+  async getUploadStatus(accountId: string): Promise<VltUploadStatus | null> {
     return this.statusStore.readStatus(accountId)
   }
 }

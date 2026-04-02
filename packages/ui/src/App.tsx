@@ -14,7 +14,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { ConnectPage } from "@/components/pages/ConnectPage"
 import { SyncPage } from "@/components/pages/SyncPage"
 import { ExportPage } from "@/components/pages/ExportPage"
-import { IgnPage } from "@/components/pages/IgnPage"
+import { VltPage } from "@/components/pages/VltPage"
 import { WebhooksPage } from "@/components/pages/WebhooksPage"
 import { SettingsPage } from "@/components/pages/SettingsPage"
 import { PlaidConnectPage } from "@/components/pages/PlaidConnectPage"
@@ -36,7 +36,7 @@ const billclawMenuItems = [
     label: "Export",
     items: [
       { text: "Beancount/Ledger", itemKey: "export", to: "/export", icon: Download },
-      { text: "IGN Integration", itemKey: "ign", to: "/ign", icon: Cloud },
+      { text: "Firela VLT Integration", itemKey: "vlt", to: "/vlt", icon: Cloud },
     ],
   },
   {
@@ -94,11 +94,11 @@ export function App() {
             }
           />
           <Route
-            path="/ign"
+            path="/vlt"
             element={
               <ProtectedRoute serviceId="billclaw">
                 <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
-                  <IgnPage />
+                  <VltPage />
                 </PageLayout>
               </ProtectedRoute>
             }

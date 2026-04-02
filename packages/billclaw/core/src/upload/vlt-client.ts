@@ -1,35 +1,35 @@
 /**
- * IGN API client for BillClaw - Upload transactions to IGN Beancount SaaS
+ * Firela VLT API client for BillClaw - Upload transactions to Firela VLT Beancount SaaS
  *
- * Provides HTTP client with retry logic for IGN Provider Sync API.
+ * Provides HTTP client with retry logic for VLT Provider Sync API.
  * Uses native fetch with JWT Bearer token authentication.
  *
  * @packageDocumentation
  */
 
 import type { Logger } from "../errors/errors.js"
-import type { IgnRegion } from "../models/config.js"
+import type { VltRegion } from "../models/config.js"
 import { calculateBackoffDelay } from "../utils/backoff.js"
-import { parseIgnError } from "../errors/errors.js"
+import { parseVltError } from "../errors/errors.js"
 
 /**
- * IGN API client configuration
+ * VLT API client configuration
  */
-export interface IgnClientConfig {
-  /** IGN API base URL (e.g., http://localhost:3000/api/v1) */
+export interface VltClientConfig {
+  /** VLT API base URL (e.g., http://localhost:3000/api/v1) */
   apiUrl: string
   /** JWT Bearer token for authentication */
   apiToken: string
-  /** IGN region (cn, us, eu-core, de) */
-  region: IgnRegion
+  /** VLT region (cn, us, eu-core, de) */
+  region: VltRegion
   /** Request timeout in milliseconds (default: 30000) */
   timeout?: number
 }
 
 /**
- * Plaid-format transaction for IGN upload
+ * Plaid-format transaction for VLT upload
  *
- * This format matches the IGN Provider Sync API expectations.
+ * This format matches the VLT Provider Sync API expectations.
  * Amount is in dollars (NOT cents) - conversion happens in transform.ts.
  */
 export interface PlaidTransactionUpload {
@@ -48,7 +48,7 @@ export interface PlaidTransactionUpload {
 }
 
 /**
- * Provider sync configuration for IGN upload
+ * Provider sync configuration for VLT upload
  */
 export interface ProviderSyncConfig {
   sourceAccount: string
@@ -59,9 +59,9 @@ export interface ProviderSyncConfig {
 }
 
 /**
- * IGN upload result from Provider Sync API
+ * VLT upload result from Provider Sync API
  */
-export interface IgnUploadResult {
+export interface VltUploadResult {
   /** Number of transactions successfully imported */
   imported: number
   /** Number of transactions skipped (duplicates) */
@@ -77,7 +77,7 @@ export interface IgnUploadResult {
 }
 
 /**
- * IGN API response for supported providers
+ * VLT API response for supported providers
  */
 interface SupportedProvidersResponse {
   providers: string[]
@@ -89,10 +89,10 @@ interface SupportedProvidersResponse {
 const RETRYABLE_STATUS_CODES = [500, 502, 503, 504, 429]
 
 /**
- * IGN API client with retry logic
+ * VLT API client with retry logic
  *
- * Provides methods to interact with IGN Provider Sync API:
- * - Upload transactions to IGN
+ * Provides methods to interact with VLT Provider Sync API:
+ * - Upload transactions to VLT
  * - Check if a provider is supported
  *
  * Uses native fetch with JWT Bearer token authentication.
@@ -100,7 +100,7 @@ const RETRYABLE_STATUS_CODES = [500, 502, 503, 504, 429]
  *
  * @example
  * ```typescript
- * const client = new IgnClient({
+ * const client = new VltClient({
  *   apiUrl: 'http://localhost:3000/api/v1',
  *   apiToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
  *   region: 'us',
@@ -110,19 +110,19 @@ const RETRYABLE_STATUS_CODES = [500, 502, 503, 504, 429]
  * console.log(`Imported: ${result.imported}, Skipped: ${result.skipped}`)
  * ```
  */
-export class IgnClient {
-  private readonly config: IgnClientConfig
+export class VltClient {
+  private readonly config: VltClientConfig
   private readonly logger?: Logger
   private readonly timeout: number
 
-  constructor(config: IgnClientConfig, logger?: Logger) {
+  constructor(config: VltClientConfig, logger?: Logger) {
     this.config = config
     this.logger = logger
     this.timeout = config.timeout ?? 30000
   }
 
   /**
-   * Upload transactions to IGN via Provider Sync API
+   * Upload transactions to VLT via Provider Sync API
    *
    * @param transactions - Transactions in Plaid format
    * @param syncConfig - Provider sync configuration
@@ -132,7 +132,7 @@ export class IgnClient {
   async sync(
     transactions: PlaidTransactionUpload[],
     syncConfig: ProviderSyncConfig,
-  ): Promise<IgnUploadResult> {
+  ): Promise<VltUploadResult> {
     const endpoint = "/bean/import/provider/plaid/sync"
 
     const requestBody = {
@@ -147,7 +147,7 @@ export class IgnClient {
     }
 
     this.logger?.info?.(
-      `Uploading ${transactions.length} transactions to IGN (${this.config.region})...`,
+      `Uploading ${transactions.length} transactions to VLT (${this.config.region})...`,
     )
 
     const response = await this.requestWithRetry(endpoint, {
@@ -155,17 +155,17 @@ export class IgnClient {
       body: JSON.stringify(requestBody),
     })
 
-    const result = (await response.json()) as IgnUploadResult
+    const result = (await response.json()) as VltUploadResult
 
     this.logger?.info?.(
-      `IGN upload complete: ${result.imported} imported, ${result.skipped} skipped, ${result.pendingReview} pending review, ${result.failed} failed`,
+      `VLT upload complete: ${result.imported} imported, ${result.skipped} skipped, ${result.pendingReview} pending review, ${result.failed} failed`,
     )
 
     return result
   }
 
   /**
-   * Check if Plaid provider is supported by IGN
+   * Check if Plaid provider is supported by VLT
    *
    * @returns true if provider is supported
    */
@@ -180,7 +180,7 @@ export class IgnClient {
       const result = (await response.json()) as SupportedProvidersResponse
       return result.providers?.includes("plaid") ?? false
     } catch (error) {
-      this.logger?.warn?.("Failed to check IGN provider support:", error)
+      this.logger?.warn?.("Failed to check VLT provider support:", error)
       return false
     }
   }
@@ -225,7 +225,7 @@ export class IgnClient {
         // Don't retry if not retryable or this is the last attempt
         if (!isRetryable || attempt === maxRetries) {
           // Parse error and throw UserError
-          throw parseIgnError(lastError, {
+          throw parseVltError(lastError, {
             region: this.config.region,
             endpoint,
           })
@@ -237,7 +237,7 @@ export class IgnClient {
         const delay = Math.round(calculateBackoffDelay(baseDelay, maxDelay, attempt))
 
         this.logger?.debug?.(
-          `IGN API call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`,
+          `VLT API call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`,
         )
 
         // Wait before retry
@@ -246,14 +246,14 @@ export class IgnClient {
     }
 
     // Should never reach here, but TypeScript needs it
-    throw parseIgnError(lastError || new Error("Unknown error"), {
+    throw parseVltError(lastError || new Error("Unknown error"), {
       region: this.config.region,
       endpoint,
     })
   }
 
   /**
-   * Make HTTP request to IGN API
+   * Make HTTP request to VLT API
    *
    * @param endpoint - API endpoint (without base URL)
    * @param options - Fetch options
@@ -319,22 +319,22 @@ export class IgnClient {
 }
 
 /**
- * Upload transactions to IGN (convenience function)
+ * Upload transactions to VLT (convenience function)
  *
- * Creates an IgnClient and uploads transactions in one call.
+ * Creates an VltClient and uploads transactions in one call.
  *
- * @param config - IGN client configuration
+ * @param config - VLT client configuration
  * @param transactions - Transactions to upload
  * @param syncConfig - Provider sync configuration
  * @param logger - Optional logger
  * @returns Upload result
  */
 export async function uploadTransactions(
-  config: IgnClientConfig,
+  config: VltClientConfig,
   transactions: PlaidTransactionUpload[],
   syncConfig: ProviderSyncConfig,
   logger?: Logger,
-): Promise<IgnUploadResult> {
-  const client = new IgnClient(config, logger)
+): Promise<VltUploadResult> {
+  const client = new VltClient(config, logger)
   return client.sync(transactions, syncConfig)
 }

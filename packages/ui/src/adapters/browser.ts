@@ -49,7 +49,7 @@ export class BrowserAdapter implements UIAdapter {
   async listAccounts(): Promise<Account[]> {
     const res = await fetch(`${this.baseUrl}/accounts`)
     const json: ApiResponse<Account[]> = await res.json()
-    return json.data || []
+    return Array.isArray(json.data) ? json.data : []
   }
 
   async connectAccount(provider: "plaid" | "gmail"): Promise<{ url: string }> {
@@ -132,7 +132,7 @@ export class BrowserAdapter implements UIAdapter {
       body: JSON.stringify({ country }),
     })
     const json: ApiResponse<GoCardlessInstitution[]> = await res.json()
-    return json.data || []
+    return Array.isArray(json.data) ? json.data : []
   }
 
   async createRequisition(institutionId: string, redirectUrl: string): Promise<GoCardlessRequisition> {

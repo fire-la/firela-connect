@@ -46,12 +46,12 @@ function maskConfig(
     }
   }
 
-  // Mask IGN API token
-  if (masked.ign && typeof masked.ign === "object") {
-    const ign = masked.ign as Record<string, unknown>
-    masked.ign = {
-      ...ign,
-      accessToken: ign.accessToken ? "***" : undefined,
+  // Mask VLT API token
+  if (masked.vlt && typeof masked.vlt === "object") {
+    const vlt = masked.vlt as Record<string, unknown>
+    masked.vlt = {
+      ...vlt,
+      accessToken: vlt.accessToken ? "***" : undefined,
     }
   }
 
@@ -236,10 +236,10 @@ configRoutes.post("/export/test", async (c) => {
 })
 
 /**
- * POST /api/ign/test
- * Validates IGN (Firela Vault) configuration
+ * POST /api/vlt/test
+ * Validates VLT (Firela Vault) configuration
  */
-configRoutes.post("/ign/test", async (c) => {
+configRoutes.post("/vlt/test", async (c) => {
   try {
     const body = (await c.req.json().catch(() => ({}))) as {
       apiUrl?: string

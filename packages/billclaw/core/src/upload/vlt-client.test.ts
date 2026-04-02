@@ -1,9 +1,9 @@
 /**
- * Tests for IGN API client
+ * Tests for VLT API client
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { IgnClient, uploadTransactions } from "./ign-client.js"
+import { VltClient, uploadTransactions } from "./vlt-client.js"
 import type { Logger } from "../errors/errors.js"
 
 // Mock fetch globally
@@ -18,12 +18,12 @@ const mockLogger: Logger = {
   debug: vi.fn(),
 }
 
-describe("IgnClient", () => {
-  let client: IgnClient
+describe("VltClient", () => {
+  let client: VltClient
 
   beforeEach(() => {
     vi.clearAllMocks()
-    client = new IgnClient(
+    client = new VltClient(
       {
         apiUrl: "http://localhost:3000/api/v1",
         apiToken: "test-token",

@@ -1,7 +1,7 @@
 /**
- * IGN (Firela Vault) Authentication Manager
+ * Firela VLT Authentication Manager
  *
- * Provides fully automatic authentication for Firela Vault integration:
+ * Provides fully automatic authentication for Firela VLT integration:
  * - Exchanges accessToken for JWT token via /auth/sessions/anonymous
  * - Caches JWT token in system keychain
  * - Auto-refreshes JWT token before expiry (180-day validity)
@@ -11,13 +11,13 @@
 
 import { KeychainKeys } from "../credentials/keychain.js"
 import type { Logger } from "../errors/errors.js"
-import type { IgnConfig } from "../models/config.js"
+import type { VltConfig } from "../models/config.js"
 import type { CredentialStore } from "../credentials/store.js"
 
 /**
- * JWT token response from IGN /auth/sessions/anonymous endpoint
+ * JWT token response from VLT /auth/sessions/anonymous endpoint
  */
-interface IgnAuthResponse {
+interface VltAuthResponse {
   authToken: string
 }
 
@@ -30,9 +30,9 @@ interface CachedToken {
 }
 
 /**
- * Configuration for IgnAuthManager
+ * Configuration for VltAuthManager
  */
-export interface IgnAuthManagerConfig {
+export interface VltAuthManagerConfig {
   /** JWT token expiry in days (default: 180) */
   tokenExpiryDays?: number
   /** Refresh threshold in days before expiry (default: 30) */
@@ -44,16 +44,16 @@ export interface IgnAuthManagerConfig {
 /**
  * Default configuration values
  */
-const DEFAULT_CONFIG: Required<IgnAuthManagerConfig> = {
+const DEFAULT_CONFIG: Required<VltAuthManagerConfig> = {
   tokenExpiryDays: 180,
   refreshThresholdDays: 30,
   backgroundRefreshIntervalDays: 7,
 }
 
 /**
- * IGN (Firela Vault) Authentication Manager
+ * Firela VLT Authentication Manager
  *
- * Manages automatic authentication for Firela Vault integration:
+ * Manages automatic authentication for Firela VLT integration:
  * 1. Checks keychain for cached JWT token
  * 2. If no valid token, exchanges accessToken for JWT
  * 3. Stores JWT in keychain with expiry time
@@ -61,7 +61,7 @@ const DEFAULT_CONFIG: Required<IgnAuthManagerConfig> = {
  *
  * @example
  * ```typescript
- * const authManager = new IgnAuthManager(ignConfig, credentialStore, logger)
+ * const authManager = new VltAuthManager(vltConfig, credentialStore, logger)
  *
  * // Get valid JWT token (auto-refresh if needed)
  * const jwtToken = await authManager.ensureValidToken()
@@ -73,15 +73,15 @@ const DEFAULT_CONFIG: Required<IgnAuthManagerConfig> = {
  * authManager.stopBackgroundRefresh()
  * ```
  */
-export class IgnAuthManager {
+export class VltAuthManager {
   private refreshInterval: ReturnType<typeof setInterval> | null = null
-  private readonly config: Required<IgnAuthManagerConfig>
+  private readonly config: Required<VltAuthManagerConfig>
 
   constructor(
-    private readonly ignConfig: IgnConfig,
+    private readonly vltConfig: VltConfig,
     private readonly credentialStore: CredentialStore,
     private readonly logger?: Logger,
-    config?: IgnAuthManagerConfig,
+    config?: VltAuthManagerConfig,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config }
   }
@@ -103,12 +103,12 @@ export class IgnAuthManager {
 
     // 2. If valid and not expiring soon, return it
     if (cachedToken && !this.isTokenExpiringSoon(cachedToken.expiresAt)) {
-      this.logger?.debug?.("Using cached IGN JWT token")
+      this.logger?.debug?.("Using cached VLT JWT token")
       return cachedToken.token
     }
 
     // 3. Exchange accessToken for new JWT
-    this.logger?.info?.("Obtaining new IGN JWT token...")
+    this.logger?.info?.("Obtaining new VLT JWT token...")
     return this.exchangeAccessToken()
   }
 
@@ -127,14 +127,14 @@ export class IgnAuthManager {
     const intervalMs = this.config.backgroundRefreshIntervalDays * 24 * 60 * 60 * 1000
 
     this.logger?.debug?.(
-      `Starting IGN token background refresh (every ${this.config.backgroundRefreshIntervalDays} days)`,
+      `Starting VLT token background refresh (every ${this.config.backgroundRefreshIntervalDays} days)`,
     )
 
     this.refreshInterval = setInterval(async () => {
       try {
         await this.ensureValidToken()
       } catch (error) {
-        this.logger?.error?.("IGN background token refresh failed:", error)
+        this.logger?.error?.("VLT background token refresh failed:", error)
       }
     }, intervalMs)
   }
@@ -148,7 +148,7 @@ export class IgnAuthManager {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval)
       this.refreshInterval = null
-      this.logger?.debug?.("Stopped IGN token background refresh")
+      this.logger?.debug?.("Stopped VLT token background refresh")
     }
   }
 
@@ -158,17 +158,17 @@ export class IgnAuthManager {
    * Forces a fresh token exchange on next ensureValidToken() call.
    */
   async clearCachedToken(): Promise<void> {
-    await this.credentialStore.delete(KeychainKeys.ignJwtToken())
-    await this.credentialStore.delete(KeychainKeys.ignJwtExpiresAt())
-    this.logger?.debug?.("Cleared cached IGN JWT token")
+    await this.credentialStore.delete(KeychainKeys.vltJwtToken())
+    await this.credentialStore.delete(KeychainKeys.vltJwtExpiresAt())
+    this.logger?.debug?.("Cleared cached VLT JWT token")
   }
 
   /**
    * Get cached token from keychain
    */
   private async getCachedToken(): Promise<CachedToken | null> {
-    const token = await this.credentialStore.get(KeychainKeys.ignJwtToken())
-    const expiresAt = await this.credentialStore.get(KeychainKeys.ignJwtExpiresAt())
+    const token = await this.credentialStore.get(KeychainKeys.vltJwtToken())
+    const expiresAt = await this.credentialStore.get(KeychainKeys.vltJwtExpiresAt())
 
     if (!token) {
       return null
@@ -201,41 +201,41 @@ export class IgnAuthManager {
   /**
    * Exchange accessToken for JWT token
    *
-   * Calls IGN /auth/sessions/anonymous endpoint to exchange the long-lived
-   * accessToken (from Firela Vault app) for a JWT token.
+   * Calls VLT /auth/sessions/anonymous endpoint to exchange the long-lived
+   * accessToken (from Firela VLT app) for a JWT token.
    *
    * @returns JWT token
    * @throws Error if accessToken is not configured or exchange fails
    */
   private async exchangeAccessToken(): Promise<string> {
-    if (!this.ignConfig.accessToken) {
+    if (!this.vltConfig.accessToken) {
       throw new Error(
-        "IGN accessToken not configured. Please add ign.accessToken to your config. " +
-          "You can get an access token from the Firela Vault app.",
+        "VLT accessToken not configured. Please add vlt.accessToken to your config. " +
+          "You can get an access token from the Firela VLT app.",
       )
     }
 
-    const url = `${this.ignConfig.apiUrl}/${this.ignConfig.region}/auth/sessions/anonymous`
+    const url = `${this.vltConfig.apiUrl}/${this.vltConfig.region}/auth/sessions/anonymous`
 
-    this.logger?.debug?.(`Exchanging IGN accessToken for JWT at ${url}`)
+    this.logger?.debug?.(`Exchanging VLT accessToken for JWT at ${url}`)
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: this.ignConfig.accessToken }),
+      body: JSON.stringify({ accessToken: this.vltConfig.accessToken }),
     })
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "Unknown error")
       throw new Error(
-        `IGN authentication failed: ${response.status} ${response.statusText}. ${errorText}`,
+        `VLT authentication failed: ${response.status} ${response.statusText}. ${errorText}`,
       )
     }
 
-    const data = (await response.json()) as IgnAuthResponse
+    const data = (await response.json()) as VltAuthResponse
 
     if (!data.authToken) {
-      throw new Error("IGN authentication response missing authToken")
+      throw new Error("VLT authentication response missing authToken")
     }
 
     // Calculate expiry time (180 days from now)
@@ -244,11 +244,11 @@ export class IgnAuthManager {
     ).toISOString()
 
     // Store JWT and expiry in keychain
-    await this.credentialStore.set(KeychainKeys.ignJwtToken(), data.authToken)
-    await this.credentialStore.set(KeychainKeys.ignJwtExpiresAt(), expiresAt)
+    await this.credentialStore.set(KeychainKeys.vltJwtToken(), data.authToken)
+    await this.credentialStore.set(KeychainKeys.vltJwtExpiresAt(), expiresAt)
 
     this.logger?.info?.(
-      `Obtained new IGN JWT token (expires: ${expiresAt})`,
+      `Obtained new VLT JWT token (expires: ${expiresAt})`,
     )
 
     return data.authToken

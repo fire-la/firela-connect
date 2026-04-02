@@ -1,7 +1,7 @@
 /**
- * IGN Page
+ * VLT Page
  *
- * IGN configuration page for IGN Beancount SaaS integration settings.
+ * VLT configuration page for Firela VLT Beancount SaaS integration settings.
  */
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
@@ -26,8 +26,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { ApiResultResponse } from "@/types/api"
 
-// Form schema for IGN settings
-const IgnSettingsSchema = z.object({
+// Form schema for VLT settings
+const VltSettingsSchema = z.object({
   apiUrl: z.string().url().default("https://ign-dev.firela.io/api/v1"),
   accessToken: z.string().optional(),
   region: z.enum(["cn", "us", "eu-core", "de"]).default("us"),
@@ -39,9 +39,9 @@ const IgnSettingsSchema = z.object({
   filterPending: z.boolean().default(true),
 })
 
-type IgnSettings = z.infer<typeof IgnSettingsSchema>
+type VltSettings = z.infer<typeof VltSettingsSchema>
 
-export function IgnPage() {
+export function VltPage() {
   const { config, loading, error, loadConfig, accounts } = useConfigStore()
   const [testResult, setTestResult] = useState<{
     success: boolean
@@ -61,26 +61,26 @@ export function IgnPage() {
     watch,
     getValues,
     setValue,
-  } = useForm<IgnSettings>({
+  } = useForm<VltSettings>({
     defaultValues: {
-      apiUrl: config?.ign?.apiUrl || "https://ign-dev.firela.io/api/v1",
-      accessToken: config?.ign?.accessToken || "",
-      region: config?.ign?.region || "us",
-      uploadMode: config?.ign?.upload?.mode || "disabled",
-      sourceAccount: config?.ign?.upload?.sourceAccount || "",
-      defaultCurrency: config?.ign?.upload?.defaultCurrency || "USD",
-      defaultExpenseAccount: config?.ign?.upload?.defaultExpenseAccount || "Expenses:Unknown",
-      defaultIncomeAccount: config?.ign?.upload?.defaultIncomeAccount || "Income:Unknown",
-      filterPending: config?.ign?.upload?.filterPending ?? true,
+      apiUrl: config?.vlt?.apiUrl || "https://ign-dev.firela.io/api/v1",
+      accessToken: config?.vlt?.accessToken || "",
+      region: config?.vlt?.region || "us",
+      uploadMode: config?.vlt?.upload?.mode || "disabled",
+      sourceAccount: config?.vlt?.upload?.sourceAccount || "",
+      defaultCurrency: config?.vlt?.upload?.defaultCurrency || "USD",
+      defaultExpenseAccount: config?.vlt?.upload?.defaultExpenseAccount || "Expenses:Unknown",
+      defaultIncomeAccount: config?.vlt?.upload?.defaultIncomeAccount || "Income:Unknown",
+      filterPending: config?.vlt?.upload?.filterPending ?? true,
     },
   })
 
-  // Test IGN configuration
+  // Test VLT configuration
   const handleTest = async () => {
     try {
       setTestResult(null)
 
-      const response = await fetch("/api/ign/test", {
+      const response = await fetch("/api/vlt/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,7 +97,7 @@ export function IgnPage() {
       const result: ApiResultResponse = await response.json()
       if (result.success) {
         setTestResult({ success: true, message: result.message || "Configuration valid" })
-        toast.success("IGN configuration is valid")
+        toast.success("VLT configuration is valid")
       } else {
         setTestResult({
           success: false,
@@ -113,13 +113,13 @@ export function IgnPage() {
     }
   }
 
-  // Save IGN settings
-  const handleSave = async (data: IgnSettings) => {
+  // Save VLT settings
+  const handleSave = async (data: VltSettings) => {
     try {
       const adapter = createAdapter()
 
       // Transform form data to config structure
-      const ignConfig = {
+      const vltConfig = {
         apiUrl: data.apiUrl,
         accessToken: data.accessToken || undefined,
         region: data.region,
@@ -133,8 +133,8 @@ export function IgnPage() {
         } : undefined,
       }
 
-      await adapter.updateConfig({ ign: ignConfig })
-      toast.success("IGN settings saved successfully")
+      await adapter.updateConfig({ vlt: vltConfig })
+      toast.success("VLT settings saved successfully")
       await loadConfig()
       setTestResult({ success: true, message: "Settings saved" })
     } catch (error) {
@@ -150,9 +150,9 @@ export function IgnPage() {
       <Toaster position="top-right" />
 
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold">IGN Integration</h1>
+        <h1 className="text-2xl font-bold">Firela VLT Integration</h1>
         <p className="text-muted-foreground text-sm">
-          Configure IGN Beancount SaaS upload settings
+          Configure Firela VLT Beancount SaaS upload settings
         </p>
       </div>
 
@@ -186,7 +186,7 @@ export function IgnPage() {
         </Alert>
       )}
 
-      {/* IGN settings form */}
+      {/* VLT settings form */}
       <form onSubmit={handleSubmit(handleSave)} className="space-y-6">
         <Card>
           <CardContent className="space-y-4">

@@ -287,21 +287,21 @@ export const KeychainKeys = {
   },
 
   /**
-   * IGN (Firela Vault) JWT token key
+   * VLT (Firela Vault) JWT token key
    *
    * Stores the JWT token obtained from /auth/sessions/anonymous endpoint.
-   * JWT token is valid for 180 days and auto-refreshed by IgnAuthManager.
+   * JWT token is valid for 180 days and auto-refreshed by VltAuthManager.
    */
-  ignJwtToken(): string {
-    return "ign_jwt_token"
+  vltJwtToken(): string {
+    return "vlt_jwt_token"
   },
 
   /**
-   * IGN (Firela Vault) JWT token expiry timestamp (ISO string)
+   * VLT (Firela Vault) JWT token expiry timestamp (ISO string)
    *
    * Used to track when the JWT token needs to be refreshed.
    */
-  ignJwtExpiresAt(): string {
-    return "ign_jwt_expires_at"
+  vltJwtExpiresAt(): string {
+    return "vlt_jwt_expires_at"
   },
 }

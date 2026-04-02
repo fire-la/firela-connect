@@ -1,5 +1,5 @@
 /**
- * IGN API Client for BillClaw CLI
+ * VLT API Client for BillClaw CLI
  *
  * Configures the @firela/api-types client for CLI usage with
  * authentication and error handling.
@@ -27,8 +27,8 @@ export interface CliApiConfig {
  * Default configuration from environment variables
  */
 const DEFAULT_CONFIG: CliApiConfig = {
-  baseUrl: process.env["IGN_API_URL"] || "https://api.firela.com/api/v1",
-  apiKey: process.env["IGN_API_KEY"],
+  baseUrl: process.env["VLT_API_URL"] || "https://api.firela.com/api/v1",
+  apiKey: process.env["VLT_API_KEY"],
   timeout: 30000,
 }
 

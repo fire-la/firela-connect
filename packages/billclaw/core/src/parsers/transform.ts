@@ -2,12 +2,12 @@
  * Transform utility for converting parsed transactions to Plaid format.
  *
  * Converts RawTransaction from @firela/parser-* to PlaidTransactionUpload
- * format for IGN backend upload.
+ * format for VLT backend upload.
  *
  * @module @firela/billclaw-core/parsers
  */
 
-import type { PlaidTransactionUpload } from '../upload/ign-client.js';
+import type { PlaidTransactionUpload } from '../upload/vlt-client.js';
 import type { RawTransaction } from '@firela/parser-core';
 import { randomUUID } from 'crypto';
 
@@ -22,7 +22,7 @@ export interface TransformOptions {
 }
 
 /**
- * Transform parsed transactions to Plaid format for IGN upload.
+ * Transform parsed transactions to Plaid format for VLT upload.
  *
  * @param transactions - Array of raw transactions from parser
  * @param options - Transform options (accountId, pending status)

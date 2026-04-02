@@ -1,27 +1,27 @@
 /**
- * Transaction transformation for IGN upload
+ * Transaction transformation for VLT upload
  *
- * Converts BillClaw Transaction format to Plaid format for IGN API.
+ * Converts BillClaw Transaction format to Plaid format for VLT API.
  * This is the REVERSE of convertTransaction in plaid-sync.ts.
  *
  * @packageDocumentation
  */
 
 import type { Transaction } from "../storage/transaction-storage.js"
-import type { PlaidTransactionUpload } from "./ign-client.js"
+import type { PlaidTransactionUpload } from "./vlt-client.js"
 
 /**
- * Transform a BillClaw Transaction to Plaid format for IGN upload
+ * Transform a BillClaw Transaction to Plaid format for VLT upload
  *
- * Key conversion: amount is in cents in BillClaw, but IGN expects dollars.
+ * Key conversion: amount is in cents in BillClaw, but VLT expects dollars.
  *
  * @param txn - BillClaw transaction
- * @returns Plaid-format transaction for IGN
+ * @returns Plaid-format transaction for VLT
  */
 export function transformToPlaidFormat(txn: Transaction): PlaidTransactionUpload {
   return {
     transaction_id: txn.plaidTransactionId || txn.transactionId,
-    // Convert cents to dollars (BillClaw stores in cents, IGN expects dollars)
+    // Convert cents to dollars (BillClaw stores in cents, VLT expects dollars)
     amount: txn.amount / 100,
     iso_currency_code: txn.currency,
     date: txn.date,
@@ -38,7 +38,7 @@ export function transformToPlaidFormat(txn: Transaction): PlaidTransactionUpload
  * Transform multiple BillClaw transactions to Plaid format
  *
  * @param transactions - BillClaw transactions
- * @returns Plaid-format transactions for IGN
+ * @returns Plaid-format transactions for VLT
  */
 export function transformTransactionsToPlaidFormat(
   transactions: Transaction[],

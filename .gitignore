@@ -61,6 +61,9 @@ tmp
 # ClawHub
 .clawhub/
 
+# Hindsight local config
+.hindsight.json
+
 # Documentation (root level docs, not submodule)
 CLAUDE.md
 docs/

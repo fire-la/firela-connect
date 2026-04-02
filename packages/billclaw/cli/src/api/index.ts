@@ -1,5 +1,5 @@
 /**
- * IGN API Client for BillClaw CLI
+ * VLT API Client for BillClaw CLI
  *
  * Re-exports all API client functionality for easy importing.
  *
@@ -10,7 +10,7 @@
  * // Configure API client
  * configureApiClient({
  *   baseUrl: 'https://api.firela.com/api/v1',
- *   apiKey: process.env.IGN_API_KEY
+ *   apiKey: process.env.VLT_API_KEY
  * })
  *
  * // Upload transactions

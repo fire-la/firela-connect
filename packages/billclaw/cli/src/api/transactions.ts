@@ -1,7 +1,7 @@
 /**
  * Transaction API for BillClaw CLI
  *
- * Provides functions to interact with IGN transaction endpoints.
+ * Provides functions to interact with VLT transaction endpoints.
  * Used by billclaw after fetching transactions from bank aggregators.
  */
 
@@ -31,14 +31,14 @@ export interface UploadResult {
  * Get API base URL
  */
 function getBaseUrl(): string {
-  return process.env["IGN_API_URL"] || "https://api.firela.com/api/v1"
+  return process.env["VLT_API_URL"] || "https://api.firela.com/api/v1"
 }
 
 /**
  * Get authorization header if API key is set
  */
 function getAuthHeaders(): Record<string, string> {
-  const apiKey = process.env["IGN_API_KEY"]
+  const apiKey = process.env["VLT_API_KEY"]
   if (apiKey) {
     return { Authorization: `Bearer ${apiKey}` }
   }
@@ -46,7 +46,7 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 /**
- * Upload transactions to IGN
+ * Upload transactions to VLT
  *
  * @param region - Region code (e.g., 'de', 'us', 'cn')
  * @param transactions - Array of transactions to upload

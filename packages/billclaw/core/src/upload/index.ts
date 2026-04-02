@@ -1,25 +1,25 @@
 /**
- * Upload module for BillClaw - Transaction upload to IGN Beancount SaaS
+ * Upload module for BillClaw - Transaction upload to Firela VLT Beancount SaaS
  *
  * Provides:
- * - IGN API client with retry logic
+ * - VLT API client with retry logic
  * - Transaction transformation (BillClaw -> Plaid format)
  * - Upload status tracking
  * - Upload service for orchestrating the upload flow
- * - Automatic JWT token management (IgnAuthManager)
+ * - Automatic JWT token management (VltAuthManager)
  *
  * @packageDocumentation
  */
 
-// IGN API client
+// VLT API client
 export {
-  IgnClient,
+  VltClient,
   uploadTransactions,
-  type IgnClientConfig,
+  type VltClientConfig,
   type PlaidTransactionUpload,
   type ProviderSyncConfig,
-  type IgnUploadResult,
-} from "./ign-client.js"
+  type VltUploadResult,
+} from "./vlt-client.js"
 
 // Transaction transformation
 export {
@@ -30,7 +30,7 @@ export {
 // Upload status tracking
 export {
   UploadStatusStore,
-  type IgnUploadStatus,
+  type VltUploadStatus,
 } from "./upload-status.js"
 
 // Upload service
@@ -40,8 +40,8 @@ export {
   type UploadOptions,
 } from "./upload-service.js"
 
-// IGN Authentication Manager
+// VLT Authentication Manager
 export {
-  IgnAuthManager,
-  type IgnAuthManagerConfig,
-} from "./ign-auth.js"
+  VltAuthManager,
+  type VltAuthManagerConfig,
+} from "./vlt-auth.js"

@@ -60,7 +60,7 @@ export interface BillclawConfig {
     clientSecret?: string // Masked as "***"
     refreshToken?: string // Masked as "***"
   }
-  ign?: {
+  vlt?: {
     apiUrl?: string
     accessToken?: string // Masked as "***"
     region?: "cn" | "us" | "eu-core" | "de"

@@ -196,53 +196,53 @@ export const GoCardlessConfigSchema = z.object({
 export type GoCardlessConfig = z.infer<typeof GoCardlessConfigSchema>
 
 /**
- * IGN region options
+ * VLT region options
  */
-export const IgnRegionSchema = z.enum(["cn", "us", "eu-core", "de"])
-export type IgnRegion = z.infer<typeof IgnRegionSchema>
+export const VltRegionSchema = z.enum(["cn", "us", "eu-core", "de"])
+export type VltRegion = z.infer<typeof VltRegionSchema>
 
 /**
- * IGN upload mode options
+ * VLT upload mode options
  */
-export const IgnUploadModeSchema = z.enum(["auto", "manual", "disabled"])
-export type IgnUploadMode = z.infer<typeof IgnUploadModeSchema>
+export const VltUploadModeSchema = z.enum(["auto", "manual", "disabled"])
+export type VltUploadMode = z.infer<typeof VltUploadModeSchema>
 
 /**
- * IGN upload configuration
+ * VLT upload configuration
  */
-export const IgnUploadConfigSchema = z.object({
-  mode: IgnUploadModeSchema.default("manual"),
+export const VltUploadConfigSchema = z.object({
+  mode: VltUploadModeSchema.default("manual"),
   sourceAccount: z.string().min(1),
   defaultCurrency: z.string().default("USD"),
   defaultExpenseAccount: z.string().default("Expenses:Unknown"),
   defaultIncomeAccount: z.string().default("Income:Unknown"),
   filterPending: z.boolean().default(true),
 })
-export type IgnUploadConfig = z.infer<typeof IgnUploadConfigSchema>
+export type VltUploadConfig = z.infer<typeof VltUploadConfigSchema>
 
 /**
- * IGN (Beancount SaaS) integration configuration
+ * Firela VLT integration configuration
  *
- * Allows BillClaw to upload transactions to the IGN platform.
+ * Allows BillClaw to upload transactions to the Firela VLT platform.
  *
  * Authentication flow:
- * 1. User gets accessToken from Firela Vault app
+ * 1. User gets accessToken from Firela VLT app
  * 2. accessToken is used to exchange for JWT token via /auth/sessions/anonymous
  * 3. JWT token is cached in keychain and auto-refreshed before expiry
  */
-export const IgnConfigSchema = z.object({
+export const VltConfigSchema = z.object({
   apiUrl: z.string().url().default("https://ign-dev.firela.io/api/v1"),
   /**
-   * Access token for authentication (obtained from Firela Vault app)
+   * Access token for authentication (obtained from Firela VLT app)
    *
    * This is used to exchange for a JWT token via the /auth/sessions/anonymous endpoint.
    * The JWT token is then cached in the system keychain and auto-refreshed.
    */
   accessToken: z.string().optional(),
-  region: IgnRegionSchema.default("us"),
-  upload: IgnUploadConfigSchema.optional(),
+  region: VltRegionSchema.default("us"),
+  upload: VltUploadConfigSchema.optional(),
 })
-export type IgnConfig = z.infer<typeof IgnConfigSchema>
+export type VltConfig = z.infer<typeof VltConfigSchema>
 
 /**
  * Gmail configuration
@@ -369,7 +369,7 @@ export const BillclawConfigSchema = z.object({
   }),
   gocardless: GoCardlessConfigSchema.optional(),
   gmail: GmailConfigSchema.optional(),
-  ign: IgnConfigSchema.optional(),
+  vlt: VltConfigSchema.optional(),
   /** Relay service configuration for Open Banking without user-owned credentials */
   relay: RelayConfigSchema.optional(),
   export: ExportConfigSchema.default({}),

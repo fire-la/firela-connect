@@ -1,8 +1,12 @@
 /**
  * Plaid OAuth routes (Hono)
  *
- * Provides HTTP endpoints for Plaid Link OAuth flow.
- * Migrated from Express (packages/connect/src/routes/plaid.ts)
+ * Provides HTTP endpoints for Plaid Link OAuth flow via firela-relay.
+ * All Plaid API calls are proxied through RelayPlaidClient, keeping
+ * FIRELA_RELAY_API_KEY server-side.
+ *
+ * Migrated from Express (packages/connect/src/routes/plaid.ts) to Hono,
+ * then updated from Direct mode to Relay mode.
  *
  * @packageDocumentation
  */
@@ -10,14 +14,7 @@
 import { Hono } from "hono"
 import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
-import {
-  parseOauthError,
-} from "@firela/billclaw-core/errors"
-import {
-  plaidOAuthHandler,
-  type PlaidConfig,
-} from "@firela/billclaw-core/oauth"
-import { storeCredential } from "./credentials.js"
+import { RelayPlaidClient } from "@firela/billclaw-core"
 
 import type { OAuthEnv as Env } from "./env.js"
 
@@ -27,16 +24,24 @@ const ACCOUNTS_KEY = "billclaw:accounts"
 export const plaidRoutes = new Hono<{ Bindings: Env }>()
 
 /**
- * Get Plaid configuration from environment bindings
+ * Create a RelayPlaidClient from environment bindings
  *
- * Workers-compatible: Uses env bindings instead of file-based ConfigManager
+ * Validates that relay environment variables are configured before
+ * creating the client instance.
+ *
+ * @throws Error if FIRELA_RELAY_URL or FIRELA_RELAY_API_KEY is missing
  */
-function getPlaidConfig(env: Env): PlaidConfig {
-  return {
-    clientId: env.PLAID_CLIENT_ID,
-    secret: env.PLAID_SECRET,
-    environment: (env.PLAID_ENV as PlaidConfig["environment"]) || "sandbox",
+function getPlaidRelayClient(env: Env): RelayPlaidClient {
+  if (!env.FIRELA_RELAY_URL || !env.FIRELA_RELAY_API_KEY) {
+    throw new Error(
+      "Plaid relay is not configured. Set FIRELA_RELAY_URL and FIRELA_RELAY_API_KEY environment variables.",
+    )
   }
+
+  return new RelayPlaidClient(
+    { relayUrl: env.FIRELA_RELAY_URL, relayApiKey: env.FIRELA_RELAY_API_KEY },
+    console,
+  )
 }
 
 /**
@@ -52,38 +57,35 @@ const exchangeTokenSchema = z.object({
  * GET /api/oauth/plaid/link-token
  *
  * Create a Plaid Link token for initializing the Plaid Link frontend.
+ * Proxied through firela-relay.
  *
  * Response:
  * - success: boolean
  * - linkToken: string - Link token for Plaid Link initialization
- * - plaidUrl: string - URL to load Plaid Link
  */
 plaidRoutes.get("/link-token", async (c) => {
   try {
-    const config = getPlaidConfig(c.env)
-    const result = await plaidOAuthHandler(config)
+    const client = getPlaidRelayClient(c.env)
+    const result = await client.createLinkToken({
+      client_name: "BillClaw",
+      language: "en",
+      country_codes: ["US"],
+      user: { client_user_id: `user_${Date.now()}` },
+      products: ["transactions"],
+    })
 
-    // Return the Link token and the Plaid Link URL
     return c.json({
       success: true,
-      linkToken: result.token,
-      plaidUrl: result.url,
+      linkToken: result.link_token,
     })
   } catch (error) {
-    const linkError = parseOauthError(
-      error as Error | { code?: string; message?: string; status?: number },
-      {
-        provider: "plaid",
-        operation: "link_token",
-      },
-    )
-    console.error("[plaid_link_token]", linkError)
+    const message = error instanceof Error ? error.message : "Failed to create link token"
+    console.error("[plaid_link_token]", error)
 
     return c.json(
       {
         success: false,
-        error: linkError.humanReadable.message,
-        errorCode: linkError.errorCode,
+        error: message,
       },
       500,
     )
@@ -93,8 +95,8 @@ plaidRoutes.get("/link-token", async (c) => {
 /**
  * POST /api/oauth/plaid/exchange
  *
- * Exchange a Plaid public token for an access token.
- * Optionally stores credential for Direct mode polling.
+ * Exchange a Plaid public token for an access token via relay.
+ * Stores the account in KV for persistence.
  *
  * Request body:
  * - publicToken: Plaid public token (required)
@@ -111,18 +113,14 @@ plaidRoutes.post(
   zValidator("json", exchangeTokenSchema),
   async (c) => {
     try {
-      const { publicToken, accountId, sessionId } = c.req.valid("json")
+      const { publicToken, sessionId } = c.req.valid("json")
 
-      const config = getPlaidConfig(c.env)
-      const result = await plaidOAuthHandler(config, publicToken, accountId)
+      const client = getPlaidRelayClient(c.env)
+      const result = await client.exchangePublicToken(publicToken)
 
       // Store credential for Direct mode polling if sessionId is provided
       if (sessionId) {
-        storeCredential(sessionId, {
-          provider: "plaid",
-          publicToken: publicToken,
-          metadata: result.itemId,
-        })
+        console.log("[plaid_exchange] Session ID provided but relay mode does not use credential store:", sessionId)
       }
 
       // Save account to KV storage for persistence
@@ -134,15 +132,15 @@ plaidRoutes.post(
 
           // Create new account entry
           const newAccount = {
-            id: result.itemId,
-            name: `Plaid Account (${result.itemId.slice(0, 8)})`,
+            id: result.item_id,
+            name: `Plaid Account (${result.item_id.slice(0, 8)})`,
             provider: "plaid",
             status: "connected",
             lastSync: new Date().toISOString(),
           }
 
           // Check if account exists and update, or add new
-          const existingIndex = accounts.findIndex((a) => a.id === result.itemId)
+          const existingIndex = accounts.findIndex((a) => a.id === result.item_id)
           if (existingIndex >= 0) {
             accounts[existingIndex] = { ...accounts[existingIndex], ...newAccount }
           } else {
@@ -151,7 +149,7 @@ plaidRoutes.post(
 
           // Save back to KV
           await c.env.CONFIG.put(ACCOUNTS_KEY, JSON.stringify(accounts))
-          console.log("[plaid_exchange] Account saved to KV:", result.itemId)
+          console.log("[plaid_exchange] Account saved to KV:", result.item_id)
         } catch (kvError) {
           // Log error but don't fail the request
           console.error("[plaid_exchange] Failed to save account to KV:", kvError)
@@ -160,24 +158,17 @@ plaidRoutes.post(
 
       return c.json({
         success: true,
-        accessToken: result.accessToken,
-        itemId: result.itemId,
+        accessToken: result.access_token,
+        itemId: result.item_id,
       })
     } catch (error) {
-      const exchangeError = parseOauthError(
-        error as Error | { code?: string; message?: string; status?: number },
-        {
-          provider: "plaid",
-          operation: "public_token_exchange",
-        },
-      )
-      console.error("[plaid_token_exchange]", exchangeError)
+      const message = error instanceof Error ? error.message : "Token exchange failed"
+      console.error("[plaid_token_exchange]", error)
 
       return c.json(
         {
           success: false,
-          error: exchangeError.humanReadable.message,
-          errorCode: exchangeError.errorCode,
+          error: message,
         },
         500,
       )

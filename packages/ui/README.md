@@ -65,7 +65,7 @@ The UI provides configuration pages for:
 | Connect | `/` | Manage Plaid and Gmail connections |
 | Sync | `/sync` | Configure synchronization settings |
 | Export | `/export` | Set up Beancount/Ledger export |
-| IGN | `/ign` | Configure IGN integration |
+| VLT | `/vlt` | Configure Firela VLT integration |
 | Webhook | `/webhook` | Manage webhook settings |
 | Advanced | `/advanced` | Advanced options |
 

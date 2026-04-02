@@ -1,5 +1,5 @@
 /**
- * Import command - imports CSV files and parses and uploads transactions to IGN.
+ * Import command - imports CSV files and parses and uploads transactions to VLT.
  *
  * @module @firela/billclaw-cli
  */
@@ -18,7 +18,7 @@ import {
   type PlaidTransactionUpload,
   type ProviderSyncConfig,
 } from "@firela/billclaw-core"
-import { IgnAuthManager } from "@firela/billclaw-core"
+import { VltAuthManager } from "@firela/billclaw-core"
 import { createCredentialStore, CredentialStrategy } from "@firela/billclaw-core"
 
 /**
@@ -144,12 +144,12 @@ async function runImport(
     return
   }
 
-  // Upload to IGN
+  // Upload to VLT
   await handleUpload(context, plaidTransactions, accountId)
 }
 
 /**
- * Handle IGN upload
+ * Handle VLT upload
  */
 async function handleUpload(
   context: CliContext,
@@ -159,22 +159,22 @@ async function handleUpload(
   const { runtime } = context
   const config = await runtime.config.getConfig()
 
-  // Check if IGN is configured
-  if (!config.ign?.accessToken) {
+  // Check if VLT is configured
+  if (!config.vlt?.accessToken) {
     console.error("")
-    console.error("Error: IGN not configured")
-    console.error("Run 'billclaw config' to set up IGN credentials")
+    console.error("Error: VLT not configured")
+    console.error("Run 'billclaw config' to set up VLT credentials")
     return
   }
 
-  if (!config.ign?.upload) {
+  if (!config.vlt?.upload) {
     console.error("")
-    console.error("Error: IGN upload configuration missing")
+    console.error("Error: VLT upload configuration missing")
     console.error("Run 'billclaw config' to configure upload settings")
     return
   }
 
-  const spinner = new Spinner({ text: "Uploading to IGN..." }).start()
+  const spinner = new Spinner({ text: "Uploading to VLT..." }).start()
 
   try {
     // Create credential store for JWT token caching
@@ -183,24 +183,24 @@ async function handleUpload(
       logger: runtime.logger,
     })
 
-    // Use IgnAuthManager for token management
-    const authManager = new IgnAuthManager(config.ign, credentialStore, runtime.logger)
+    // Use VltAuthManager for token management
+    const authManager = new VltAuthManager(config.vlt, credentialStore, runtime.logger)
     const apiToken = await authManager.ensureValidToken()
 
-    // Build sync config from IGN config
+    // Build sync config from VLT config
     const syncConfig: ProviderSyncConfig = {
-      sourceAccount: config.ign.upload.sourceAccount,
-      defaultCurrency: config.ign.upload.defaultCurrency || "USD",
-      defaultExpenseAccount: config.ign.upload.defaultExpenseAccount || "Expenses:Unknown",
-      defaultIncomeAccount: config.ign.upload.defaultIncomeAccount || "Income:Unknown",
-      filterPending: config.ign.upload.filterPending ?? true,
+      sourceAccount: config.vlt.upload.sourceAccount,
+      defaultCurrency: config.vlt.upload.defaultCurrency || "USD",
+      defaultExpenseAccount: config.vlt.upload.defaultExpenseAccount || "Expenses:Unknown",
+      defaultIncomeAccount: config.vlt.upload.defaultIncomeAccount || "Income:Unknown",
+      filterPending: config.vlt.upload.filterPending ?? true,
     }
 
     const result = await uploadTransactions(
       {
-        apiUrl: config.ign.apiUrl,
+        apiUrl: config.vlt.apiUrl,
         apiToken,
-        region: config.ign.region,
+        region: config.vlt.region,
       },
       transactions,
       syncConfig,
@@ -218,7 +218,7 @@ async function handleUpload(
 
     if (result.failed > 0) {
       console.log("")
-      console.log("Some transactions failed to import. Check IGN for details.")
+      console.log("Some transactions failed to import. Check VLT for details.")
     }
 
     success("Import completed!")

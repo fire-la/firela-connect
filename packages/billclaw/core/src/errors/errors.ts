@@ -36,8 +36,8 @@ export enum ErrorCategory {
   // OAuth errors (OAuth flow and device code flow)
   OAUTH = "oauth",
 
-  // IGN errors
-  IGN = "ign",
+  // VLT errors
+  VLT = "vlt",
 
   // Relay errors
   RELAY = "relay",
@@ -129,14 +129,14 @@ export const ERROR_CODES = {
   OAUTH_GMAIL_CODE_EXCHANGE_FAILED: "OAUTH_GMAIL_CODE_EXCHANGE_FAILED",
   OAUTH_GMAIL_API_ERROR: "OAUTH_GMAIL_API_ERROR",
 
-  // IGN errors
-  IGN_AUTH_FAILED: "IGN_AUTH_FAILED",
-  IGN_TOKEN_EXPIRED: "IGN_TOKEN_EXPIRED",
-  IGN_API_ERROR: "IGN_API_ERROR",
-  IGN_UPLOAD_FAILED: "IGN_UPLOAD_FAILED",
-  IGN_REGION_INVALID: "IGN_REGION_INVALID",
-  IGN_CONNECTION_FAILED: "IGN_CONNECTION_FAILED",
-  IGN_RATE_LIMITED: "IGN_RATE_LIMITED",
+  // VLT errors
+  VLT_AUTH_FAILED: "VLT_AUTH_FAILED",
+  VLT_TOKEN_EXPIRED: "VLT_TOKEN_EXPIRED",
+  VLT_API_ERROR: "VLT_API_ERROR",
+  VLT_UPLOAD_FAILED: "VLT_UPLOAD_FAILED",
+  VLT_REGION_INVALID: "VLT_REGION_INVALID",
+  VLT_CONNECTION_FAILED: "VLT_CONNECTION_FAILED",
+  VLT_RATE_LIMITED: "VLT_RATE_LIMITED",
 
   // Relay errors
   RELAY_NOT_CONFIGURED: "RELAY_NOT_CONFIGURED",
@@ -371,7 +371,7 @@ function getCategoryEmoji(category: ErrorCategory): string {
     [ErrorCategory.FILE_SYSTEM]: "📁",
     [ErrorCategory.WEBHOOK]: "🪝",
     [ErrorCategory.OAUTH]: "🔑",
-    [ErrorCategory.IGN]: "📤",
+    [ErrorCategory.VLT]: "📤",
     [ErrorCategory.RELAY]: "🔗",
     [ErrorCategory.RELAY_PROVIDER]: "🔌",
     [ErrorCategory.UNKNOWN]: "❓",
@@ -1339,12 +1339,12 @@ export function logError(
 }
 
 /**
- * Parse IGN API errors and *
- * @param error - Error from IGN API
+ * Parse VLT API errors and *
+ * @param error - Error from VLT API
  * @param context - Additional context (region, endpoint)
- * @returns UserError with appropriate IGN error code
+ * @returns UserError with appropriate VLT error code
  */
-export function parseIgnError(
+export function parseVltError(
   error: Error | { code?: string; message?: string; status?: number },
   context?: {
     region?: string
@@ -1362,26 +1362,26 @@ export function parseIgnError(
   // Authentication failed (401)
   if (statusCode === 401 || message.includes("401") || message.includes("Unauthorized")) {
     return createUserError(
-      ERROR_CODES.IGN_AUTH_FAILED,
-      ErrorCategory.IGN,
+      ERROR_CODES.VLT_AUTH_FAILED,
+      ErrorCategory.VLT,
       "error",
       true,
       {
-        title: "IGN Authentication Failed",
+        title: "VLT Authentication Failed",
         message:
-          "Authentication with IGN API failed. Your API token may be invalid or expired.",
+          "Authentication with VLT API failed. Your API token may be invalid or expired.",
         suggestions: [
-          "Check your IGN API token in the configuration file",
-          "Re-authenticate by obtaining a new token from IGN dashboard",
+          "Check your VLT API token in the configuration file",
+          "Re-authenticate by obtaining a new token from VLT dashboard",
           "Verify the token has not been revoked",
         ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/vlt-integration.md",
       },
       [
         {
           type: "config_change",
-          params: { setting: "ign_api_token" },
-          description: "Update IGN API token in configuration",
+          params: { setting: "vlt_api_token" },
+          description: "Update VLT API token in configuration",
         },
       ],
       entities,
@@ -1396,26 +1396,26 @@ export function parseIgnError(
     message.includes("token")
   ) {
     return createUserError(
-      ERROR_CODES.IGN_TOKEN_EXPIRED,
-      ErrorCategory.IGN,
+      ERROR_CODES.VLT_TOKEN_EXPIRED,
+      ErrorCategory.VLT,
       "error",
       true,
       {
-        title: "IGN Token Expired",
+        title: "VLT Token Expired",
         message:
-          "Your IGN API token has expired. Please obtain a new token from the IGN dashboard.",
+          "Your VLT API token has expired. Please obtain a new token from the VLT dashboard.",
         suggestions: [
-          "Log into IGN dashboard to generate a new API token",
+          "Log into VLT dashboard to generate a new API token",
           "Update the token in BillClaw configuration",
           "Tokens typically expire after a period of time for security",
         ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/vlt-integration.md",
       },
       [
         {
           type: "config_change",
-          params: { setting: "ign_api_token" },
-          description: "Update IGN API token",
+          params: { setting: "vlt_api_token" },
+          description: "Update VLT API token",
         },
       ],
       entities,
@@ -1426,20 +1426,20 @@ export function parseIgnError(
   // Rate limited (429)
   if (statusCode === 429 || message.includes("429") || message.includes("rate limit")) {
     return createUserError(
-      ERROR_CODES.IGN_RATE_LIMITED,
-      ErrorCategory.IGN,
+      ERROR_CODES.VLT_RATE_LIMITED,
+      ErrorCategory.VLT,
       "warning",
       true,
       {
-        title: "IGN Rate Limit Exceeded",
+        title: "VLT Rate Limit Exceeded",
         message:
-          "Too many requests to IGN API. You have exceeded the rate limit.",
+          "Too many requests to VLT API. You have exceeded the rate limit.",
         suggestions: [
           "Wait a few minutes before retrying",
           "Reduce upload frequency if possible",
-          "Check IGN plan limits if consistent uploads are needed",
+          "Check VLT plan limits if consistent uploads are needed",
         ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/vlt-integration.md",
       },
       [
         {
@@ -1462,20 +1462,20 @@ export function parseIgnError(
     message.includes("504")
   ) {
     return createUserError(
-      ERROR_CODES.IGN_API_ERROR,
-      ErrorCategory.IGN,
+      ERROR_CODES.VLT_API_ERROR,
+      ErrorCategory.VLT,
       "warning",
       true,
       {
-        title: "IGN API Error",
+        title: "VLT API Error",
         message:
-          "The IGN API encountered an internal error. Please try again later.",
+          "The VLT API encountered an internal error. Please try again later.",
         suggestions: [
           "Wait a few minutes and try again",
-          "Check IGN service status if the issue persists",
-          "Contact IGN support if errors continue",
+          "Check VLT service status if the issue persists",
+          "Contact VLT support if errors continue",
         ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/vlt-integration.md",
       },
       [
         {
@@ -1496,17 +1496,17 @@ export function parseIgnError(
     message.includes("connection")
   ) {
     return createUserError(
-      ERROR_CODES.IGN_CONNECTION_FAILED,
+      ERROR_CODES.VLT_CONNECTION_FAILED,
       ErrorCategory.NETWORK,
       "error",
       true,
       {
-        title: "IGN Connection Failed",
+        title: "VLT Connection Failed",
         message:
-          "Could not connect to IGN API. Please check your network connection.",
+          "Could not connect to VLT API. Please check your network connection.",
         suggestions: [
           "Verify your internet connection is working",
-          "Check if IGN service is accessible",
+          "Check if VLT service is accessible",
           "Try again in a few moments",
         ],
       },
@@ -1525,26 +1525,26 @@ export function parseIgnError(
   // Invalid region
   if (message.includes("region") || message.includes("invalid")) {
     return createUserError(
-      ERROR_CODES.IGN_REGION_INVALID,
+      ERROR_CODES.VLT_REGION_INVALID,
       ErrorCategory.CONFIG,
       "error",
       true,
       {
-        title: "IGN Region Invalid",
+        title: "VLT Region Invalid",
         message:
-          "The configured IGN region is not valid. Valid regions are: cn, us, eu-core, de.",
+          "The configured VLT region is not valid. Valid regions are: cn, us, eu-core, de.",
         suggestions: [
           "Check the region setting in configuration",
           "Valid regions: cn, us, eu-core, de",
           "Update to a valid region",
         ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/vlt-integration.md",
       },
       [
         {
           type: "config_change",
-          params: { setting: "ign_region" },
-          description: "Update IGN region configuration",
+          params: { setting: "vlt_region" },
+          description: "Update VLT region configuration",
         },
       ],
       entities,
@@ -1555,21 +1555,21 @@ export function parseIgnError(
   // Generic upload failed
   if (message.includes("upload") || message.includes("failed")) {
     return createUserError(
-      ERROR_CODES.IGN_UPLOAD_FAILED,
-      ErrorCategory.IGN,
+      ERROR_CODES.VLT_UPLOAD_FAILED,
+      ErrorCategory.VLT,
       "error",
       true,
       {
-        title: "IGN Upload Failed",
+        title: "VLT Upload Failed",
         message:
-          "Failed to upload transactions to IGN. Local data has been preserved.",
+          "Failed to upload transactions to VLT. Local data has been preserved.",
         suggestions: [
           "Check your network connection",
-          "Verify IGN API token is valid",
+          "Verify VLT API token is valid",
           "Try uploading again later",
           "Your transactions are safely stored locally",
         ],
-        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+        docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/vlt-integration.md",
       },
       [
         {
@@ -1583,21 +1583,21 @@ export function parseIgnError(
     )
   }
 
-  // Generic IGN error
+  // Generic VLT error
   return createUserError(
-    ERROR_CODES.IGN_API_ERROR,
-    ErrorCategory.IGN,
+    ERROR_CODES.VLT_API_ERROR,
+    ErrorCategory.VLT,
     "error",
     true,
     {
-      title: "IGN API Error",
-      message: `An error occurred while communicating with IGN: ${message}`,
+      title: "VLT API Error",
+      message: `An error occurred while communicating with VLT: ${message}`,
       suggestions: [
         "Check your network connection",
-        "Verify IGN configuration is correct",
+        "Verify VLT configuration is correct",
         "Try again later",
       ],
-      docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/ign-integration.md",
+      docsLink: "https://github.com/fire-la/billclaw/blob/main/docs/guide/vlt-integration.md",
     },
     [
       {
@@ -1629,7 +1629,7 @@ export function getTroubleshootingUrl(category: ErrorCategory): string {
     [ErrorCategory.STORAGE]: `${baseUrl}#storage-issues`,
     [ErrorCategory.FILE_SYSTEM]: `${baseUrl}#storage-issues`,
     [ErrorCategory.WEBHOOK]: `${baseUrl}#webhook-issues`,
-    [ErrorCategory.IGN]: `${baseUrl}#ign-integration`,
+    [ErrorCategory.VLT]: `${baseUrl}#vlt-integration`,
   }
 
   return urls[category] || baseUrl

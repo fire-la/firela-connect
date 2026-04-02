@@ -3,7 +3,7 @@
     "connect": "Connect",
     "sync": "Sync",
     "export": "Export",
-    "ign": "IGN",
+    "vlt": "VLT",
     "webhook": "Webhook",
     "advanced": "Advanced"
   },
@@ -36,9 +36,9 @@
     "outputDir": "Output Directory",
     "accountMapping": "Account Mapping"
   },
-  "ign": {
-    "title": "IGN Settings",
-    "description": "Configure integration with IGN Beancount SaaS platform.",
+  "vlt": {
+    "title": "VLT Settings",
+    "description": "Configure integration with Firela VLT Beancount SaaS platform.",
     "apiUrl": "API URL",
     "accessToken": "Access Token",
     "region": "Region",
