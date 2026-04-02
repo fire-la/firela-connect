@@ -482,5 +482,36 @@ describe("GoCardlessTokenStorage", () => {
         ).resolves.not.toThrow()
       })
     })
+
+    describe("error handling", () => {
+      let errorAdapter: D1StorageAdapter & GoCardlessTokenStorage
+
+      beforeEach(() => {
+        const errorDb = createMockD1Database({ shouldError: true })
+        errorAdapter = new D1StorageAdapter({ db: errorDb as unknown as Parameters<typeof D1StorageAdapter>[0]["db"] }) as D1StorageAdapter & GoCardlessTokenStorage
+      })
+
+      it("propagates database error during storeGoCardlessToken", async () => {
+        await expect(
+          errorAdapter.storeGoCardlessToken("account-1", {
+            access_token: "test-access",
+            refresh_token: "test-refresh",
+            expires_at: "2024-01-01T00:00:00Z",
+          }),
+        ).rejects.toThrow("D1 database error")
+      })
+
+      it("propagates database error during getGoCardlessToken", async () => {
+        await expect(
+          errorAdapter.getGoCardlessToken("account-1"),
+        ).rejects.toThrow("D1 database error")
+      })
+
+      it("propagates database error during deleteGoCardlessToken", async () => {
+        await expect(
+          errorAdapter.deleteGoCardlessToken("account-1"),
+        ).rejects.toThrow("D1 database error")
+      })
+    })
   })
 })
