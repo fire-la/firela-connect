@@ -13,10 +13,10 @@ import {
 
 // Type definitions from @firela/api-types
 import type {
-  TransactionResponse,
-  TransactionDetail,
-  TransactionListResponse,
-  CreateTransactionRequest,
+  TransactionResponseDto,
+  TransactionDetailDto,
+  TransactionListResponseDto,
+  CreateTransactionDto,
 } from "@firela/api-types"
 
 /**
@@ -54,7 +54,7 @@ function getAuthHeaders(): Record<string, string> {
  */
 export async function uploadTransactions(
   region: string,
-  transactions: CreateTransactionRequest[]
+  transactions: CreateTransactionDto[]
 ): Promise<UploadResult> {
   const errors: string[] = []
   let uploaded = 0
@@ -101,7 +101,7 @@ export async function uploadTransactions(
 export async function listRecentTransactions(
   region: string,
   limit: number = 10
-): Promise<TransactionListResponse> {
+): Promise<TransactionListResponseDto> {
   const response = await fetch(
     `${getBaseUrl()}/${region}/bean/transactions?limit=${limit}`,
     {
@@ -117,7 +117,7 @@ export async function listRecentTransactions(
     handleApiError(error, "Failed to list transactions")
   }
 
-  return (await response.json()) as TransactionListResponse
+  return (await response.json()) as TransactionListResponseDto
 }
 
 /**
@@ -130,7 +130,7 @@ export async function listRecentTransactions(
 export async function getTransaction(
   region: string,
   id: string
-): Promise<TransactionDetail | null> {
+): Promise<TransactionDetailDto | null> {
   try {
     const response = await fetch(
       `${getBaseUrl()}/${region}/bean/transactions/${id}`,
@@ -151,7 +151,7 @@ export async function getTransaction(
       handleApiError(error, `Failed to get transaction ${id}`)
     }
 
-    return (await response.json()) as TransactionDetail
+    return (await response.json()) as TransactionDetailDto
   } catch (error) {
     if (isApiError(error)) {
       throw error // Already handled
@@ -162,8 +162,8 @@ export async function getTransaction(
 
 // Re-export types for convenience
 export type {
-  TransactionResponse,
-  TransactionDetail,
-  TransactionListResponse,
-  CreateTransactionRequest,
+  TransactionResponseDto,
+  TransactionDetailDto,
+  TransactionListResponseDto,
+  CreateTransactionDto,
 }
