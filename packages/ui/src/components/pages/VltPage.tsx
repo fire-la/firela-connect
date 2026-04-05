@@ -47,6 +47,8 @@ export function VltPage() {
     success: boolean
     message: string
   } | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Load config on mount
   useEffect(() => {
@@ -61,6 +63,7 @@ export function VltPage() {
     watch,
     getValues,
     setValue,
+    reset,
   } = useForm<VltSettings>({
     defaultValues: {
       apiUrl: config?.vlt?.apiUrl || "https://vlt.firela.io/api/v1",
@@ -75,9 +78,27 @@ export function VltPage() {
     },
   })
 
+  // Re-initialize form when config loads
+  useEffect(() => {
+    if (config?.vlt) {
+      reset({
+        apiUrl: config.vlt.apiUrl || "https://vlt.firela.io/api/v1",
+        accessToken: config.vlt.accessToken || "",
+        region: config.vlt.region || "us",
+        uploadMode: config.vlt.upload?.mode || "disabled",
+        sourceAccount: config.vlt.upload?.sourceAccount || "",
+        defaultCurrency: config.vlt.upload?.defaultCurrency || "USD",
+        defaultExpenseAccount: config.vlt.upload?.defaultExpenseAccount || "Expenses:Unknown",
+        defaultIncomeAccount: config.vlt.upload?.defaultIncomeAccount || "Income:Unknown",
+        filterPending: config.vlt.upload?.filterPending ?? true,
+      })
+    }
+  }, [config, reset])
+
   // Test VLT configuration
   const handleTest = async () => {
     try {
+      setTesting(true)
       setTestResult(null)
 
       const response = await fetch("/api/vlt/test", {
@@ -110,12 +131,15 @@ export function VltPage() {
         error instanceof Error ? error.message : "Failed to test configuration"
       toast.error(message)
       setTestResult({ success: false, message })
+    } finally {
+      setTesting(false)
     }
   }
 
   // Save VLT settings
   const handleSave = async (data: VltSettings) => {
     try {
+      setSaving(true)
       const adapter = createAdapter()
 
       // Transform form data to config structure
@@ -142,6 +166,8 @@ export function VltPage() {
         error instanceof Error ? error.message : "Failed to save settings"
       toast.error(message)
       setTestResult({ success: false, message })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -340,12 +366,16 @@ export function VltPage() {
 
         {/* Save and Test buttons */}
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
+          <Button type="submit" disabled={saving || loading}>
+            {(saving || loading) && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
             Save Settings
           </Button>
-          <Button type="button" variant="outline" onClick={handleTest} disabled={loading}>
-            <Play className="w-4 h-4 mr-2" />
+          <Button type="button" variant="outline" onClick={handleTest} disabled={testing || loading}>
+            {testing ? (
+              <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Play className="w-4 h-4 mr-2" />
+            )}
             Test Configuration
           </Button>
         </div>

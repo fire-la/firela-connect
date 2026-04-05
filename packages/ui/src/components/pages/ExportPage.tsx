@@ -52,6 +52,8 @@ export function ExportPage() {
     success: boolean
     message: string
   } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
 
   const [previewFormat, setPreviewFormat] = useState<"beancount" | "ledger">("beancount")
 
@@ -67,6 +69,7 @@ export function ExportPage() {
     formState: { errors: _errors },
     watch,
     getValues,
+    reset,
   } = useForm<ExportConfig>({
     defaultValues: {
       format: config?.export?.format || "beancount",
@@ -76,6 +79,19 @@ export function ExportPage() {
       currencyColumn: config?.export?.currencyColumn || true,
     },
   })
+
+  // Re-initialize form when config loads
+  useEffect(() => {
+    if (config?.export) {
+      reset({
+        format: config.export.format || "beancount",
+        outputPath: config.export.outputPath || "~/.firela/billclaw/exports",
+        filePrefix: config.export.filePrefix || "transactions",
+        includePending: config.export.includePending || false,
+        currencyColumn: config.export.currencyColumn || true,
+      })
+    }
+  }, [config, reset])
 
   // Update preview when format changes
   useEffect(() => {
@@ -90,6 +106,7 @@ export function ExportPage() {
   // Test export configuration
   const handleTest = async () => {
     try {
+      setTesting(true)
       setTestResult(null)
 
       const response = await fetch("/api/export/test", {
@@ -122,12 +139,15 @@ export function ExportPage() {
         error instanceof Error ? error.message : "Failed to test configuration"
       toast.error(message)
       setTestResult({ success: false, message })
+    } finally {
+      setTesting(false)
     }
   }
 
   // Save export settings
   const handleSave = async (data: ExportConfig) => {
     try {
+      setSaving(true)
       const adapter = createAdapter()
       await adapter.updateConfig({ export: data })
       toast.success("Export settings saved successfully")
@@ -138,6 +158,8 @@ export function ExportPage() {
         error instanceof Error ? error.message : "Failed to save settings"
       toast.error(message)
       setTestResult({ success: false, message })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -261,17 +283,21 @@ export function ExportPage() {
 
         {/* Save and Test buttons */}
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
+          <Button type="submit" disabled={saving || loading}>
+            {(saving || loading) && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
             Save Settings
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={handleTest}
-            disabled={loading}
+            disabled={testing || loading}
           >
-            <Play className="w-4 h-4 mr-2" />
+            {testing ? (
+              <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Play className="w-4 h-4 mr-2" />
+            )}
             Test Configuration
           </Button>
         </div>

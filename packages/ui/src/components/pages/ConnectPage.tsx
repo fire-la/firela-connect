@@ -223,10 +223,15 @@ export function ConnectPage() {
             <Link className="w-4 h-4" />
             Connect Gmail
           </Button>
-          <Button variant="outline" disabled className="gap-2 opacity-60 cursor-not-allowed" title="GoCardless Bank Account Data is temporarily unavailable">
-            <Landmark className="w-4 h-4" />
-            Connect GoCardless (Unavailable)
-          </Button>
+          <div className="flex flex-col gap-1">
+            <Button variant="outline" disabled className="gap-2 opacity-60 cursor-not-allowed">
+              <Landmark className="w-4 h-4" />
+              Connect GoCardless
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Temporarily unavailable
+            </span>
+          </div>
         </CardContent>
       </Card>
 
