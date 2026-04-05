@@ -27,8 +27,13 @@ export function GoCardlessConnectPage() {
             <div className="rounded-md bg-muted p-4 text-center space-y-2">
               <p className="font-medium text-muted-foreground">Temporarily Unavailable</p>
               <p className="text-sm text-muted-foreground">
-                GoCardless Bank Account Data is no longer accepting new accounts.
-                This feature is temporarily disabled.
+                The GoCardless Bank Account Data service provider is no longer
+                accepting new accounts. This is an external service limitation,
+                not an error on your end.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Existing connections continue to work. This feature will be
+                restored when the service resumes accepting new sign-ups.
               </p>
             </div>
             <Button variant="outline" onClick={() => navigate("/connect")} className="w-full gap-2">

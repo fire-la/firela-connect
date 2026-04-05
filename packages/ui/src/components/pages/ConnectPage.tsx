@@ -65,10 +65,6 @@ export function ConnectPage() {
     navigate("/connect/gmail")
   }
 
-  const handleConnectGoCardless = () => {
-    navigate("/connect/gocardless")
-  }
-
   const handleDisconnect = async (accountId: string) => {
     setDisconnecting(accountId)
     try {
@@ -198,8 +194,17 @@ export function ConnectPage() {
       {/* Empty state */}
       {!loading && accounts.length === 0 && !error && (
         <Card>
-          <CardContent className="text-center text-muted-foreground py-8">
-            No accounts connected yet. Connect your first account to get started.
+          <CardContent className="text-center py-8 space-y-3">
+            <p className="text-muted-foreground">
+              No accounts connected yet.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Get started by connecting a bank account via Plaid or your email via Gmail.
+            </p>
+            <Button onClick={handleConnectPlaid} variant="outline" className="gap-2">
+              <Link className="w-4 h-4" />
+              Connect Your First Account
+            </Button>
           </CardContent>
         </Card>
       )}

@@ -12,6 +12,7 @@ import {
   XCircle,
   CreditCard,
   Mail,
+  Landmark,
   Play,
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
@@ -64,6 +65,8 @@ export function SyncPage() {
         return <CreditCard className="w-5 h-5" />
       case "gmail":
         return <Mail className="w-5 h-5" />
+      case "gocardless":
+        return <Landmark className="w-5 h-5" />
       default:
         return null
     }

@@ -28,7 +28,7 @@ import type { ApiResultResponse } from "@/types/api"
 
 // Form schema for VLT settings
 const VltSettingsSchema = z.object({
-  apiUrl: z.string().url().default("https://ign-dev.firela.io/api/v1"),
+  apiUrl: z.string().url().default("https://vlt.firela.io/api/v1"),
   accessToken: z.string().optional(),
   region: z.enum(["cn", "us", "eu-core", "de"]).default("us"),
   uploadMode: z.enum(["disabled", "auto", "manual"]).default("disabled"),
@@ -63,7 +63,7 @@ export function VltPage() {
     setValue,
   } = useForm<VltSettings>({
     defaultValues: {
-      apiUrl: config?.vlt?.apiUrl || "https://ign-dev.firela.io/api/v1",
+      apiUrl: config?.vlt?.apiUrl || "https://vlt.firela.io/api/v1",
       accessToken: config?.vlt?.accessToken || "",
       region: config?.vlt?.region || "us",
       uploadMode: config?.vlt?.upload?.mode || "disabled",
@@ -198,7 +198,7 @@ export function VltPage() {
                   type="url"
                   id="apiUrl"
                   {...register("apiUrl")}
-                  placeholder="https://ign-dev.firela.io/api/v1"
+                  placeholder="https://vlt.firela.io/api/v1"
                   className="pl-10"
                 />
               </div>
