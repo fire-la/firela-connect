@@ -73,7 +73,7 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
         const accountId = `test-account-${Date.now()}`
 
         try {
-          const result = await relayClient.request<RelayHealthCheckResponse>("/health", {
+          const result = await relayClient.request<RelayHealthCheckResponse>("/api/health", {
             method: "POST",
             body: JSON.stringify({
               callback_url: callbackUrl,
@@ -97,7 +97,7 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
       "should perform standard health check without body",
       async () => {
         try {
-          const result = await relayClient.request<RelayHealthCheckResponse>("/health", {
+          const result = await relayClient.request<RelayHealthCheckResponse>("/api/health", {
             method: "GET",
           })
 
@@ -128,14 +128,14 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
 
         try {
           // First registration
-          const result1 = await relayClient.request<RelayHealthCheckResponse>("/health", {
+          const result1 = await relayClient.request<RelayHealthCheckResponse>("/api/health", {
             method: "POST",
             body,
           })
           expect(result1.status).toBe("ok")
 
           // Second registration with same URL
-          const result2 = await relayClient.request<RelayHealthCheckResponse>("/health", {
+          const result2 = await relayClient.request<RelayHealthCheckResponse>("/api/health", {
             method: "POST",
             body,
           })
@@ -157,7 +157,7 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
         )
 
         try {
-          const result = await badClient.request<RelayHealthCheckResponse>("/health", {
+          const result = await badClient.request<RelayHealthCheckResponse>("/api/health", {
             method: "POST",
             body: JSON.stringify({
               callback_url: "https://test.example.com/webhook",
@@ -287,7 +287,7 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
         )
 
         try {
-          await relayClient.request<RelayHealthCheckResponse>("/health", {
+          await relayClient.request<RelayHealthCheckResponse>("/api/health", {
             method: "POST",
             body: JSON.stringify({
               callback_url: "https://test.example.com/webhook",
@@ -326,7 +326,7 @@ describe.sequential("Webhook Forwarding (Integration)", () => {
 
         try {
           const callbackUrl = "https://test.example.com/webhook/secure"
-          await relayClient.request<RelayHealthCheckResponse>("/health", {
+          await relayClient.request<RelayHealthCheckResponse>("/api/health", {
             method: "POST",
             body: JSON.stringify({
               callback_url: callbackUrl,

@@ -88,7 +88,7 @@ describe("Relay Health + Mode Selection", () => {
     async () => {
       try {
         const response = await relayClient.request<RelayHealthCheckResponse>(
-          "/health",
+          "/api/health",
           {
             method: "POST",
             body: JSON.stringify({}),
@@ -117,7 +117,7 @@ describe("Relay Health + Mode Selection", () => {
       const timestamp = Date.now()
       try {
         const response = await relayClient.request<RelayHealthCheckResponse>(
-          "/health",
+          "/api/health",
           {
             method: "POST",
             body: JSON.stringify({

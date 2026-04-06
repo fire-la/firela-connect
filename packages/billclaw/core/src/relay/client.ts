@@ -186,7 +186,7 @@ export class RelayClient {
       const timeoutId = setTimeout(() => controller.abort(), timeout)
 
       try {
-        const response = await fetch(`${this.baseUrl}/health`, {
+        const response = await fetch(`${this.baseUrl}/api/health`, {
           method: "GET",
           signal: controller.signal,
           headers: {
