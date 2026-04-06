@@ -72,6 +72,19 @@ These features are intentionally excluded from the UI:
   - **Impact**: Limited debugging capability
   - **Recommended Action**: Add `GET /api/sync/history` endpoint
 
+## Component Library Alignment (toykit/user-ui sync)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| CSS design tokens | Synced | index.css identical to toykit/user-ui |
+| Tailwind config | Synced | tailwind.config.js identical |
+| lib/utils (cn) | Synced | Identical |
+| shadcn/ui base components (37) | Synced | All components from toykit/user-ui |
+| Layout components (15) | Synced | Props-based API adaptation |
+| Switch component import | Migrated 2026-04-06 | From `@radix-ui/react-switch` to unified `radix-ui` package |
+| lucide-react | Upgraded 2026-04-06 | `^0.511.0` → `^0.577.0` matching toykit |
+| `@radix-ui/react-switch` | Removed 2026-04-06 | All radix-ui components now use unified package |
+
 ## Notes
 
 - Phase 13.3.1 focused on fixing critical sync status display
