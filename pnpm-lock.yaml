@@ -29,9 +29,6 @@ importers:
 
   packages/billclaw/cli:
     dependencies:
-      '@firela/api-types':
-        specifier: 0.0.0-canary.209967
-        version: 0.0.0-canary.209967
       '@firela/billclaw-core':
         specifier: workspace:*
         version: link:../core
@@ -81,9 +78,6 @@ importers:
 
   packages/billclaw/core:
     dependencies:
-      '@firela/api-types':
-        specifier: 0.0.0-canary.209967
-        version: 0.0.0-canary.209967
       '@firela/parser-cn':
         specifier: ^0.1.2
         version: 0.1.2(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.6.3)(jschardet@3.1.4)
@@ -1083,9 +1077,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
-
-  '@firela/api-types@0.0.0-canary.209967':
-    resolution: {integrity: sha512-40Sv2pm1orpCaCX4Exz/hBXlLMYDABq4IisTmb1VYxzYquhXKlyXv/ZOEkQ0L9IjjCGEmvtUvY9ePLDdjCs9Dg==}
 
   '@firela/parser-cn@0.1.2':
     resolution: {integrity: sha512-yfKpyQlyuBA5roFpqn+vbpjoWS02JbdQeQR1jSU8857M1TyDnCKpstjybhXZuql7giFk/eXHWb2n801Tdxp1Aw==}
@@ -5313,8 +5304,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.27.3':
     optional: true
-
-  '@firela/api-types@0.0.0-canary.209967': {}
 
   '@firela/parser-cn@0.1.2(chrono-node@2.9.0)(csv-parse@5.6.0)(iconv-lite@0.6.3)(jschardet@3.1.4)':
     dependencies:
