@@ -164,7 +164,7 @@ export function ExportPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <Toaster position="top-right" />
 
       <div className="space-y-1">
