@@ -151,7 +151,7 @@ describe("UploadService", () => {
         .catch((e) => e)
 
       expect(error.type).toBe("UserError")
-      expect(error.humanReadable.title).toBe("Firela Vault Not Configured")
+      expect(error.humanReadable.title).toBe("Firela VLT Not Configured")
       expect(error.humanReadable.message).toContain("access token is not configured")
     })
 
@@ -170,7 +170,7 @@ describe("UploadService", () => {
         .catch((e) => e)
 
       expect(error.type).toBe("UserError")
-      expect(error.humanReadable.title).toBe("Firela Vault Upload Not Configured")
+      expect(error.humanReadable.title).toBe("Firela VLT Upload Not Configured")
       expect(error.humanReadable.message).toContain("upload configuration is missing")
     })
   })
