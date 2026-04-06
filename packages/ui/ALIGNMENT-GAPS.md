@@ -85,6 +85,63 @@ These features are intentionally excluded from the UI:
 | lucide-react | Upgraded 2026-04-06 | `^0.511.0` → `^0.577.0` matching toykit |
 | `@radix-ui/react-switch` | Removed 2026-04-06 | All radix-ui components now use unified package |
 
+---
+
+## Critical: toykit → firela-connect Adaptation Gaps
+
+### P0 — Mobile Navigation Completely Broken
+
+**MobileMenuButton NEVER renders on any page.**
+
+Root cause chain:
+
+1. `useHeaderBar.js:72` — `isConsoleRoute = location.pathname.startsWith('/console')` is always false
+   - firela-connect routes: `/connect`, `/sync`, `/export` etc (no `/console` prefix)
+   - toykit routes: `/console/*` (the check works there)
+
+2. `MobileMenuButton.jsx:13` — `if (!isConsoleRoute || !isMobile) return null` always early-exits
+
+3. `PageLayout.jsx:29` — Local `drawerOpen` state disconnected from SidebarProvider's `openMobile`
+   - sidebar.jsx uses Sheet component correctly for mobile
+   - but the trigger button never appears to open it
+
+**Impact**: All mobile users see NO navigation — no hamburger menu, no sidebar access.
+
+**Fix**: Remove or adapt `isConsoleRoute` check. Since ALL firela-connect pages have a sidebar, the mobile menu button should always show.
+
+### P1 — UserArea Navigation Links Point to toykit Routes
+
+`headerbar/UserArea.jsx` navigates to non-existent routes:
+- `/console/personal` (line 66)
+- `/console/token` (line 74)
+- `/console/topup` (line 82)
+
+These are toykit-specific features. firela-connect has no such pages.
+
+**Fix**: Remove or adapt UserArea dropdown for firela-connect's actual pages.
+
+### P2 — PageLayout Has Local useIsMobile Copy
+
+`PageLayout.jsx:66-80` defines its own `useIsMobile()` using `window.innerWidth` + resize listener,
+while `hooks/common/useIsMobile.js` uses `useSyncExternalStore` + `matchMedia` (correct shadcn pattern).
+
+**Fix**: Import shared `useIsMobile` from hooks.
+
+### P3 — useHeaderBar Depends on Missing Contexts
+
+`useHeaderBar.js` imports:
+- `UserContext` from `../../context/User` — not provided in App.tsx
+- `StatusContext` from `../../context/Status` — not provided in App.tsx
+
+App.tsx only provides `ServiceStateProvider` and `ThemeProvider`.
+
+The hook works because useSidebar returns safe defaults, but the User/Status context values are undefined,
+making logout, notifications, and theme features unreliable.
+
+**Fix**: Create adapter contexts or refactor useHeaderBar to use ServiceStateContext.
+
+---
+
 ## Notes
 
 - Phase 13.3.1 focused on fixing critical sync status display

@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar } from './AppSidebar';
 import HeaderBar from './headerbar';
+import { useIsMobile } from '../../hooks/common/useIsMobile';
 
 /**
  * PageLayout - Main layout component with responsive sidebar
@@ -59,25 +60,6 @@ const PageLayout = ({
     </SidebarProvider>
   );
 };
-
-/**
- * Simple hook to detect mobile viewport
- */
-function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState(false);
-
-  React.useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  return isMobile;
-}
 
 export { PageLayout };
 export default PageLayout;

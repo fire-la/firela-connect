@@ -69,7 +69,8 @@ export const useHeaderBar = ({ onMobileMenuToggle: _onMobileMenuToggle, drawerOp
     return false; // Default: no login required
   }, [headerNavModules]);
 
-  const isConsoleRoute = location.pathname.startsWith('/console');
+  // All firela-connect pages use unified PageLayout with sidebar
+  const isConsoleRoute = true;
 
   const theme = useTheme();
   const actualTheme = useActualTheme();
