@@ -17,15 +17,20 @@ import type { Env } from "../index.js"
  */
 const PUBLIC_PATHS = [
   "/health",
-  "/",
   "/auth", // Auth routes (including /auth/setup)
   "/webhook", // Webhook routes (use HMAC verification)
 ]
 
 /**
  * Check if a path should be excluded from JWT authentication
+ *
+ * Uses exact match for "/" and prefix match for other paths.
+ * Previously used startsWith for all paths, which caused "/"
+ * to match every request (since all paths start with "/").
  */
 function isPublicPath(path: string): boolean {
+  // Exact match for root path
+  if (path === "/") return true
   return PUBLIC_PATHS.some((publicPath) => path.startsWith(publicPath))
 }
 

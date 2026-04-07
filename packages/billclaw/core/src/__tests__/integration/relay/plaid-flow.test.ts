@@ -108,14 +108,15 @@ _describe("Plaid Relay Flow (Integration)", () => {
     it(
       "should handle invalid request gracefully",
       async () => {
-        // Missing required fields should return error response
-        const result = await plaidClient.createLinkToken({
-          client_name: "",
-          language: "en",
-          country_codes: [],
-          user: { client_user_id: "" },
-        })
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        // Missing required fields should throw error
+        await expect(
+          plaidClient.createLinkToken({
+            client_name: "",
+            language: "en",
+            country_codes: [],
+            user: { client_user_id: "" },
+          }),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -125,9 +126,9 @@ _describe("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject invalid public token",
       async () => {
-        // Invalid public token should return error response
-        const result = await plaidClient.exchangePublicToken("invalid-public-token")
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          plaidClient.exchangePublicToken("invalid-public-token"),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -168,9 +169,9 @@ _describe("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token",
       async () => {
-        // Invalid access token should return error response
-        const result = await plaidClient.getAccounts("invalid-access-token")
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          plaidClient.getAccounts("invalid-access-token"),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -214,8 +215,9 @@ _describe("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token for transactions",
       async () => {
-        const result = await plaidClient.syncTransactions("invalid-access-token")
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          plaidClient.syncTransactions("invalid-access-token"),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -259,7 +261,7 @@ _describe("Plaid Relay Flow (Integration)", () => {
 
   describe("Error Handling", () => {
     it(
-      "should return error response for 401 (invalid API key)",
+      "should throw on 401 (invalid API key)",
       async () => {
         const badClient = new RelayClient(
           {
@@ -269,21 +271,17 @@ _describe("Plaid Relay Flow (Integration)", () => {
           testLogger,
         )
 
-        const result = await badClient.request("/api/open-banking/plaid/link/token/create", {
-          method: "POST",
-          body: JSON.stringify({
-            client_name: "Test",
-            language: "en",
-            country_codes: ["US"],
-            user: { client_user_id: "test" },
+        await expect(
+          badClient.request("/api/open-banking/plaid/link/token/create", {
+            method: "POST",
+            body: JSON.stringify({
+              client_name: "Test",
+              language: "en",
+              country_codes: ["US"],
+              user: { client_user_id: "test" },
+            }),
           }),
-        })
-
-        // API returns error JSON object instead of throwing
-        expect(result).toBeDefined()
-        expect((result as Record<string, unknown>).error).toBeDefined()
-        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
-        expect(errorObj.code).toBe("UNAUTHORIZED")
+        ).rejects.toThrow("HTTP 401")
       },
       30000,
     )
@@ -357,18 +355,21 @@ _describe("Plaid Relay Flow (Integration)", () => {
     }, 30000)
 
     it("step 3: reject invalid public token for exchange", async () => {
-      const result = await plaidClient.exchangePublicToken("invalid-token")
-      expect((result as Record<string, unknown>).error).toBeDefined()
+      await expect(
+        plaidClient.exchangePublicToken("invalid-token"),
+      ).rejects.toThrow()
     }, 30000)
 
     it("step 4: reject invalid access token for accounts", async () => {
-      const result = await plaidClient.getAccounts("invalid-access-token")
-      expect((result as Record<string, unknown>).error).toBeDefined()
+      await expect(
+        plaidClient.getAccounts("invalid-access-token"),
+      ).rejects.toThrow()
     }, 30000)
 
     it("step 5: reject invalid access token for transactions", async () => {
-      const result = await plaidClient.syncTransactions("invalid-access-token")
-      expect((result as Record<string, unknown>).error).toBeDefined()
+      await expect(
+        plaidClient.syncTransactions("invalid-access-token"),
+      ).rejects.toThrow()
     }, 30000)
 
     it("step 6: verify relay mode from getMode", () => {
@@ -380,14 +381,15 @@ _describe("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject empty client_user_id",
       async () => {
-        const result = await plaidClient.createLinkToken({
-          client_name: "Test",
-          language: "en",
-          country_codes: ["US"],
-          user: { client_user_id: "" },
-          products: ["transactions"],
-        })
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          plaidClient.createLinkToken({
+            client_name: "Test",
+            language: "en",
+            country_codes: ["US"],
+            user: { client_user_id: "" },
+            products: ["transactions"],
+          }),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -395,14 +397,15 @@ _describe("Plaid Relay Flow (Integration)", () => {
     it(
       "should reject empty country_codes array",
       async () => {
-        const result = await plaidClient.createLinkToken({
-          client_name: "Test",
-          language: "en",
-          country_codes: [],
-          user: { client_user_id: `test-user-${Date.now()}` },
-          products: ["transactions"],
-        })
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          plaidClient.createLinkToken({
+            client_name: "Test",
+            language: "en",
+            country_codes: [],
+            user: { client_user_id: `test-user-${Date.now()}` },
+            products: ["transactions"],
+          }),
+        ).rejects.toThrow()
       },
       30000,
     )

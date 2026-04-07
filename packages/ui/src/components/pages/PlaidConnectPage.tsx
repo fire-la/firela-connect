@@ -51,11 +51,13 @@ export function PlaidConnectPage() {
         const res = await fetch(url)
         const data: LinkTokenResponse = await res.json()
 
-        if (data.success) {
+        if (data.success && data.linkToken) {
           setLinkToken(data.linkToken)
           setStatus("ready")
+        } else if (!res.ok) {
+          throw new Error(data.error || `Server error (${res.status})`)
         } else {
-          throw new Error(data.error || "Failed to initialize")
+          throw new Error(data.error || "Link token not received from server")
         }
       } catch (err) {
         setStatus("error")
@@ -84,6 +86,7 @@ export function PlaidConnectPage() {
 
   const handleConnect = useCallback(() => {
     if (!linkToken || !plaidLoaded || !window.Plaid) {
+      setStatus("error")
       setError("Plaid Link not ready. Please wait...")
       return
     }

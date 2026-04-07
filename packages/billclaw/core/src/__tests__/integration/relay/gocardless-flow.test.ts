@@ -87,20 +87,18 @@ _describe("GoCardless Relay Flow (Integration)", () => {
     it(
       "should fetch institutions for a country",
       async () => {
-        const result = await gocardlessClient.getInstitutions("DE")
-
-        // API may return institutions array or error object
-        if (Array.isArray(result)) {
+        try {
+          const result = await gocardlessClient.getInstitutions("DE")
           // If institutions are returned, verify structure
-          if (result.length > 0) {
+          if (Array.isArray(result) && result.length > 0) {
             const institution = result[0]
             expect(institution.id).toBeDefined()
             expect(institution.name).toBeDefined()
             expect(institution.countries).toBeDefined()
           }
-        } else {
-          // API returned error object (e.g. provider not configured)
-          expect((result as Record<string, unknown>).error).toBeDefined()
+        } catch (error) {
+          // Provider not configured or upstream error - acceptable
+          expect(error).toBeDefined()
         }
       },
       30000,
@@ -109,18 +107,16 @@ _describe("GoCardless Relay Flow (Integration)", () => {
     it(
       "should handle country filtering",
       async () => {
-        // Fetch GB institutions
-        const result = await gocardlessClient.getInstitutions("GB")
-
-        // API may return institutions array or error object
-        if (Array.isArray(result)) {
-          // All returned institutions should support GB
-          for (const inst of result) {
-            expect(inst.countries).toContain("GB")
+        try {
+          const result = await gocardlessClient.getInstitutions("GB")
+          if (Array.isArray(result)) {
+            for (const inst of result) {
+              expect(inst.countries).toContain("GB")
+            }
           }
-        } else {
-          // API returned error object (e.g. provider not configured)
-          expect((result as Record<string, unknown>).error).toBeDefined()
+        } catch (error) {
+          // Provider not configured or upstream error - acceptable
+          expect(error).toBeDefined()
         }
       },
       30000,
@@ -216,10 +212,9 @@ _describe("GoCardless Relay Flow (Integration)", () => {
     it(
       "should handle non-existent requisition",
       async () => {
-        const result = await gocardlessClient.getRequisition("non-existent-req-id", "test-access-token")
-
-        // API returns error JSON object instead of throwing
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          gocardlessClient.getRequisition("non-existent-req-id", "test-access-token"),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -229,10 +224,9 @@ _describe("GoCardless Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token for accounts",
       async () => {
-        const result = await gocardlessClient.getAccounts("invalid-access-token")
-
-        // API returns error JSON object instead of throwing
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          gocardlessClient.getAccounts("invalid-access-token"),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -277,13 +271,12 @@ _describe("GoCardless Relay Flow (Integration)", () => {
     it(
       "should reject invalid access token for transactions",
       async () => {
-        const result = await gocardlessClient.getTransactions({
-          access_token: "invalid-access-token",
-          account_id: "test-account-id",
-        })
-
-        // API returns error JSON object instead of throwing
-        expect((result as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          gocardlessClient.getTransactions({
+            access_token: "invalid-access-token",
+            account_id: "test-account-id",
+          }),
+        ).rejects.toThrow()
       },
       30000,
     )
@@ -493,7 +486,7 @@ _describe("GoCardless Relay Flow (Integration)", () => {
 
   describe("Error Handling", () => {
     it(
-      "should return error response for 401 (invalid API key)",
+      "should throw on 401 (invalid API key)",
       async () => {
         const badClient = new RelayClient(
           {
@@ -503,15 +496,11 @@ _describe("GoCardless Relay Flow (Integration)", () => {
           testLogger,
         )
 
-        const result = await badClient.request(`${GOCARDLESS_RELAY_BASE}/institutions?country=DE`, {
-          method: "GET",
-        })
-
-        // API returns error JSON object instead of throwing
-        expect(result).toBeDefined()
-        expect((result as Record<string, unknown>).error).toBeDefined()
-        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
-        expect(errorObj.code).toBe("UNAUTHORIZED")
+        await expect(
+          badClient.request(`${GOCARDLESS_RELAY_BASE}/institutions?country=DE`, {
+            method: "GET",
+          }),
+        ).rejects.toThrow("HTTP 401")
       },
       30000,
     )
@@ -587,9 +576,14 @@ _describe("GoCardless Relay Flow (Integration)", () => {
     }, 30000)
 
     it("step 2: discover institutions for DE", async () => {
-      _institutionsResult = await gocardlessClient.getInstitutions("DE")
-      // Accept either array or error object (provider may not be configured)
-      expect(_institutionsResult).toBeDefined()
+      try {
+        _institutionsResult = await gocardlessClient.getInstitutions("DE")
+        // Accept either array result
+        expect(_institutionsResult).toBeDefined()
+      } catch (error) {
+        // Provider may not be configured or quota exhausted (402)
+        expect(error).toBeDefined()
+      }
     }, 30000)
 
     it("step 3: create requisition with sandbox institution", async () => {
@@ -609,16 +603,18 @@ _describe("GoCardless Relay Flow (Integration)", () => {
     }, 30000)
 
     it("step 4: reject invalid access token for accounts", async () => {
-      const result = await gocardlessClient.getAccounts("invalid-access-token")
-      expect((result as Record<string, unknown>).error).toBeDefined()
+      await expect(
+        gocardlessClient.getAccounts("invalid-access-token"),
+      ).rejects.toThrow()
     }, 30000)
 
     it("step 5: reject invalid access token for transactions", async () => {
-      const result = await gocardlessClient.getTransactions({
-        access_token: "invalid",
-        account_id: "test",
-      })
-      expect((result as Record<string, unknown>).error).toBeDefined()
+      await expect(
+        gocardlessClient.getTransactions({
+          access_token: "invalid",
+          account_id: "test",
+        }),
+      ).rejects.toThrow()
     }, 30000)
 
     it("step 6: verify relay mode from getMode", () => {

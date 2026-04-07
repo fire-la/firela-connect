@@ -234,7 +234,7 @@ _describe("Error Handling (Integration)", () => {
     })
 
     it(
-      "should return error response for invalid API key against real server",
+      "should throw on invalid API key against real server",
       async () => {
         const badClient = new RelayClient(
           {
@@ -244,21 +244,17 @@ _describe("Error Handling (Integration)", () => {
           testLogger,
         )
 
-        const result = await badClient.request("/api/open-banking/plaid/link/token/create", {
-          method: "POST",
-          body: JSON.stringify({
-            client_name: "Test",
-            language: "en",
-            country_codes: ["US"],
-            user: { client_user_id: "test" },
+        await expect(
+          badClient.request("/api/open-banking/plaid/link/token/create", {
+            method: "POST",
+            body: JSON.stringify({
+              client_name: "Test",
+              language: "en",
+              country_codes: ["US"],
+              user: { client_user_id: "test" },
+            }),
           }),
-        })
-
-        // API returns error JSON object instead of throwing
-        expect(result).toBeDefined()
-        expect((result as Record<string, unknown>).error).toBeDefined()
-        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
-        expect(errorObj.code).toBe("UNAUTHORIZED")
+        ).rejects.toThrow("HTTP 401")
       },
       30000,
     )
@@ -506,51 +502,45 @@ _describe("Error Handling (Integration)", () => {
 
   describe("Real HTTP Error Scenarios", () => {
     it(
-      "should receive UNAUTHORIZED for invalid API key on Plaid endpoint",
+      "should throw UNAUTHORIZED for invalid API key on Plaid endpoint",
       async () => {
         const badClient = new RelayClient(
           { url: RELAY_URL, apiKey: "invalid-key" },
           testLogger,
         )
 
-        const result = await badClient.request(
-          "/api/open-banking/plaid/link/token/create",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              client_name: "Test",
-              language: "en",
-              country_codes: ["US"],
-              user: { client_user_id: "test" },
-            }),
-          },
-        )
-
-        expect(result).toBeDefined()
-        expect((result as Record<string, unknown>).error).toBeDefined()
-        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
-        expect(errorObj.code).toBe("UNAUTHORIZED")
+        await expect(
+          badClient.request(
+            "/api/open-banking/plaid/link/token/create",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                client_name: "Test",
+                language: "en",
+                country_codes: ["US"],
+                user: { client_user_id: "test" },
+              }),
+            },
+          ),
+        ).rejects.toThrow("HTTP 401")
       },
       30000,
     )
 
     it(
-      "should receive UNAUTHORIZED for invalid API key on GoCardless endpoint",
+      "should throw UNAUTHORIZED for invalid API key on GoCardless endpoint",
       async () => {
         const badClient = new RelayClient(
           { url: RELAY_URL, apiKey: "invalid-key" },
           testLogger,
         )
 
-        const result = await badClient.request(
-          "/api/open-banking/gocardless/institutions?country=DE",
-          { method: "GET" },
-        )
-
-        expect(result).toBeDefined()
-        expect((result as Record<string, unknown>).error).toBeDefined()
-        const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
-        expect(errorObj.code).toBe("UNAUTHORIZED")
+        await expect(
+          badClient.request(
+            "/api/open-banking/gocardless/institutions?country=DE",
+            { method: "GET" },
+          ),
+        ).rejects.toThrow("HTTP 401")
       },
       30000,
     )
@@ -611,25 +601,26 @@ _describe("Error Handling (Integration)", () => {
     it(
       "should recover after transient auth error",
       async () => {
-        // First, make a request with an invalid key
+        // First, make a request with an invalid key (should throw)
         const badClient = new RelayClient(
           { url: RELAY_URL, apiKey: "invalid-key" },
           testLogger,
         )
 
-        const badResult = await badClient.request(
-          "/api/open-banking/plaid/link/token/create",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              client_name: "Test",
-              language: "en",
-              country_codes: ["US"],
-              user: { client_user_id: "test" },
-            }),
-          },
-        )
-        expect((badResult as Record<string, unknown>).error).toBeDefined()
+        await expect(
+          badClient.request(
+            "/api/open-banking/plaid/link/token/create",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                client_name: "Test",
+                language: "en",
+                country_codes: ["US"],
+                user: { client_user_id: "test" },
+              }),
+            },
+          ),
+        ).rejects.toThrow()
 
         // Then, make a request with the valid client
         const health = await relayClient.healthCheck(10000)
@@ -653,22 +644,21 @@ _describe("Error Handling (Integration)", () => {
         ]
 
         for (const endpoint of endpoints) {
-          const result = await badClient.request(endpoint, {
-            method: endpoint.includes("institutions") ? "GET" : "POST",
-            ...(endpoint.includes("institutions")
-              ? {}
-              : {
-                  body: JSON.stringify({
-                    client_name: "Test",
-                    language: "en",
-                    country_codes: ["US"],
-                    user: { client_user_id: "test" },
+          await expect(
+            badClient.request(endpoint, {
+              method: endpoint.includes("institutions") ? "GET" : "POST",
+              ...(endpoint.includes("institutions")
+                ? {}
+                : {
+                    body: JSON.stringify({
+                      client_name: "Test",
+                      language: "en",
+                      country_codes: ["US"],
+                      user: { client_user_id: "test" },
+                    }),
                   }),
-                }),
-          })
-          expect((result as Record<string, unknown>).error).toBeDefined()
-          const errorObj = (result as Record<string, unknown>).error as Record<string, unknown>
-          expect(errorObj.code).toBe("UNAUTHORIZED")
+            }),
+          ).rejects.toThrow("HTTP 401")
         }
       },
       30000,
@@ -710,11 +700,10 @@ _describe("Error Handling (Integration)", () => {
           expect(results[0].value.available).toBe(true)
         }
 
-        // Second: invalid key should return error response
-        expect(results[1].status).toBe("fulfilled")
-        if (results[1].status === "fulfilled") {
-          const value = results[1].value as Record<string, unknown>
-          expect(value.error).toBeDefined()
+        // Second: invalid key should throw
+        expect(results[1].status).toBe("rejected")
+        if (results[1].status === "rejected") {
+          expect(results[1].reason).toBeDefined()
         }
 
         // Third: invalid endpoint should either throw or return error

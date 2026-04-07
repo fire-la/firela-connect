@@ -122,6 +122,16 @@ export class RelayClient {
           throw new Error(`HTTP ${response.status}: ${errorText}`)
         }
 
+        // Throw on non-retryable HTTP errors (4xx from upstream provider)
+        // Previously these were silently treated as success, causing
+        // callers to receive error JSON in place of expected data.
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(
+            `HTTP ${response.status}: ${errorText.slice(0, 200)}`,
+          )
+        }
+
         // Parse response and log with redaction
         const responseText = await response.text()
         let responseData: T

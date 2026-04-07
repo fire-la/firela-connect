@@ -160,12 +160,12 @@ _describe("Relay + GoCardless Token Flow", () => {
         testLogger,
       )
 
-      const result = await gocardlessClient.getInstitutions("DE")
-
-      if (Array.isArray(result)) {
-        expect(result.length).toBeGreaterThanOrEqual(0)
-      } else {
-        expect((result as Record<string, unknown>).error).toBeDefined()
+      try {
+        const result = await gocardlessClient.getInstitutions("DE")
+        expect(Array.isArray(result)).toBe(true)
+      } catch (error) {
+        // Provider not configured or upstream error - acceptable
+        expect(error).toBeDefined()
       }
     },
     30000,
@@ -182,8 +182,9 @@ _describe("Relay + GoCardless Token Flow", () => {
         testLogger,
       )
 
-      const result = await gocardlessClient.getAccounts("invalid-token")
-      expect((result as Record<string, unknown>).error).toBeDefined()
+      await expect(
+        gocardlessClient.getAccounts("invalid-token"),
+      ).rejects.toThrow()
     },
     30000,
   )
