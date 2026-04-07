@@ -1,7 +1,7 @@
 /**
  * Sync Page
  *
- * Sync configuration page for sync frequency, account selection.
+ * Sync configuration page with per-toggle optimistic UI and API persistence.
  */
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
@@ -13,11 +13,11 @@ import {
   CreditCard,
   Mail,
   Landmark,
-  Play,
+  Loader2,
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
+import { createAdapter } from "@/adapters"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Label } from "@/components/ui/label"
@@ -25,12 +25,8 @@ import { Label } from "@/components/ui/label"
 export function SyncPage() {
   const { loading, error, loadConfig, accounts, loadAccounts } =
     useConfigStore()
-  const [testResult, setTestResult] = useState<{
-    success: boolean
-    message: string
-  } | null>(null)
   const [enabledAccounts, setEnabledAccounts] = useState<Set<string>>(new Set())
-  const [saving, setSaving] = useState(false)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   // Load config and accounts on mount
   useEffect(() => {
@@ -72,8 +68,12 @@ export function SyncPage() {
     }
   }
 
-  // Toggle account enabled status
-  const toggleAccount = (accountId: string) => {
+  // Toggle account enabled status with optimistic UI and API persistence
+  const toggleAccount = async (accountId: string) => {
+    const wasEnabled = enabledAccounts.has(accountId)
+    const account = accounts.find((a) => a.id === accountId)
+
+    // Optimistic update: immediately toggle in UI
     setEnabledAccounts((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(accountId)) {
@@ -83,55 +83,41 @@ export function SyncPage() {
       }
       return newSet
     })
-  }
 
-  // Test sync configuration
-  const handleTest = async () => {
+    setTogglingId(accountId)
     try {
-      setTestResult(null)
-
-      // Test sync configuration
-      if (enabledAccounts.size === 0) {
-        setTestResult({
-          success: false,
-          message: "Please enable at least one account for sync",
+      const result = await createAdapter().updateAccount(accountId, !wasEnabled)
+      if (result.success) {
+        toast.success(
+          `${!wasEnabled ? "Enabled" : "Disabled"} sync for ${account?.name ?? accountId}`
+        )
+      } else {
+        // Revert on API-reported failure
+        setEnabledAccounts((prev) => {
+          const newSet = new Set(prev)
+          if (wasEnabled) {
+            newSet.add(accountId)
+          } else {
+            newSet.delete(accountId)
+          }
+          return newSet
         })
-        return
+        toast.error(result.error ?? "Failed to update account")
       }
-
-      toast.success("Sync configuration is valid")
-      setTestResult({ success: true, message: "Configuration valid" })
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to test configuration"
-      toast.error(message)
-      setTestResult({ success: false, message })
-    }
-  }
-
-  // Save sync settings
-  const handleSave = async () => {
-    try {
-      setSaving(true)
-
-      // Update account enabled status
-      for (const account of accounts) {
-        if (enabledAccounts.has(account.id) !== account.enabled) {
-          // Would need an API endpoint to update individual accounts
-          // For now, we just show success
+    } catch {
+      // Revert on network error
+      setEnabledAccounts((prev) => {
+        const newSet = new Set(prev)
+        if (wasEnabled) {
+          newSet.add(accountId)
+        } else {
+          newSet.delete(accountId)
         }
-      }
-
-      toast.success("Sync settings saved successfully")
-      await loadConfig()
-      setTestResult({ success: true, message: "Settings saved" })
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to save settings"
-      toast.error(message)
-      setTestResult({ success: false, message })
+        return newSet
+      })
+      toast.error("Failed to update account. Please try again.")
     } finally {
-      setSaving(false)
+      setTogglingId(null)
     }
   }
 
@@ -164,18 +150,6 @@ export function SyncPage() {
         </Alert>
       )}
 
-      {/* Test result */}
-      {testResult && (
-        <Alert variant={testResult.success ? "default" : "destructive"}>
-          {testResult.success ? (
-            <CheckCircle className="w-4 h-4 text-green-600" />
-          ) : (
-            <XCircle className="w-4 h-4 text-red-600" />
-          )}
-          <AlertDescription>{testResult.message}</AlertDescription>
-        </Alert>
-      )}
-
       {/* Account list */}
       <Card>
         <CardHeader>
@@ -193,6 +167,7 @@ export function SyncPage() {
             <div className="space-y-3">
               {accounts.map((account) => {
                 const isEnabled = enabledAccounts.has(account.id)
+                const isToggling = togglingId === account.id
                 return (
                   <div
                     key={account.id}
@@ -227,10 +202,14 @@ export function SyncPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {isToggling && (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      )}
                       <Checkbox
                         id={`account-${account.id}`}
                         checked={isEnabled}
                         onCheckedChange={() => toggleAccount(account.id)}
+                        disabled={isToggling}
                       />
                       <Label
                         htmlFor={`account-${account.id}`}
@@ -246,23 +225,6 @@ export function SyncPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Save and Test buttons */}
-      <div className="flex gap-3">
-        <Button onClick={handleSave} disabled={saving || loading}>
-          {saving && <RefreshCw className="w-4 h-4 animate-spin mr-2" />}
-          Save Settings
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleTest}
-          disabled={saving || loading || accounts.length === 0}
-        >
-          <Play className="w-4 h-4 mr-2" />
-          Test Configuration
-        </Button>
-      </div>
     </div>
   )
 }
