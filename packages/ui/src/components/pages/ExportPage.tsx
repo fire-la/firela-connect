@@ -14,6 +14,9 @@ import {
   CheckCircle,
   XCircle,
   Play,
+  CreditCard,
+  Mail,
+  Landmark,
 } from "lucide-react"
 import { useConfigStore } from "@/stores/configStore"
 import { createAdapter } from "@/adapters"
@@ -23,6 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import type { ApiResultResponse } from "@/types/api"
 
 // Export config type
@@ -47,13 +51,14 @@ const sampleLedgerTransaction = `2024-03-15 * Coffee Shop
 `
 
 export function ExportPage() {
-  const { config, loading, error, loadConfig } = useConfigStore()
+  const { config, loading, error, loadConfig, accounts } = useConfigStore()
   const [testResult, setTestResult] = useState<{
     success: boolean
     message: string
   } | null>(null)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set())
 
   const [previewFormat, setPreviewFormat] = useState<"beancount" | "ledger">("beancount")
 
@@ -92,6 +97,29 @@ export function ExportPage() {
       })
     }
   }, [config, reset])
+
+  // Initialize selected accounts from saved config or default to all
+  useEffect(() => {
+    if (config?.export?.selectedAccounts) {
+      setSelectedAccounts(new Set(config.export.selectedAccounts))
+    } else if (accounts.length > 0 && selectedAccounts.size === 0) {
+      setSelectedAccounts(new Set(accounts.map((a) => a.id)))
+    }
+  }, [config, accounts])
+
+  // Get type icon for account
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "plaid":
+        return <CreditCard className="w-4 h-4" />
+      case "gmail":
+        return <Mail className="w-4 h-4" />
+      case "gocardless":
+        return <Landmark className="w-4 h-4" />
+      default:
+        return null
+    }
+  }
 
   // Update preview when format changes
   useEffect(() => {
@@ -149,7 +177,12 @@ export function ExportPage() {
     try {
       setSaving(true)
       const adapter = createAdapter()
-      await adapter.updateConfig({ export: data })
+      await adapter.updateConfig({
+        export: {
+          ...data,
+          selectedAccounts: Array.from(selectedAccounts),
+        },
+      })
       toast.success("Export settings saved successfully")
       await loadConfig()
       setTestResult({ success: true, message: "Settings saved" })
@@ -206,6 +239,40 @@ export function ExportPage() {
 
       {/* Export settings form */}
       <form onSubmit={handleSubmit(handleSave)} className="space-y-6">
+        {/* Account Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Selection</CardTitle>
+            <CardDescription>Select accounts to include in export</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {accounts.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No accounts found.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {accounts.map((account) => (
+                  <div key={account.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                    <Checkbox
+                      checked={selectedAccounts.has(account.id)}
+                      onCheckedChange={() => {
+                        setSelectedAccounts((prev) => {
+                          const newSet = new Set(prev)
+                          if (newSet.has(account.id)) newSet.delete(account.id)
+                          else newSet.add(account.id)
+                          return newSet
+                        })
+                      }}
+                    />
+                    {getTypeIcon(account.type)}
+                    <span className="text-sm font-medium">{account.name}</span>
+                    <Badge variant="secondary" className="ml-auto">{account.type}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Format Settings</CardTitle>

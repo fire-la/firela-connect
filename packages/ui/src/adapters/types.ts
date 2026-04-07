@@ -79,6 +79,7 @@ export interface BillclawConfig {
     filePrefix?: string
     includePending?: boolean
     currencyColumn?: boolean
+    selectedAccounts?: string[]
   }
   storage?: {
     path?: string
