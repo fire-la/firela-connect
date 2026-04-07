@@ -112,6 +112,10 @@ app.route("/api/oauth/gocardless", gocardlessRoutes)
 import { relayRoutes } from "./routes/relay.js"
 app.route("/api/relay", relayRoutes)
 
+// Cache routes (statistics and management)
+import { cacheRoutes } from "./routes/cache.js"
+app.route("/api/cache", cacheRoutes)
+
 // Service toggle routes (Plan 13.4-01)
 import { serviceRoutes } from "./routes/services.js"
 app.route("/api/services", serviceRoutes)
