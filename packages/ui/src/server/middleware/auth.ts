@@ -116,6 +116,13 @@ export const authMiddleware = createMiddleware<{ Bindings: Env }>(
       return next()
     }
 
+    // Skip authentication when JWT is not configured (self-hosted setup)
+    // Without JWT_SECRET, no tokens can be verified, so blocking all requests
+    // would make the app unusable until setup is complete.
+    if (!c.env.JWT_SECRET) {
+      return next()
+    }
+
     // Check for Authorization header
     const authHeader = c.req.header("Authorization")
     if (!authHeader?.startsWith("Bearer ")) {
