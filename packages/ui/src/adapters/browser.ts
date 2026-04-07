@@ -163,4 +163,17 @@ export class BrowserAdapter implements UIAdapter {
     // Health endpoint always returns data even when not configured
     return json.data || { available: false, configured: false }
   }
+
+  async getCacheStats(): Promise<{ entries: number; keys: string[]; estimatedSize: string }> {
+    const res = await fetch(`${this.baseUrl}/cache/stats`)
+    const json: ApiResponse<{ entries: number; keys: string[]; estimatedSize: string }> =
+      await res.json()
+    if (!json.data) throw new Error("No cache stats returned")
+    return json.data
+  }
+
+  async clearCache(): Promise<{ success: boolean; message?: string; error?: string }> {
+    const res = await fetch(`${this.baseUrl}/cache/clear`, { method: "POST" })
+    return res.json()
+  }
 }

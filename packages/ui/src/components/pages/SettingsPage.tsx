@@ -6,9 +6,10 @@
  */
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
-import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio } from "lucide-react"
+import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database } from "lucide-react"
 import { SERVICE_CONFIGS, type ServiceState, type ServiceId, type ServicesApiResponse } from "@/types/services"
 import { useRelayStore } from "@/stores/relayStore"
+import { createAdapter } from "@/adapters"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -21,6 +22,12 @@ export function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<ServiceId | null>(null)
   const { health: relayHealth, loading: relayLoading, loadHealth: loadRelayHealth } = useRelayStore()
+  const [cacheInfo, setCacheInfo] = useState<{
+    entries: number
+    keys: string[]
+    estimatedSize: string
+  } | null>(null)
+  const [clearing, setClearing] = useState(false)
 
   // Load service state on mount
   useEffect(() => {
@@ -31,6 +38,39 @@ export function SettingsPage() {
   useEffect(() => {
     loadRelayHealth()
   }, [loadRelayHealth])
+
+  // Load cache stats on mount
+  const loadCacheStats = async () => {
+    try {
+      const adapter = createAdapter()
+      const stats = await adapter.getCacheStats()
+      setCacheInfo(stats)
+    } catch {
+      // Silently fail -- cache stats are non-critical
+    }
+  }
+
+  useEffect(() => {
+    loadCacheStats()
+  }, [])
+
+  const handleClearCache = async () => {
+    setClearing(true)
+    try {
+      const adapter = createAdapter()
+      const result = await adapter.clearCache()
+      if (result.success) {
+        toast.success("Cache cleared successfully")
+        await loadCacheStats()
+      } else {
+        toast.error(result.error || "Failed to clear cache")
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to clear cache")
+    } finally {
+      setClearing(false)
+    }
+  }
 
   const loadServiceState = async () => {
     setLoading(true)
@@ -246,6 +286,43 @@ export function SettingsPage() {
 
           <div className="flex justify-end">
             <Button variant="ghost" size="sm" onClick={loadRelayHealth}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Refresh
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cache Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="w-5 h-5" />
+            Cache
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {cacheInfo && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Entries</span>
+                <span className="text-sm text-muted-foreground">
+                  {cacheInfo.entries} entries, ~{cacheInfo.estimatedSize}
+                </span>
+              </div>
+            </>
+          )}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleClearCache}
+              disabled={clearing}
+            >
+              {clearing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Clear Cache
+            </Button>
+            <Button variant="ghost" size="sm" onClick={loadCacheStats}>
               <RefreshCw className="w-4 h-4 mr-1" />
               Refresh
             </Button>

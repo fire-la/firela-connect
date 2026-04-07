@@ -188,4 +188,14 @@ export interface UIAdapter {
    * Get relay service health status
    */
   getRelayHealth(): Promise<RelayHealthInfo>
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): Promise<{ entries: number; keys: string[]; estimatedSize: string }>
+
+  /**
+   * Clear all cache entries
+   */
+  clearCache(): Promise<{ success: boolean; message?: string; error?: string }>
 }
