@@ -8,7 +8,7 @@
  */
 import { type ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { AlertCircle, Settings, Loader2 } from "lucide-react"
+import { AlertCircle, Settings } from "lucide-react"
 import { useServiceState } from "@/contexts/ServiceStateContext"
 import { type ServiceId } from "@/types/services"
 
@@ -25,33 +25,13 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
   const { state, loading, error } = useServiceState()
 
-  // Show loading spinner while fetching service state
-  if (loading) {
-    return (
-      <div className="protected-route-loading">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        <p className="text-gray-500 mt-2">Loading service status...</p>
-      </div>
-    )
-  }
-
-  // If error occurred, show error but allow access (graceful degradation)
-  if (error) {
-    console.error("Failed to load service state:", error)
-    // Allow access on error - don't block the entire app
+  // Still loading or error/no state — render children (non-blocking)
+  if (loading || error || !state) {
     return <>{children}</>
   }
 
-  // If no state available, allow access (graceful degradation)
-  if (!state) {
-    return <>{children}</>
-  }
-
-  // Check if service is enabled
-  const isEnabled = state[serviceId]
-
-  // If service is disabled, show "Service Disabled" message
-  if (!isEnabled) {
+  // Service confirmed disabled — show message
+  if (!state[serviceId]) {
     return (
       <div className="protected-route-disabled">
         <div className="service-disabled-card">
@@ -72,7 +52,6 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
     )
   }
 
-  // Service is enabled, render children
   return <>{children}</>
 }
 
