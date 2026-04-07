@@ -116,7 +116,7 @@ export function ConnectPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <Toaster position="top-right" />
 
       <Card>

@@ -163,7 +163,7 @@ export function WebhooksPage() {
   const requiresPublicUrl = formData.mode === "direct"
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <Toaster position="top-right" />
 
       {/* Header */}
