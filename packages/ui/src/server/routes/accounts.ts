@@ -11,6 +11,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import type { Env } from "../index.js"
+import { serverCache, CacheKeys } from "../lib/server-cache.js"
 
 export const accountsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -63,21 +64,23 @@ accountsRoutes.put(
         )
       }
 
-      // Get existing accounts from KV
-      const storedAccounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
-
-      if (!storedAccounts || !Array.isArray(storedAccounts)) {
-        return c.json(
-          {
-            success: false,
-            error: "No accounts found",
-            errorCode: "ACCOUNTS_NOT_FOUND",
-          },
-          404,
-        )
+      // Get existing accounts from cache or KV
+      let accounts = serverCache.get<Account[]>(CacheKeys.accounts)
+      if (!accounts) {
+        const storedAccounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
+        if (!storedAccounts || !Array.isArray(storedAccounts)) {
+          return c.json(
+            {
+              success: false,
+              error: "No accounts found",
+              errorCode: "ACCOUNTS_NOT_FOUND",
+            },
+            404,
+          )
+        }
+        accounts = storedAccounts as Account[]
+        serverCache.set(CacheKeys.accounts, accounts)
       }
-
-      const accounts = storedAccounts as Account[]
 
       // Find the account to update
       const accountIndex = accounts.findIndex((acc) => acc.id === accountId)
@@ -101,6 +104,9 @@ accountsRoutes.put(
 
       // Save updated accounts back to KV
       await c.env.CONFIG.put(ACCOUNTS_KEY, JSON.stringify(accounts))
+
+      // Invalidate cache after write
+      serverCache.delete(CacheKeys.accounts)
 
       return c.json({
         success: true,
@@ -136,14 +142,18 @@ accountsRoutes.get("/", async (c) => {
       })
     }
 
-    // Get accounts from KV storage
-    const accounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
-
-    if (!accounts || !Array.isArray(accounts)) {
-      return c.json({
-        success: true,
-        data: [],
-      })
+    // Get accounts from cache or KV
+    let accounts = serverCache.get<Account[]>(CacheKeys.accounts)
+    if (!accounts) {
+      const storedAccounts = await c.env.CONFIG.get(ACCOUNTS_KEY, "json")
+      if (!storedAccounts || !Array.isArray(storedAccounts)) {
+        return c.json({
+          success: true,
+          data: [],
+        })
+      }
+      accounts = storedAccounts as Account[]
+      serverCache.set(CacheKeys.accounts, accounts)
     }
 
     return c.json({
@@ -206,6 +216,9 @@ accountsRoutes.delete(
 
       accountList.splice(accountIndex, 1)
       await c.env.CONFIG.put(ACCOUNTS_KEY, JSON.stringify(accountList))
+
+      // Invalidate cache after delete
+      serverCache.delete(CacheKeys.accounts)
 
       return c.body(null, 204)
     } catch (error) {

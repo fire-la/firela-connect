@@ -2,44 +2,24 @@
  * Cache API Routes
  *
  * REST endpoints for cache statistics and management.
- * Provides visibility into server-side cache state and a clear endpoint.
+ * Operates on the shared serverCache instance that wraps KV reads
+ * across config and accounts routes.
  */
+
 import { Hono } from "hono"
 import type { Env } from "../index.js"
+import { serverCache } from "../lib/server-cache.js"
 
 export const cacheRoutes = new Hono<{ Bindings: Env }>()
 
-// Module-level cache instance for Workers environment
-// This is separate from ConfigManager's Node.js cache
-const serverCache = {
-  _entries: new Map<string, { value: unknown; expiresAt: number }>(),
-
-  get size(): number {
-    // Clean expired entries before counting
-    const now = Date.now()
-    for (const [key, entry] of this._entries) {
-      if (now >= entry.expiresAt) this._entries.delete(key)
-    }
-    return this._entries.size
-  },
-
-  get keys(): string[] {
-    return Array.from(this._entries.keys())
-  },
-
-  clear(): void {
-    this._entries.clear()
-  },
-}
-
 /**
  * GET /api/cache/stats
- * Returns cache statistics
+ * Returns cache statistics from the shared server cache
  */
 cacheRoutes.get("/stats", async (c) => {
   try {
-    const entries = serverCache.size
-    const keys = serverCache.keys
+    const entries = serverCache.size()
+    const keys = serverCache.keys()
 
     // Estimate size: rough heuristic based on number of entries
     const estimatedSizeBytes = entries * 256 // ~256 bytes per entry estimate
@@ -69,7 +49,7 @@ cacheRoutes.get("/stats", async (c) => {
 
 /**
  * POST /api/cache/clear
- * Clear all cache entries
+ * Clear all entries from the shared server cache
  */
 cacheRoutes.post("/clear", async (c) => {
   try {

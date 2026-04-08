@@ -13,6 +13,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import type { Env } from "../index.js"
+import { serverCache, CacheKeys } from "../lib/server-cache.js"
 
 export const configRoutes = new Hono<{ Bindings: Env }>()
 
@@ -90,16 +91,21 @@ configRoutes.get("/config", async (c) => {
       })
     }
 
-    const config = await c.env.CONFIG.get(CONFIG_KEY, "json")
-
+    // Try cache first, fall back to KV
+    let config = serverCache.get<Record<string, unknown>>(CacheKeys.config)
     if (!config) {
-      return c.json({
-        success: true,
-        data: {},
-      })
+      const raw = await c.env.CONFIG.get(CONFIG_KEY, "json")
+      if (!raw) {
+        return c.json({
+          success: true,
+          data: {},
+        })
+      }
+      config = raw as Record<string, unknown>
+      serverCache.set(CacheKeys.config, config)
     }
 
-    const masked = maskConfig(config as Record<string, unknown>)
+    const masked = maskConfig(config)
     return c.json({ success: true, data: masked })
   } catch (error) {
     return c.json(
@@ -135,6 +141,8 @@ configRoutes.put(
 
       const config = c.req.valid("json")
       await c.env.CONFIG.put(CONFIG_KEY, JSON.stringify(config))
+      // Invalidate cache after write
+      serverCache.delete(CacheKeys.config)
       return c.json({ success: true })
     } catch (error) {
       return c.json(
