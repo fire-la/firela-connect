@@ -1,0 +1,30 @@
+Firela Connect (billclaw)
+Copyright (C) 2024 Firela
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+---
+
+## Third-Party Dependencies with Special Licensing
+
+The following dependencies are dual-licensed under AGPL-3.0 and a
+Commercial License. If you use these packages in a project that is not
+published under an AGPL-3.0-compatible license, you must obtain a
+Commercial License from Firela.
+
+| Package              | Version | License                         |
+|----------------------|---------|---------------------------------|
+| @firela/parser-core  | >=0.1.1 | AGPL-3.0-only / Commercial     |
+| @firela/parser-cn    | >=0.1.2 | AGPL-3.0-only / Commercial     |
+| @firela/parser-eu    | >=0.1.1 | AGPL-3.0-only / Commercial     |
+| @firela/parser-hk    | >=0.1.1 | AGPL-3.0-only / Commercial     |
+
+For commercial licensing inquiries, contact: hello@firela.io
+
+---
+
+This project itself is licensed under AGPL-3.0-only.
+See the LICENSE file for the full license text.
