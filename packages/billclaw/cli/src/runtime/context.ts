@@ -4,7 +4,8 @@
  * Combines logger, config provider, and event emitter for CLI usage.
  */
 
-import type { RuntimeContext } from "@firela/billclaw-core"
+import type { RuntimeContext, StorageAdapter } from "@firela/billclaw-core"
+import { FileStorageAdapter } from "@firela/billclaw-core"
 import { CliLogger, LogLevel, createLogger } from "./logger.js"
 import { CliConfigProvider, createConfigProvider } from "./config.js"
 import { CliEventEmitter } from "./events.js"
@@ -27,6 +28,7 @@ export class CliRuntimeContext implements RuntimeContext {
   readonly logger: CliLogger
   readonly config: CliConfigProvider
   readonly events: CliEventEmitter
+  readonly storage: StorageAdapter
 
   constructor(options: CliRuntimeOptions = {}) {
     this.logger = createLogger({
@@ -39,6 +41,8 @@ export class CliRuntimeContext implements RuntimeContext {
       configPath: options.configPath,
     })
     this.events = new CliEventEmitter()
+    // Assign FileStorageAdapter so GoCardless operations have token storage
+    this.storage = new FileStorageAdapter()
   }
 }
 
