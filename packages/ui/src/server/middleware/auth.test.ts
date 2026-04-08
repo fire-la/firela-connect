@@ -5,7 +5,7 @@
  * and allows public routes through. Addresses GitHub Issue #6
  * (OAuth middleware ordering).
  */
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { Hono } from "hono"
 
 import { authMiddleware } from "./auth.js"
