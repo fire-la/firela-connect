@@ -52,6 +52,9 @@ playwright/.cache/
 # Packages
 packages/firela-bot/
 
+# Design files
+packages/ui/designs/
+
 # Misc
 .cache
 .temp
