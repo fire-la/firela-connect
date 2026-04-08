@@ -437,60 +437,32 @@ function createRelayUserError(
  * Create UserError from RelayHttpError (network/HTTP issues)
  */
 function createHttpUserError(
-  error: RelayHttpError,
+  _error: RelayHttpError,
   _context?: { accountId?: string },
 ): UserError {
-  // Timeout
-  if (error.statusCode === 0 || error.message.includes("timeout")) {
-    return createUserError(
-      ERROR_CODES.RELAY_TIMEOUT,
-      ErrorCategory.NETWORK,
-      "warning",
-      true,
-      {
-        title: "Relay Request Timeout",
-        message: "The request to relay service timed out after 30 seconds.",
-        suggestions: [
-          "Check your network connection",
-          "Try again in a few moments",
-          "The relay service may be experiencing high load",
-        ],
-      },
-      [
-        {
-          type: "retry",
-          delayMs: 30000,
-          description: "Retry after 30 seconds",
-        },
-      ],
-    )
-  }
-
   // parseRelayError for Error instances always returns RelayHttpError with statusCode 0,
-  // so only the timeout branch (statusCode === 0) is reachable through this path.
+  // so this function only handles the timeout case.
   return createUserError(
-    ERROR_CODES.RELAY_CONNECTION_FAILED,
+    ERROR_CODES.RELAY_TIMEOUT,
     ErrorCategory.NETWORK,
-    "error",
-    error.retryable,
+    "warning",
+    true,
     {
-      title: "Relay Connection Failed",
-      message: error.message,
+      title: "Relay Request Timeout",
+      message: "The request to relay service timed out after 30 seconds.",
       suggestions: [
         "Check your network connection",
-        "Verify relay URL is correct",
-        "Try again later",
+        "Try again in a few moments",
+        "The relay service may be experiencing high load",
       ],
     },
-    error.retryable
-      ? [
-          {
-            type: "retry",
-            delayMs: 30000,
-            description: "Retry after 30 seconds",
-          },
-        ]
-      : undefined,
+    [
+      {
+        type: "retry",
+        delayMs: 30000,
+        description: "Retry after 30 seconds",
+      },
+    ],
   )
 }
 
