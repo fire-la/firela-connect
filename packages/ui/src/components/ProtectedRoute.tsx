@@ -9,7 +9,7 @@
  */
 import { type ReactNode, useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { AlertCircle, AlertTriangle, Settings } from "lucide-react"
+import { AlertCircle, AlertTriangle, Loader2, Settings } from "lucide-react"
 import { useServiceState } from "@/contexts/ServiceStateContext"
 import { type ServiceId } from "@/types/services"
 import { Button } from "@/components/ui/button"
@@ -93,11 +93,28 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
       </div>
     ) : null
 
+  // Status verification banner (shown when service state cannot be confirmed)
+  const statusBanner =
+    !authExpired && authChecked ? (
+      loading ? (
+        <div className="sticky top-0 z-40 bg-muted/80 backdrop-blur-sm px-4 py-1.5 flex items-center gap-2 border-b">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Verifying service status...</span>
+        </div>
+      ) : (error || !state) ? (
+        <div className="sticky top-0 z-40 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-4 py-1.5 flex items-center gap-2">
+          <AlertCircle className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
+          <span className="text-xs text-yellow-700 dark:text-yellow-300">Unable to verify service status. Showing page without protection.</span>
+        </div>
+      ) : null
+    ) : null
+
   // Still loading or error/no state — render children (non-blocking)
   if (loading || error || !state) {
     return (
       <>
         {authBanner}
+        {statusBanner}
         {children}
       </>
     )
@@ -108,6 +125,7 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
     return (
       <>
         {authBanner}
+        {statusBanner}
         <div className="protected-route-disabled">
           <div className="service-disabled-card">
             <AlertCircle className="w-12 h-12 text-gray-400 mb-4" />
@@ -132,6 +150,7 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
   return (
     <>
       {authBanner}
+      {statusBanner}
       {children}
     </>
   )

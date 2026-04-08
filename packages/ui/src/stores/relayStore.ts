@@ -11,23 +11,39 @@ interface RelayState {
   health: RelayHealthInfo | null
   loading: boolean
   error: string | null
+  lastFetched: number | null
   loadHealth: () => Promise<void>
 }
 
-export const useRelayStore = create<RelayState>((set) => ({
+const STALE_THRESHOLD = 30_000 // 30 seconds
+
+export const useRelayStore = create<RelayState>((set, get) => ({
   health: null,
   loading: false,
   error: null,
+  lastFetched: null,
 
   loadHealth: async () => {
-    set({ loading: true, error: null })
+    const { lastFetched, health } = get()
+
+    // Skip entirely if data is fresh
+    if (lastFetched && Date.now() - lastFetched < STALE_THRESHOLD) {
+      return
+    }
+
+    // Only show loading spinner if no stale data to display
+    const hasExistingData = health !== null
+    if (!hasExistingData) {
+      set({ loading: true, error: null })
+    }
+
     try {
       const adapter = createAdapter()
-      const health = await adapter.getRelayHealth()
-      set({ health, loading: false })
+      const newHealth = await adapter.getRelayHealth()
+      set({ health: newHealth, loading: false, error: null, lastFetched: Date.now() })
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : "Failed to load relay health",
+        error: hasExistingData ? null : (error instanceof Error ? error.message : "Failed to load relay health"),
         loading: false,
       })
     }

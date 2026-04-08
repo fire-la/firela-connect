@@ -73,6 +73,7 @@ export function ExportPage() {
     handleSubmit,
     formState: { errors: _errors },
     watch,
+    setValue,
     getValues,
     reset,
   } = useForm<ExportConfig>({
@@ -316,14 +317,22 @@ export function ExportPage() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="includePending" {...register("includePending")} />
+              <Checkbox
+                id="includePending"
+                checked={watch("includePending")}
+                onCheckedChange={(checked) => setValue("includePending", checked)}
+              />
               <Label htmlFor="includePending" className="font-normal cursor-pointer">
                 Include pending transactions
               </Label>
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="currencyColumn" {...register("currencyColumn")} />
+              <Checkbox
+                id="currencyColumn"
+                checked={watch("currencyColumn")}
+                onCheckedChange={(checked) => setValue("currencyColumn", checked)}
+              />
               <Label htmlFor="currencyColumn" className="font-normal cursor-pointer">
                 Add currency column
               </Label>
