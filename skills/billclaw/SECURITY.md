@@ -180,7 +180,7 @@ We will:
 
 ## License
 
-BillClaw is released under the MIT License. See [LICENSE](https://github.com/fire-la/billclaw/blob/main/LICENSE) for details.
+BillClaw is released under the GNU Affero General Public License v3.0. See [LICENSE](https://github.com/fire-la/billclaw/blob/main/LICENSE) for details.
 
 ---
 
