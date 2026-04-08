@@ -108,6 +108,10 @@ importers:
       zod:
         specifier: ^3.25.0
         version: 3.25.76
+    optionalDependencies:
+      keytar:
+        specifier: ^6.0.1
+        version: 6.0.1
     devDependencies:
       '@firela/runtime-adapters':
         specifier: workspace:*
@@ -136,10 +140,6 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@25.2.1)(@vitest/ui@3.2.4)(happy-dom@17.6.3)(jiti@1.21.7)(jsdom@26.1.0)
-    optionalDependencies:
-      keytar:
-        specifier: ^6.0.1
-        version: 6.0.1
 
   packages/firela-bot:
     dependencies:
@@ -3843,6 +3843,7 @@ packages:
   prebuild-install@5.3.4:
     resolution: {integrity: sha512-AkKN+pf4fSEihjapLEEj8n85YIw/tN6BQqkhzbDc0RvEZGdkpJBGMUYx66AAMcPG2KzmPQS7Cm16an4HVBRRMA==}
     engines: {node: '>=6'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   prettier@2.8.8:
