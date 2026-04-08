@@ -153,4 +153,4 @@ async function verifySignature(payload: string, signature: string, secret: strin
 
 ## License
 
-MIT
+AGPL-3.0

@@ -75,7 +75,7 @@
     "data-sovereignty"
   ],
   "author": "fire-la",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/fire-la/billclaw.git",

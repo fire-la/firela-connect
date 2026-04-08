@@ -201,4 +201,4 @@ billclaw export   --format beancount   --year 2024   --month 1   --output januar
 
 ## License
 
-MIT
+AGPL-3.0

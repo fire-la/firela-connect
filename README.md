@@ -322,7 +322,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for g
 
 ## License
 
-MIT - see [LICENSE](./LICENSE) file for details.
+AGPL-3.0 - see [LICENSE](./LICENSE) file for details.
 
 ## Acknowledgments
 
