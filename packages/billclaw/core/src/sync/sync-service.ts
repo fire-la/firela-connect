@@ -12,6 +12,7 @@ export interface SyncResult {
   transactionsAdded: number
   transactionsUpdated: number
   errors?: UserError[]
+  requiresReauth?: boolean
 }
 
 export interface SyncServiceState {

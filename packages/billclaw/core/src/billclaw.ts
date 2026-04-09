@@ -473,8 +473,7 @@ export class Billclaw {
       if (
         userError.errorCode === ERROR_CODES.PLAID_ITEM_LOGIN_REQUIRED ||
         userError.errorCode === ERROR_CODES.PLAID_INVALID_ACCESS_TOKEN ||
-        userError.errorCode === ERROR_CODES.PLAID_RELAY_BANK_CONNECTION_EXPIRED ||
-        userError.errorCode === ERROR_CODES.PLAID_RELAY_INVALID_TOKEN
+        userError.errorCode === ERROR_CODES.PLAID_RELAY_BANK_CONNECTION_EXPIRED
       ) {
         this.logger.warn?.(
           `Account ${account.id} requires re-authentication`,
@@ -663,6 +662,7 @@ export class Billclaw {
     const errors: UserError[] = []
     let transactionsAdded = 0
     let transactionsUpdated = 0
+    let requiresReauth = false
 
     const syncId = `sync_${Date.now()}`
     const syncState: SyncState = {
@@ -787,6 +787,18 @@ export class Billclaw {
       syncState.status = "failed"
       syncState.error = userError.humanReadable.message
       this.logger.error?.(`GoCardless sync failed for ${account.id}:`, error)
+
+      // Check for errors that require user re-authentication
+      if (
+        userError.errorCode === ERROR_CODES.GOCARDLESS_RELAY_TOKEN_EXPIRED ||
+        userError.errorCode === ERROR_CODES.GOCARDLESS_RELAY_REQUISITION_NOT_FOUND
+      ) {
+        this.logger.warn?.(
+          `Account ${account.id} requires re-authentication`,
+        )
+        syncState.requiresReauth = true
+        requiresReauth = true
+      }
     } finally {
       await writeSyncState(syncState, storageConfig)
     }
@@ -797,6 +809,7 @@ export class Billclaw {
       transactionsAdded,
       transactionsUpdated,
       errors: errors.length > 0 ? errors : undefined,
+      requiresReauth,
     }
   }
 
