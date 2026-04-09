@@ -44,6 +44,7 @@ import type { PlaidSyncAdapter } from "./sources/plaid/plaid-adapter.js"
 import { createGoCardlessAdapter } from "./sources/gocardless/gocardless-adapter.js"
 import { convertGoCardlessTransaction } from "./sources/gocardless/gocardless-sync.js"
 import { ProviderError } from "./relay/errors.js"
+import { parseGoCardlessRelayError, parsePlaidRelayError } from "./relay/index.js"
 
 // Exporters
 import {
@@ -424,28 +425,35 @@ export class Billclaw {
         duration: syncDuration,
       }).catch((err) => this.logger.debug?.(`Event emission failed:`, err))
     } catch (error) {
-      // Parse error to get UserError
+      // Mode-aware error routing: relay vs direct
       let userError: UserError
-      if (error && typeof error === "object") {
-        const plaidError = error as any
-        userError = parsePlaidError(
-          {
-            error_code: plaidError.code || plaidError.error_code,
-            error_message: plaidError.message || plaidError.error_message,
-            error_type: plaidError.error_type,
-            display_message: plaidError.display_message,
-            request_id: plaidError.request_id,
-            item_id: account.id,
-          },
-          account.id,
-        )
+
+      if (adapter.getMode() === "relay") {
+        // Use relay-aware parser for relay mode
+        userError = parsePlaidRelayError(error, { accountId: account.id })
       } else {
-        userError = parsePlaidError(
-          {
-            error_message: error instanceof Error ? error.message : "Unknown error",
-          },
-          account.id,
-        )
+        // Keep existing direct-mode parser for direct mode
+        if (error && typeof error === "object") {
+          const plaidError = error as any
+          userError = parsePlaidError(
+            {
+              error_code: plaidError.code || plaidError.error_code,
+              error_message: plaidError.message || plaidError.error_message,
+              error_type: plaidError.error_type,
+              display_message: plaidError.display_message,
+              request_id: plaidError.request_id,
+              item_id: account.id,
+            },
+            account.id,
+          )
+        } else {
+          userError = parsePlaidError(
+            {
+              error_message: error instanceof Error ? error.message : "Unknown error",
+            },
+            account.id,
+          )
+        }
       }
 
       errors.push(userError)
@@ -461,13 +469,15 @@ export class Billclaw {
         errorCode: userError.errorCode,
       }).catch((err) => this.logger.debug?.(`Event emission failed:`, err))
 
-      // Check for Plaid-specific errors that require user action
+      // Check for errors that require user re-authentication (both direct and relay codes)
       if (
         userError.errorCode === ERROR_CODES.PLAID_ITEM_LOGIN_REQUIRED ||
-        userError.errorCode === ERROR_CODES.PLAID_INVALID_ACCESS_TOKEN
+        userError.errorCode === ERROR_CODES.PLAID_INVALID_ACCESS_TOKEN ||
+        userError.errorCode === ERROR_CODES.PLAID_RELAY_BANK_CONNECTION_EXPIRED ||
+        userError.errorCode === ERROR_CODES.PLAID_RELAY_INVALID_TOKEN
       ) {
         this.logger.warn?.(
-          `Account ${account.id} requires re-authentication via Plaid Link`,
+          `Account ${account.id} requires re-authentication`,
         )
         syncState.error = `ITEM_LOGIN_REQUIRED: Please re-connect this account via Plaid Link`
         syncState.requiresReauth = true
@@ -771,23 +781,7 @@ export class Billclaw {
         `Sync completed for ${account.id}: ${transactionsAdded} added, ${transactionsUpdated} updated`,
       )
     } catch (error) {
-      const userError: UserError = createUserError(
-        ERROR_CODES.UNKNOWN_ERROR,
-        ErrorCategory.NETWORK,
-        "error",
-        false,
-        {
-          title: "GoCardless Sync Failed",
-          message: error instanceof Error ? error.message : "Unknown error during GoCardless sync",
-          suggestions: [
-            "Check your relay configuration",
-            "Verify the access token is valid",
-            "Try reconnecting the account",
-          ],
-        },
-        [],
-        { accountId: account.id },
-      )
+      const userError = parseGoCardlessRelayError(error, { accountId: account.id })
 
       errors.push(userError)
       syncState.status = "failed"

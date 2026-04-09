@@ -448,8 +448,22 @@ describe("Billclaw", () => {
 
     it("returns error when adapter throws", async () => {
       const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { parseGoCardlessRelayError } = await import("./relay/index.js")
 
       vi.mocked(createGoCardlessAdapter).mockRejectedValue(new Error("Relay unavailable"))
+      vi.mocked(parseGoCardlessRelayError).mockReturnValue({
+        errorCode: "UNKNOWN_ERROR",
+        category: "network",
+        severity: "error",
+        retryable: true,
+        humanReadable: {
+          title: "Sync Failed",
+          message: "Relay unavailable",
+          suggestions: [],
+        },
+        actions: [],
+        context: {},
+      } as any)
 
       const testAccount: AccountConfig = {
         id: "gocardless-err",
