@@ -25,10 +25,6 @@ const ENV_MAPPINGS: Record<string, string> = {
   PLAID_SECRET: "plaid.secret",
   PLAID_ENVIRONMENT: "plaid.environment",
 
-  // Gmail
-  GMAIL_CLIENT_ID: "gmail.clientId",
-  GMAIL_CLIENT_SECRET: "gmail.clientSecret",
-
   // Relay configuration
   FIRELA_RELAY_URL: "relay.url",
   FIRELA_RELAY_API_KEY: "relay.apiKey",
