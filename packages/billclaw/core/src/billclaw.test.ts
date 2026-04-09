@@ -533,6 +533,141 @@ describe("Billclaw", () => {
       expect(result.errors![0].errorCode).toBe("GOCARDLESS_RELAY_TOKEN_EXPIRED")
       expect(result.errors![0].humanReadable.message).toContain("re-connect")
     })
+
+    it("sets requiresReauth=true when parseGoCardlessRelayError returns GOCARDLESS_RELAY_TOKEN_EXPIRED", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { parseGoCardlessRelayError } = await import("./relay/index.js")
+
+      const relayError = new Error("Token expired for account")
+      const mockAdapter = {
+        getAccounts: vi.fn().mockRejectedValue(relayError),
+        getTransactions: vi.fn(),
+        getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockResolvedValue("test-access-token"),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+
+      vi.mocked(parseGoCardlessRelayError).mockReturnValue({
+        errorCode: "GOCARDLESS_RELAY_TOKEN_EXPIRED",
+        category: "provider",
+        severity: "error",
+        retryable: false,
+        humanReadable: {
+          title: "GoCardless Token Expired",
+          message: "Your GoCardless banking token has expired. Please re-connect your account.",
+          suggestions: ["Run the connect command to re-authenticate"],
+        },
+        actions: [],
+        context: { accountId: "gocardless-reauth-token" },
+      } as any)
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-reauth-token",
+        type: "gocardless",
+        name: "GoCardless Reauth Token",
+        enabled: true,
+        syncFrequency: "daily",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-reauth-token")
+
+      expect(result.success).toBe(false)
+      expect(result.requiresReauth).toBe(true)
+    })
+
+    it("sets requiresReauth=true when parseGoCardlessRelayError returns GOCARDLESS_RELAY_REQUISITION_NOT_FOUND", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { parseGoCardlessRelayError } = await import("./relay/index.js")
+
+      const relayError = new Error("Requisition not found")
+      const mockAdapter = {
+        getAccounts: vi.fn().mockRejectedValue(relayError),
+        getTransactions: vi.fn(),
+        getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockResolvedValue("test-access-token"),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+
+      vi.mocked(parseGoCardlessRelayError).mockReturnValue({
+        errorCode: "GOCARDLESS_RELAY_REQUISITION_NOT_FOUND",
+        category: "provider",
+        severity: "error",
+        retryable: false,
+        humanReadable: {
+          title: "GoCardless Requisition Not Found",
+          message: "Your GoCardless requisition was not found. Please re-connect your account.",
+          suggestions: ["Run the connect command to create a new requisition"],
+        },
+        actions: [],
+        context: { accountId: "gocardless-reauth-req" },
+      } as any)
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-reauth-req",
+        type: "gocardless",
+        name: "GoCardless Reauth Requisition",
+        enabled: true,
+        syncFrequency: "daily",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-reauth-req")
+
+      expect(result.success).toBe(false)
+      expect(result.requiresReauth).toBe(true)
+    })
+
+    it("sets requiresReauth=false for non-reauth error codes like GOCARDLESS_RELAY_RATE_LIMITED", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { parseGoCardlessRelayError } = await import("./relay/index.js")
+
+      const relayError = new Error("Rate limited")
+      const mockAdapter = {
+        getAccounts: vi.fn().mockRejectedValue(relayError),
+        getTransactions: vi.fn(),
+        getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockResolvedValue("test-access-token"),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+
+      vi.mocked(parseGoCardlessRelayError).mockReturnValue({
+        errorCode: "GOCARDLESS_RELAY_RATE_LIMITED",
+        category: "network",
+        severity: "warning",
+        retryable: true,
+        humanReadable: {
+          title: "Rate Limited",
+          message: "Too many requests to GoCardless. Please try again later.",
+          suggestions: ["Wait a few minutes and retry"],
+        },
+        actions: [],
+        context: { accountId: "gocardless-rate-limited" },
+      } as any)
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-rate-limited",
+        type: "gocardless",
+        name: "GoCardless Rate Limited",
+        enabled: true,
+        syncFrequency: "daily",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-rate-limited")
+
+      expect(result.success).toBe(false)
+      expect(result.requiresReauth).toBe(false)
+    })
   })
 
   describe("syncPlaid - error parsing", () => {
