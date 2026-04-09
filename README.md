@@ -147,14 +147,22 @@ For real bank authentication (not sandbox), you need an external accessible URL 
 
 The easiest way to deploy BillClaw for production use:
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fire-la/billclaw/tree/main/packages/cloudflare-worker)
+### UI + API Service
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fire-la/billclaw/tree/main/packages/ui)
+
+### Discord Bot
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fire-la/billclaw/tree/main/packages/firela-bot)
+
+> **Note**: Each service is deployed independently. Deploy both for full functionality, or just the UI service for financial data import only.
 
 **Benefits:**
 - Zero infrastructure management
 - Global edge network (300+ locations)
 - Automatic HTTPS
 - Generous free tier
-- One-click deployment
+- One-click deployment per service
 
 See the [Cloudflare Deployment Guide](./billclaw-docs/docs/guide/cloudflare-deployment.md) for detailed instructions.
 
