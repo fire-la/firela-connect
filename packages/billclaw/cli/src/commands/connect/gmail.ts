@@ -17,11 +17,6 @@ import {
 } from "@firela/billclaw-core/oauth"
 
 /**
- * Default OAuth timeout in milliseconds (10 minutes)
- */
-const DEFAULT_OAUTH_TIMEOUT = 10 * 60 * 1000
-
-/**
  * Polling interval in milliseconds
  */
 const POLL_INTERVAL = 2000
