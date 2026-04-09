@@ -129,6 +129,18 @@ vi.mock("./storage/transaction-storage.js", async (importOriginal) => {
   }
 })
 
+// Mock relay error parsers
+vi.mock("./relay/index.js", () => ({
+  parseGoCardlessRelayError: vi.fn(),
+  parsePlaidRelayError: vi.fn(),
+}))
+
+// Mock Plaid adapter factory for error parsing tests
+vi.mock("./sources/plaid/plaid-adapter.js", () => ({
+  createPlaidAdapter: vi.fn(),
+  DirectPlaidClient: vi.fn(),
+}))
+
 describe("Billclaw", () => {
   let tempDir: string
   let mockContext: RuntimeContext
@@ -456,6 +468,227 @@ describe("Billclaw", () => {
 
       expect(result.success).toBe(false)
       expect(result.errors).toBeDefined()
+    })
+
+    it("uses parseGoCardlessRelayError for relay-specific error messages", async () => {
+      const { createGoCardlessAdapter } = await import("./sources/gocardless/gocardless-adapter.js")
+      const { parseGoCardlessRelayError } = await import("./relay/index.js")
+
+      const relayError = new Error("Token expired for account")
+      const mockAdapter = {
+        getAccounts: vi.fn().mockRejectedValue(relayError),
+        getTransactions: vi.fn(),
+        getMode: vi.fn().mockReturnValue("relay"),
+        ensureValidToken: vi.fn().mockResolvedValue("test-access-token"),
+      }
+      vi.mocked(createGoCardlessAdapter).mockResolvedValue(mockAdapter as any)
+
+      vi.mocked(parseGoCardlessRelayError).mockReturnValue({
+        errorCode: "GOCARDLESS_RELAY_TOKEN_EXPIRED",
+        category: "provider",
+        severity: "error",
+        retryable: false,
+        humanReadable: {
+          title: "GoCardless Token Expired",
+          message: "Your GoCardless banking token has expired. Please re-connect your account.",
+          suggestions: ["Run the connect command to re-authenticate"],
+        },
+        actions: [],
+        context: { accountId: "gocardless-relay-err" },
+      } as any)
+
+      const testAccount: AccountConfig = {
+        id: "gocardless-relay-err",
+        type: "gocardless",
+        name: "GoCardless Relay Error",
+        enabled: true,
+        syncFrequency: "daily",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const result = await billclaw.syncAccount("gocardless-relay-err")
+
+      expect(result.success).toBe(false)
+      expect(parseGoCardlessRelayError).toHaveBeenCalledWith(
+        relayError,
+        { accountId: "gocardless-relay-err" },
+      )
+      expect(result.errors![0].errorCode).toBe("GOCARDLESS_RELAY_TOKEN_EXPIRED")
+      expect(result.errors![0].humanReadable.message).toContain("re-connect")
+    })
+  })
+
+  describe("syncPlaid - error parsing", () => {
+    it("uses parsePlaidRelayError when adapter is in relay mode", async () => {
+      const { createPlaidAdapter } = await import("./sources/plaid/plaid-adapter.js")
+      const { parsePlaidRelayError } = await import("./relay/index.js")
+
+      const relayError = new Error("Relay connection expired")
+      const mockAdapter = {
+        syncTransactions: vi.fn().mockRejectedValue(relayError),
+        getMode: vi.fn().mockReturnValue("relay"),
+      }
+      vi.mocked(createPlaidAdapter).mockResolvedValue(mockAdapter as any)
+
+      vi.mocked(parsePlaidRelayError).mockReturnValue({
+        errorCode: "PLAID_RELAY_BANK_CONNECTION_EXPIRED",
+        category: "provider",
+        severity: "error",
+        retryable: false,
+        humanReadable: {
+          title: "Bank Connection Expired",
+          message: "Your bank connection via relay has expired. Please re-connect.",
+          suggestions: ["Re-connect your account"],
+        },
+        actions: [],
+        context: { accountId: "plaid-relay-1" },
+      } as any)
+
+      const testAccount: AccountConfig = {
+        id: "plaid-relay-1",
+        type: "plaid",
+        name: "Plaid Relay Account",
+        enabled: true,
+        syncFrequency: "daily",
+        plaidAccessToken: "test-plaid-token",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const results = await billclaw.syncPlaid(["plaid-relay-1"])
+      const result = results[0]
+
+      expect(result.success).toBe(false)
+      expect(parsePlaidRelayError).toHaveBeenCalledWith(
+        relayError,
+        { accountId: "plaid-relay-1" },
+      )
+      expect(result.errors![0].errorCode).toBe("PLAID_RELAY_BANK_CONNECTION_EXPIRED")
+    })
+
+    it("uses parsePlaidError when adapter is in direct mode", async () => {
+      const { createPlaidAdapter } = await import("./sources/plaid/plaid-adapter.js")
+      const { parsePlaidRelayError } = await import("./relay/index.js")
+
+      const plaidError = {
+        error_code: "ITEM_LOGIN_REQUIRED",
+        error_message: "the login details of this item have changed",
+        error_type: "ITEM_ERROR",
+      }
+      const mockAdapter = {
+        syncTransactions: vi.fn().mockRejectedValue(plaidError),
+        getMode: vi.fn().mockReturnValue("direct"),
+      }
+      vi.mocked(createPlaidAdapter).mockResolvedValue(mockAdapter as any)
+
+      const testAccount: AccountConfig = {
+        id: "plaid-direct-1",
+        type: "plaid",
+        name: "Plaid Direct Account",
+        enabled: true,
+        syncFrequency: "daily",
+        plaidAccessToken: "test-plaid-token",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const results = await billclaw.syncPlaid(["plaid-direct-1"])
+      const result = results[0]
+
+      expect(result.success).toBe(false)
+      // parsePlaidRelayError should NOT be called in direct mode
+      expect(parsePlaidRelayError).not.toHaveBeenCalled()
+      // parsePlaidError (from errors.js) should have processed the error
+      expect(result.errors).toBeDefined()
+      expect(result.errors!.length).toBeGreaterThan(0)
+    })
+
+    it("sets requiresReauth=true for relay PLAID_RELAY_BANK_CONNECTION_EXPIRED", async () => {
+      const { createPlaidAdapter } = await import("./sources/plaid/plaid-adapter.js")
+      const { parsePlaidRelayError } = await import("./relay/index.js")
+
+      const relayError = new Error("Bank connection expired")
+      const mockAdapter = {
+        syncTransactions: vi.fn().mockRejectedValue(relayError),
+        getMode: vi.fn().mockReturnValue("relay"),
+      }
+      vi.mocked(createPlaidAdapter).mockResolvedValue(mockAdapter as any)
+
+      vi.mocked(parsePlaidRelayError).mockReturnValue({
+        errorCode: "PLAID_RELAY_BANK_CONNECTION_EXPIRED",
+        category: "provider",
+        severity: "error",
+        retryable: false,
+        humanReadable: {
+          title: "Bank Connection Expired",
+          message: "Your bank connection has expired. Please re-connect.",
+          suggestions: ["Re-connect your account"],
+        },
+        actions: [],
+        context: { accountId: "plaid-relay-reauth" },
+      } as any)
+
+      const testAccount: AccountConfig = {
+        id: "plaid-relay-reauth",
+        type: "plaid",
+        name: "Plaid Relay Reauth",
+        enabled: true,
+        syncFrequency: "daily",
+        plaidAccessToken: "test-plaid-token",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const results = await billclaw.syncPlaid(["plaid-relay-reauth"])
+      const result = results[0]
+
+      expect(result.success).toBe(false)
+      expect(result.requiresReauth).toBe(true)
+    })
+
+    it("sets requiresReauth=true for direct mode PLAID_ITEM_LOGIN_REQUIRED", async () => {
+      const { createPlaidAdapter } = await import("./sources/plaid/plaid-adapter.js")
+      const { parsePlaidRelayError } = await import("./relay/index.js")
+
+      const plaidError = {
+        error_code: "ITEM_LOGIN_REQUIRED",
+        error_message: "the login details of this item have changed",
+        error_type: "ITEM_ERROR",
+      }
+      const mockAdapter = {
+        syncTransactions: vi.fn().mockRejectedValue(plaidError),
+        getMode: vi.fn().mockReturnValue("direct"),
+      }
+      vi.mocked(createPlaidAdapter).mockResolvedValue(mockAdapter as any)
+
+      const testAccount: AccountConfig = {
+        id: "plaid-direct-reauth",
+        type: "plaid",
+        name: "Plaid Direct Reauth",
+        enabled: true,
+        syncFrequency: "daily",
+        plaidAccessToken: "test-plaid-token",
+      }
+      mockConfig.setConfig({
+        ...(await mockConfig.getConfig()),
+        accounts: [testAccount],
+      })
+
+      const results = await billclaw.syncPlaid(["plaid-direct-reauth"])
+      const result = results[0]
+
+      expect(result.success).toBe(false)
+      expect(parsePlaidRelayError).not.toHaveBeenCalled()
+      expect(result.requiresReauth).toBe(true)
     })
   })
 })
