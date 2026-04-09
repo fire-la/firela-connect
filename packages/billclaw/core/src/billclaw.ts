@@ -45,6 +45,7 @@ import { createGoCardlessAdapter } from "./sources/gocardless/gocardless-adapter
 import { convertGoCardlessTransaction } from "./sources/gocardless/gocardless-sync.js"
 import { ProviderError } from "./relay/errors.js"
 import { parseGoCardlessRelayError, parsePlaidRelayError } from "./relay/index.js"
+import { refreshGmailTokenViaRelay } from "./oauth/providers/gmail.js"
 
 // Exporters
 import {
@@ -586,37 +587,83 @@ export class Billclaw {
         continue
       }
 
-      // Check if token is expired (with 5 minute buffer)
+      // Check if token is expired (with 5 minute buffer) and refresh via relay
       if (isTokenExpired(tokenExpiry, 300)) {
-        this.logger.warn?.(
-          `Access token expired for Gmail account ${account.id}. Please refresh the token.`,
-        )
-        const tokenExpiredError: UserError = createUserError(
-          ERROR_CODES.GMAIL_AUTH_FAILED,
-          ErrorCategory.GMAIL_AUTH,
-          "error",
-          true,
-          {
-            title: "Gmail Access Token Expired",
-            message: `The access token for Gmail account ${account.id} has expired.`,
-            suggestions: [
-              "Refresh the token using OAuth refresh flow",
-              "Run setup again to re-authenticate with Gmail",
-            ],
-          },
-          [{ type: "oauth_reauth", tool: "gmail_oauth", params: { accountId: account.id } }],
-          { accountId: account.id },
-        )
-        results.push({
-          accountId: account.id,
-          success: false,
-          emailsProcessed: 0,
-          billsExtracted: 0,
-          transactionsAdded: 0,
-          transactionsUpdated: 0,
-          errors: [tokenExpiredError],
-        })
-        continue
+        try {
+          const relayUrl = config.connect?.publicUrl
+          if (!relayUrl) {
+            throw new Error("connect.publicUrl required for Gmail token refresh")
+          }
+
+          // Get API key from relay config
+          const apiKey = config.relay?.apiKey
+          if (!apiKey) {
+            throw new Error("relay.apiKey required for Gmail token refresh")
+          }
+
+          // Email comes from the initial connect flow:
+          // retrieveGmailRelayCredential() -> email field -> saved to accountConfig.gmailEmailAddress
+          // This email is the relay's storage key for looking up the stored refresh_token.
+          const gmailEmail = accountConfig?.gmailEmailAddress
+          if (!gmailEmail) {
+            throw new Error(
+              "gmailEmailAddress not configured -- run 'connect gmail' first to establish relay connection",
+            )
+          }
+
+          const { accessToken: newAccessToken, expiresIn: newExpiresIn } =
+            await refreshGmailTokenViaRelay(relayUrl, apiKey, gmailEmail)
+
+          // Update stored token (no refresh_token stored locally)
+          await this.context.config.updateAccount(account.id, {
+            gmailAccessToken: newAccessToken,
+            gmailTokenExpiry: new Date(Date.now() + newExpiresIn * 1000).toISOString(),
+          })
+
+          this.logger.info?.(
+            `Gmail token refreshed via relay for account ${account.id}`,
+          )
+        } catch (refreshError) {
+          const message = refreshError instanceof Error ? refreshError.message : String(refreshError)
+          this.logger.error?.(`Gmail token refresh failed for ${account.id}: ${message}`)
+
+          // Check for revoked authorization
+          const isRevoked = message === "GMAIL_AUTH_REVOKED"
+
+          const tokenExpiredError: UserError = createUserError(
+            ERROR_CODES.GMAIL_AUTH_FAILED,
+            ErrorCategory.GMAIL_AUTH,
+            "error",
+            true,
+            {
+              title: "Gmail Access Token Expired",
+              message: isRevoked
+                ? `Gmail authorization has been revoked for account ${account.id}. Please reconnect.`
+                : `Failed to refresh Gmail token for account ${account.id}: ${message}`,
+              suggestions: isRevoked
+                ? [
+                    "Gmail authorization was revoked by the user or Google",
+                    "Run 'connect gmail' to re-authenticate",
+                  ]
+                : [
+                    "Ensure connect.publicUrl and relay.apiKey are configured",
+                    "Run 'connect gmail' to re-authenticate",
+                  ],
+            },
+            [{ type: "oauth_reauth", tool: "gmail_oauth", params: { accountId: account.id } }],
+            { accountId: account.id },
+          )
+          results.push({
+            accountId: account.id,
+            success: false,
+            emailsProcessed: 0,
+            billsExtracted: 0,
+            transactionsAdded: 0,
+            transactionsUpdated: 0,
+            errors: [tokenExpiredError],
+          })
+          continue
+        }
       }
 
       const result = await fetchGmailBills(

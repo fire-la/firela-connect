@@ -39,11 +39,9 @@ export {
   plaidOAuthHandler,
 } from "./providers/plaid.js"
 
-// Gmail
+// Gmail (relay-only mode)
 export {
-  cleanupExpiredStates,
-  generateAuthorizationUrl,
-  exchangeCodeForToken,
-  gmailOAuthHandler,
-  refreshGmailToken,
+  initiateGmailRelayAuth,
+  retrieveGmailRelayCredential,
+  refreshGmailTokenViaRelay,
 } from "./providers/gmail.js"
