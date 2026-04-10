@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { createSyncRateLimiter } from "./sync-rate-limiter.js"
 import type { Logger } from "../runtime/index.js"
-import { MemoryKVStore } from "@firela/runtime-adapters/node"
+import { MemoryKVStore } from "../../../../runtime-adapters/src/node.js"
 
 /**
  * Test logger
