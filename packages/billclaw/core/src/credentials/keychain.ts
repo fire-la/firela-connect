@@ -267,6 +267,7 @@ export const KeychainKeys = {
 
   /**
    * Build a Gmail refresh token key
+   * @deprecated Gmail now uses relay-only mode; refresh tokens are managed by relay
    */
   gmailRefreshToken(accountId: string): string {
     return `gmail_refresh_token:${accountId}`

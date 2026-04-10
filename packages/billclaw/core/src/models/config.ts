@@ -128,6 +128,7 @@ export const AccountConfigSchema = z.object({
   // Gmail-specific
   gmailEmailAddress: z.string().email().optional(),
   gmailAccessToken: z.string().optional(),
+  /** @deprecated Gmail now uses relay-only mode; refresh tokens are managed by relay */
   gmailRefreshToken: z.string().optional(),
   gmailTokenExpiry: z.string().optional(), // ISO timestamp
   gmailFilters: z.array(z.string()).optional(),
@@ -248,8 +249,6 @@ export type VltConfig = z.infer<typeof VltConfigSchema>
  * Gmail configuration
  */
 export const GmailConfigSchema = z.object({
-  clientId: z.string().optional(),
-  clientSecret: z.string().optional(),
   historyId: z.string().optional(),
   pubsubTopic: z.string().optional(),
   senderWhitelist: z.array(z.string()).default([]),

@@ -20,6 +20,7 @@ export interface PlaidConfig {
 
 /**
  * Gmail OAuth configuration (for OAuth flow only)
+ * @deprecated Gmail now uses relay-only mode; OAuth credentials are managed by firela-relay
  */
 export interface GmailOAuthConfig {
   clientId: string
