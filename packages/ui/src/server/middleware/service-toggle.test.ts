@@ -60,7 +60,6 @@ function createTestApp(mockKV: ReturnType<typeof createMockKV>, envVars?: Partia
 
   // Test routes that should be protected
   app.get("/api/oauth/plaid/test", (c) => c.json({ success: true, route: "plaid" }))
-  app.get("/api/oauth/gmail/test", (c) => c.json({ success: true, route: "gmail" }))
   app.get("/webhook/test", (c) => c.json({ success: true, route: "webhook" }))
   app.get("/api/bot/test", (c) => c.json({ success: true, route: "bot" }))
 

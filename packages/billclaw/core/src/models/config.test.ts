@@ -217,8 +217,6 @@ describe("PlaidConfigSchema", () => {
 describe("GmailConfigSchema", () => {
   it("should accept valid Gmail config", () => {
     const config = {
-      clientId: "gmail-client-id",
-      clientSecret: "gmail-secret",
       senderWhitelist: ["billing@company.com"],
       keywords: ["invoice", "receipt"],
     }
@@ -419,8 +417,7 @@ describe("BillclawConfigSchema", () => {
     const configWithGmail = {
       ...validConfig,
       gmail: {
-        clientId: "gmail-client",
-        clientSecret: "gmail-secret",
+        keywords: ["invoice"],
       },
     }
     const result = BillclawConfigSchema.safeParse(configWithGmail)

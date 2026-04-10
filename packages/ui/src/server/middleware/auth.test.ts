@@ -51,9 +51,6 @@ function createTestApp(envOverrides?: Partial<Env>) {
   app.post("/api/oauth/plaid/exchange", (c) =>
     c.json({ success: true, accessToken: "access-123" }),
   )
-  app.get("/api/oauth/gmail/auth-url", (c) =>
-    c.json({ success: true, url: "https://accounts.google.com/..." }),
-  )
   app.get("/api/accounts", (c) => c.json({ accounts: [] }))
   app.get("/api/config", (c) => c.json({ config: {} }))
 
@@ -99,11 +96,6 @@ describe("authMiddleware", () => {
       expect(res.status).toBe(401)
       const json = (await res.json()) as { errorCode: string }
       expect(json.errorCode).toBe("AUTH_MISSING")
-    })
-
-    it("should return 401 for /api/oauth/gmail/auth-url without token", async () => {
-      const res = await app.request("/api/oauth/gmail/auth-url")
-      expect(res.status).toBe(401)
     })
 
     it("should return 401 for /api/accounts without token", async () => {
