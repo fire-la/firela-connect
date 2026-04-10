@@ -25,8 +25,6 @@ export type Env = {
   PLAID_WEBHOOK_SECRET: string
   JWT_SECRET: string
   SETUP_PASSWORD?: string // Required for initial JWT setup (Phase 13.2-05)
-  GMAIL_CLIENT_ID?: string
-  GMAIL_CLIENT_SECRET?: string
   // Service toggles (from wrangler.toml vars)
   BILLCLAW_ENABLED?: string
   FIRELA_BOT_ENABLED?: string
@@ -98,13 +96,11 @@ app.use("/api/*", serviceToggleMiddleware())
 
 // OAuth routes
 import plaidRoutes from "./routes/oauth/plaid.js"
-import gmailRoutes from "./routes/oauth/gmail.js"
 import credentialsRoutes from "./routes/oauth/credentials.js"
 import { gocardlessRoutes } from "./routes/oauth/gocardless.js"
 
 // Register OAuth routes
 app.route("/api/oauth/plaid", plaidRoutes)
-app.route("/api/oauth/gmail", gmailRoutes)
 app.route("/api/connect", credentialsRoutes)
 app.route("/api/oauth/gocardless", gocardlessRoutes)
 

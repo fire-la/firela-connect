@@ -13,11 +13,8 @@ export type OAuthEnv = {
   PLAID_CLIENT_ID: string
   PLAID_SECRET: string
   PLAID_ENV: string
-  GMAIL_CLIENT_ID: string
-  GMAIL_CLIENT_SECRET: string
-  GMAIL_REDIRECT_URI: string
   CONFIG: KVNamespace
-  // Relay environment bindings for GoCardless OAuth flow
+  // Relay environment bindings for OAuth flows
   FIRELA_RELAY_URL: string
   FIRELA_RELAY_API_KEY: string
 }
