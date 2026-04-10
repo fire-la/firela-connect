@@ -184,6 +184,8 @@ async function exchangeCodeForToken(
  *
  * Phase 1 (no code): returns { url, state } for browser redirect
  * Phase 2 (code + state): exchanges code for tokens
+ *
+ * @deprecated Gmail now uses relay-only mode via initiateGmailRelayAuth/retrieveGmailRelayCredential
  */
 export async function gmailOAuthHandler(
   config: DirectConfig,
@@ -210,6 +212,7 @@ export async function gmailOAuthHandler(
 
 /**
  * Refresh Gmail token directly with Google (for UI/Workers)
+ * @deprecated Gmail now uses relay-only mode via refreshGmailTokenViaRelay
  */
 export async function refreshGmailToken(
   config: DirectConfig,

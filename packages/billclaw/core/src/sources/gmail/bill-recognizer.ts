@@ -20,8 +20,6 @@ export interface EmailContent {
 }
 
 export interface GmailConfig {
-  clientId?: string
-  clientSecret?: string
   historyId?: string
   pubsubTopic?: string
   senderWhitelist: string[]
