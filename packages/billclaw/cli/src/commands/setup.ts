@@ -37,13 +37,6 @@ interface PlaidAnswers {
 }
 
 /**
- * Gmail setup answers
- */
-interface GmailAnswers {
-  credentialsPath: string
-}
-
-/**
  * GoCardless setup answers
  */
 interface GoCardlessAnswers {
@@ -181,52 +174,14 @@ async function setupPlaid(context: CliContext): Promise<void> {
 
 /**
  * Setup Gmail account
+ *
+ * Gmail now uses relay-only mode. Account creation is handled by
+ * `billclaw connect gmail` which authenticates via the relay server.
  */
 async function setupGmail(context: CliContext): Promise<void> {
-  const answers = await inquirer.prompt<GmailAnswers>([
-    {
-      type: "input",
-      name: "credentialsPath",
-      message: "Path to Gmail credentials JSON:",
-      default: "~/.gmail-credentials.json",
-    },
-  ])
-
-  const accountId = `gmail-${Date.now()}`
-
-  // Get storage configuration
-  const storageConfig = await context.runtime.config.getStorageConfig()
-
-  // Read current account registry
-  const accounts = await readAccountRegistry(storageConfig)
-
-  // Add new account to registry
-  accounts.push({
-    id: accountId,
-    type: "gmail",
-    name: `Gmail Account ${accounts.length + 1}`,
-    createdAt: new Date().toISOString(),
-  })
-  await writeAccountRegistry(accounts, storageConfig)
-
-  // Store credentials to file
-  const accountPath = path.join(
-    await getStorageDir(storageConfig),
-    `accounts/${accountId}.json`,
+  context.runtime.logger.info(
+    "Gmail uses relay-only mode. Run `billclaw connect gmail` to connect your Gmail account.",
   )
-  await fs.mkdir(path.dirname(accountPath), { recursive: true })
-  await fs.writeFile(
-    accountPath,
-    JSON.stringify(
-      {
-        credentialsPath: answers.credentialsPath,
-      },
-      null,
-      2,
-    ),
-  )
-
-  context.runtime.logger.info("Gmail account configured:", accountId)
 }
 
 /**

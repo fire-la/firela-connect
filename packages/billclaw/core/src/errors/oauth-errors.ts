@@ -203,7 +203,7 @@ export function parseOauthError(
             message:
               "Failed to generate Gmail authorization URL.",
             suggestions: [
-              "Verify Gmail client ID and secret are configured",
+              "Verify relay.url and relay.apiKey are configured",
               "Check that Gmail API is enabled in Google Cloud Console",
               "Verify OAuth consent screen includes 'gmail.readonly' scope",
             ],
