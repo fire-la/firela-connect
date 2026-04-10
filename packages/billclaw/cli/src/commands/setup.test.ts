@@ -160,29 +160,16 @@ describe("setup command", () => {
   })
 
   describe("gmail setup", () => {
-    it("should setup gmail account with valid inputs", async () => {
-      vi.mocked(inquirer.prompt)
-        .mockResolvedValueOnce({
-          accountType: "gmail",
-        })
-        .mockResolvedValueOnce({
-          credentialsPath: "~/.gmail-credentials.json",
-          clientId: "",
-          clientSecret: "",
-        })
-
-      vi.mocked(readAccountRegistry).mockResolvedValueOnce([])
-      vi.mocked(writeAccountRegistry).mockResolvedValueOnce(undefined)
-      vi.mocked(getStorageDir).mockResolvedValueOnce("/tmp/test-storage")
-      vi.mocked(fs.mkdir).mockResolvedValueOnce(undefined)
-      vi.mocked(fs.writeFile).mockResolvedValueOnce(undefined)
+    it("should inform user to use connect command for relay-only mode", async () => {
+      vi.mocked(inquirer.prompt).mockResolvedValueOnce({
+        accountType: "gmail",
+      })
 
       const context = createMockCliContext()
       await setupCommand.handler(context)
 
-      expect(writeAccountRegistry).toHaveBeenCalled()
-      const registryCall = vi.mocked(writeAccountRegistry).mock.calls[0]
-      expect(registryCall[0][0].type).toBe("gmail")
+      // Gmail setup no longer writes account files (relay-only mode)
+      expect(writeAccountRegistry).not.toHaveBeenCalled()
     })
   })
 
