@@ -18,7 +18,6 @@ import { getServiceState } from "../services/service-toggle.js"
  */
 const ROUTE_SERVICE_MAP: Record<string, ServiceId> = {
   "/api/oauth/plaid": "billclaw",
-  "/api/oauth/gmail": "billclaw",
   "/api/connect": "billclaw",
   "/api/sync": "billclaw",
   "/api/export": "billclaw",

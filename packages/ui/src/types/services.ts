@@ -55,7 +55,7 @@ export const SERVICE_CONFIGS: ServiceConfig[] = [
     id: "billclaw",
     name: "BillClaw",
     description: "Financial data sync service (Plaid, Gmail, transactions)",
-    routes: ["/api/oauth/plaid", "/api/oauth/gmail", "/api/connect", "/api/sync", "/api/export", "/webhook"],
+    routes: ["/api/oauth/plaid", "/api/connect", "/api/sync", "/api/export", "/webhook"],
   },
   {
     id: "firelaBot",

@@ -55,11 +55,6 @@ export interface BillclawConfig {
     secret?: string // Masked as "***"
     env?: string
   }
-  gmail?: {
-    clientId?: string
-    clientSecret?: string // Masked as "***"
-    refreshToken?: string // Masked as "***"
-  }
   vlt?: {
     apiUrl?: string
     accessToken?: string // Masked as "***"
@@ -148,17 +143,6 @@ export interface UIAdapter {
    * Get system status information
    */
   getSystemStatus(): Promise<SystemStatus>
-
-  /**
-   * Refresh Gmail OAuth token for an account
-   * Used when access token expires during sync operations
-   */
-  refreshGmailToken(accountId: string): Promise<{
-    success: boolean
-    accessToken?: string
-    expiresIn?: number
-    error?: string
-  }>
 
   /**
    * Update account settings

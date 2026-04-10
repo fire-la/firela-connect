@@ -38,15 +38,6 @@ function maskConfig(
     }
   }
 
-  // Mask Gmail credentials
-  if (masked.gmail && typeof masked.gmail === "object") {
-    const gmail = masked.gmail as Record<string, unknown>
-    masked.gmail = {
-      ...gmail,
-      clientSecret: gmail.clientSecret ? "***" : undefined,
-    }
-  }
-
   // Mask VLT API token
   if (masked.vlt && typeof masked.vlt === "object") {
     const vlt = masked.vlt as Record<string, unknown>
@@ -65,7 +56,6 @@ function maskConfig(
         plaidAccessToken: acc.plaidAccessToken ? "***" : undefined,
         gocardlessAccessToken: acc.gocardlessAccessToken ? "***" : undefined,
         gmailAccessToken: acc.gmailAccessToken ? "***" : undefined,
-        gmailRefreshToken: acc.gmailRefreshToken ? "***" : undefined,
       }
     })
   }

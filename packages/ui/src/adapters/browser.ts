@@ -94,22 +94,6 @@ export class BrowserAdapter implements UIAdapter {
     return json.data
   }
 
-  async refreshGmailToken(accountId: string): Promise<{
-    success: boolean
-    accessToken?: string
-    expiresIn?: number
-    error?: string
-  }> {
-    const res = await fetch(`${this.baseUrl}/oauth/gmail/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ accountId }),
-    })
-    return res.json()
-  }
-
   async updateAccount(accountId: string, enabled: boolean): Promise<{
     success: boolean
     data?: Account
