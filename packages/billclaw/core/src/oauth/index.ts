@@ -39,9 +39,11 @@ export {
   plaidOAuthHandler,
 } from "./providers/plaid.js"
 
-// Gmail (relay-only mode)
+// Gmail (relay-only mode for CLI, direct OAuth for UI/Workers)
 export {
   initiateGmailRelayAuth,
   retrieveGmailRelayCredential,
   refreshGmailTokenViaRelay,
+  gmailOAuthHandler,
+  refreshGmailToken,
 } from "./providers/gmail.js"
