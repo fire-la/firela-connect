@@ -1,106 +1,160 @@
 /**
  * Gmail Connect Page
  *
- * React component for Gmail OAuth flow.
- * Migrated from connect/src/public/gmail.html
+ * Relay-only Gmail connection flow.
+ * Directly integrates with firela-relay server using PKCE.
+ * No local Gmail OAuth credentials needed.
  */
 import { useEffect, useState, useCallback } from "react"
 import { Loader2, CheckCircle, XCircle } from "lucide-react"
-import type { GmailAuthorizeResponse, OAuthExchangeResponse } from "@/types/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
-type PageStatus = "ready" | "authorizing" | "exchanging" | "success" | "error"
+type PageStatus = "ready" | "loading" | "authorizing" | "success" | "error"
+
+/**
+ * Generate PKCE code verifier (random string)
+ */
+function generateCodeVerifier(length: number = 128): string {
+  const array = new Uint8Array(length)
+  crypto.getRandomValues(array)
+  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+/**
+ * Generate PKCE code challenge from verifier using SHA-256
+ */
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(verifier)
+  const hash = await crypto.subtle.digest("SHA-256", data)
+  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "")
+}
 
 export function GmailConnectPage() {
   const [status, setStatus] = useState<PageStatus>("ready")
   const [error, setError] = useState<string | null>(null)
 
-  // Get session ID from URL for Direct mode polling
+  // Check if returning from relay callback with credential available
   const searchParams = new URLSearchParams(window.location.search)
   const sessionId = searchParams.get("session")
-  const code = searchParams.get("code")
-  const state = searchParams.get("state")
 
-  // Handle OAuth callback on mount if code and state are present
   useEffect(() => {
-    async function handleCallback() {
-      if (!code || !state) return
+    // If session ID is in URL, we're in polling mode after relay redirect
+    if (!sessionId) return
 
-      setStatus("exchanging")
+    const verifier = sessionStorage.getItem("gmail_pkce_verifier")
+    if (!verifier) {
+      setStatus("error")
+      setError("Session data lost. Please try again.")
+      return
+    }
 
-      // Get session ID from URL or sessionStorage
-      const effectiveSessionId =
-        sessionId || sessionStorage.getItem("gmail_session_id")
+    setStatus("authorizing")
+    pollForCredential(sessionId, verifier)
+  }, [sessionId])
 
+  async function pollForCredential(sid: string, verifier: string) {
+    const relayUrl = await getRelayUrl()
+    if (!relayUrl) return
+
+    const maxAttempts = 60 // 2 minutes at 2s intervals
+    for (let i = 0; i < maxAttempts; i++) {
       try {
-        const requestBody: { code: string; state: string; sessionId?: string } =
-          {
-            code,
-            state,
+        const url = `${relayUrl}/api/connect/credentials/${sid}?code_verifier=${verifier}`
+        const res = await fetch(url, { method: "GET" })
+
+        if (res.ok) {
+          const data = (await res.json()) as { success: boolean; data?: Record<string, unknown> }
+          if (data.success && data.data) {
+            setStatus("success")
+            sessionStorage.removeItem("gmail_pkce_verifier")
+            sessionStorage.removeItem("gmail_session_id")
+            return
           }
-        if (effectiveSessionId) {
-          requestBody.sessionId = effectiveSessionId
         }
 
-        const res = await fetch("/api/oauth/gmail/exchange", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-        })
-
-        const data: OAuthExchangeResponse = await res.json()
-
-        if (data.success) {
-          setStatus("success")
-          // Clean up session storage
-          sessionStorage.removeItem("gmail_oauth_state")
-          sessionStorage.removeItem("gmail_session_id")
-        } else {
-          throw new Error(data.error || "Token exchange failed")
+        if (res.status === 410) {
+          setStatus("error")
+          setError("Session expired. Please try again.")
+          return
         }
-      } catch (err) {
-        setStatus("error")
-        setError(err instanceof Error ? err.message : "Token exchange failed")
+
+        // Not ready yet, wait and retry
+        await new Promise((r) => setTimeout(r, 2000))
+      } catch {
+        // Network error, retry
+        await new Promise((r) => setTimeout(r, 2000))
       }
     }
 
-    handleCallback()
-  }, [code, state, sessionId])
+    setStatus("error")
+    setError("Authorization timed out. Please try again.")
+  }
+
+  async function getRelayUrl(): Promise<string | null> {
+    try {
+      const res = await fetch("/api/relay/health")
+      const data = (await res.json()) as { success: boolean; data?: { relayUrl?: string; available?: boolean } }
+      if (data.success && data.data?.relayUrl) {
+        return data.data.relayUrl
+      }
+      setStatus("error")
+      setError("Relay server not configured. Set FIRELA_RELAY_URL environment variable.")
+      return null
+    } catch {
+      setStatus("error")
+      setError("Failed to reach relay server.")
+      return null
+    }
+  }
 
   const handleAuthorize = useCallback(async () => {
-    setStatus("authorizing")
+    setStatus("loading")
     setError(null)
 
     try {
-      // Store session ID for persistence across OAuth redirect
-      if (sessionId) {
-        sessionStorage.setItem("gmail_session_id", sessionId)
+      const relayUrl = await getRelayUrl()
+      if (!relayUrl) return
+
+      // Generate PKCE pair
+      const verifier = generateCodeVerifier()
+      const challenge = await generateCodeChallenge(verifier)
+      sessionStorage.setItem("gmail_pkce_verifier", verifier)
+
+      // Create connect session on relay
+      const sessionRes = await fetch(`${relayUrl}/api/connect/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          code_challenge: challenge,
+          code_challenge_method: "S256",
+        }),
+      })
+
+      if (!sessionRes.ok) {
+        throw new Error(`Failed to create session: ${sessionRes.status}`)
       }
 
-      const redirectUri = `${window.location.origin}/gmail-callback`
-      const url = sessionId
-        ? `/api/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}&session=${sessionId}`
-        : `/api/oauth/gmail/authorize?redirectUri=${encodeURIComponent(redirectUri)}`
-
-      const res = await fetch(url)
-      const data: GmailAuthorizeResponse = await res.json()
-
-      if (data.success && data.authUrl) {
-        // Store state for callback verification
-        if (data.state) {
-          sessionStorage.setItem("gmail_oauth_state", data.state)
-        }
-        // Redirect to Gmail OAuth page
-        window.location.href = data.authUrl
-      } else {
-        throw new Error(data.error || "Failed to generate authorization URL")
+      const sessionData = (await sessionRes.json()) as { success: boolean; data?: { session_id?: string } }
+      if (!sessionData.success || !sessionData.data?.session_id) {
+        throw new Error("Failed to create connect session")
       }
+
+      const sid = sessionData.data!.session_id!
+      sessionStorage.setItem("gmail_session_id", sid)
+
+      // Redirect to relay's Gmail authorize page
+      window.location.href = `${relayUrl}/connect/gmail?session=${sid}`
     } catch (err) {
       setStatus("error")
       setError(err instanceof Error ? err.message : "Authorization failed")
     }
-  }, [sessionId])
+  }, [])
 
   return (
     <div
@@ -114,13 +168,13 @@ export function GmailConnectPage() {
           <CardDescription>BillClaw Connect - Gmail Integration</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {(status === "authorizing" || status === "exchanging") && (
+          {(status === "loading" || status === "authorizing") && (
             <div data-testid="gmail-status" className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>
-                {status === "authorizing"
+                {status === "loading"
                   ? "Preparing authorization..."
-                  : "Exchanging authorization code..."}
+                  : "Waiting for authorization..."}
               </span>
             </div>
           )}
@@ -139,7 +193,7 @@ export function GmailConnectPage() {
             </div>
           )}
 
-          {status === "ready" && !code && !state && (
+          {status === "ready" && !sessionId && (
             <>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Authorize BillClaw to access your Gmail for automatic bill
@@ -157,7 +211,7 @@ export function GmailConnectPage() {
           )}
 
           <div className="pt-4 text-xs text-muted-foreground">
-            OAuth 2.0 + PKCE for secure authentication
+            Secured via relay with PKCE authentication
           </div>
         </CardContent>
       </Card>

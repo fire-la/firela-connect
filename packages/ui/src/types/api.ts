@@ -23,16 +23,6 @@ export interface LinkTokenResponse {
 }
 
 /**
- * Gmail OAuth authorize response
- */
-export interface GmailAuthorizeResponse {
-  success: boolean
-  authUrl?: string
-  state?: string
-  error?: string
-}
-
-/**
  * OAuth exchange response
  */
 export interface OAuthExchangeResponse {
