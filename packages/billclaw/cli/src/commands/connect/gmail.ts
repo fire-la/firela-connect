@@ -38,14 +38,14 @@ export async function runGmailConnect(
 
   // Get relay URL from config
   const config = await runtime.config.getConfig()
-  const relayBaseUrl = config.connect?.publicUrl
+  const relayBaseUrl = config.relay?.url
 
   if (!relayBaseUrl) {
-    console.error("Error: connect.publicUrl not configured")
+    console.error("Error: relay.url not configured")
     console.error("")
     console.error("Please add the following to your config:")
-    console.error("  connect:")
-    console.error("    publicUrl: https://relay.firela.io")
+    console.error("  relay:")
+    console.error("    url: https://relay.firela.io")
     process.exit(1)
   }
 

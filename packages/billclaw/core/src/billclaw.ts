@@ -590,9 +590,9 @@ export class Billclaw {
       // Check if token is expired (with 5 minute buffer) and refresh via relay
       if (isTokenExpired(tokenExpiry, 300)) {
         try {
-          const relayUrl = config.connect?.publicUrl
+          const relayUrl = config.relay?.url
           if (!relayUrl) {
-            throw new Error("connect.publicUrl required for Gmail token refresh")
+            throw new Error("relay.url required for Gmail token refresh")
           }
 
           // Get API key from relay config
