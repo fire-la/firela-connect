@@ -125,9 +125,16 @@ export async function retrieveGmailRelayCredential(
   }
 
   // Parse the access_token from public_token (JSON string)
-  const tokenData = JSON.parse(data.data.public_token) as {
-    access_token: string
-    expires_in: number
+  let tokenData: { access_token: string; expires_in: number }
+  try {
+    tokenData = JSON.parse(data.data.public_token) as {
+      access_token: string
+      expires_in: number
+    }
+  } catch {
+    throw new Error(
+      `Invalid credential format from relay: expected JSON string in public_token, got: ${typeof data.data.public_token}`,
+    )
   }
 
   return {
