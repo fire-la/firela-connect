@@ -7,49 +7,22 @@
  *
  * The client no longer needs GMAIL_CLIENT_ID or GMAIL_CLIENT_SECRET.
  *
+ * Relay functions delegate to the generic relay.ts module with provider='gmail'.
+ *
  * @packageDocumentation
  */
 
 import type { Logger } from "../../runtime/types.js"
-
-/**
- * Relay Connect API response types
- */
-interface RelaySessionResponse {
-  success: boolean
-  data: {
-    session_id: string
-    provider: string
-    expires_at: number
-  }
-}
-
-interface RelayCredentialResponse {
-  success: boolean
-  data: {
-    session_id: string
-    provider: string
-    public_token: string
-    metadata: string
-  }
-}
-
-interface RelayRefreshResponse {
-  success: boolean
-  data: {
-    access_token: string
-    expires_in: number
-    token_type: string
-  }
-}
+import {
+  initiateRelayAuth,
+  retrieveRelayCredential,
+  refreshTokenViaRelay,
+} from "./relay.js"
 
 /**
  * Connect Gmail via relay server
  *
- * Flow:
- * 1. Create connect session on relay
- * 2. Return authorize URL for browser redirect
- * 3. Caller opens browser and polls for credential
+ * Delegates to initiateRelayAuth with provider='gmail'.
  *
  * @param relayBaseUrl - Relay server base URL (e.g., "https://relay.firela.io")
  * @param codeChallenge - PKCE code challenge
@@ -61,40 +34,14 @@ export async function initiateGmailRelayAuth(
   codeChallenge: string,
   logger?: Logger,
 ): Promise<{ sessionId: string; authorizeUrl: string }> {
-  const response = await fetch(`${relayBaseUrl}/api/connect/session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      provider: "gmail",
-      code_challenge: codeChallenge,
-      code_challenge_method: "S256",
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to create Gmail connect session: ${response.status}`)
-  }
-
-  const data = (await response.json()) as RelaySessionResponse
-  if (!data.success) {
-    throw new Error("Failed to create Gmail connect session")
-  }
-
-  const authorizeUrl = `${relayBaseUrl}/connect/gmail?session=${data.data.session_id}`
-  logger?.info?.("Gmail relay auth initiated")
-
-  return {
-    sessionId: data.data.session_id,
-    authorizeUrl,
-  }
+  return initiateRelayAuth(relayBaseUrl, "gmail", codeChallenge, logger)
 }
 
 /**
  * Retrieve Gmail credential from relay (called after browser OAuth completes)
  *
- * Returns access_token, expiry, and the Gmail email address.
- * The email is critical for subsequent refresh calls -- it is the storage key
- * used by the relay to look up the stored refresh_token.
+ * Delegates to retrieveRelayCredential with provider='gmail'.
+ * Maps the generic 'identity' field to 'email' for Gmail-specific callers.
  *
  * @param relayBaseUrl - Relay server base URL
  * @param sessionId - Connect session ID
@@ -106,49 +53,18 @@ export async function retrieveGmailRelayCredential(
   sessionId: string,
   codeVerifier: string,
 ): Promise<{ accessToken: string; expiresIn: number; email: string }> {
-  const url = `${relayBaseUrl}/api/connect/credentials/${sessionId}?code_verifier=${codeVerifier}`
-  const response = await fetch(url, { method: "GET" })
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Gmail credential not yet available")
-    }
-    if (response.status === 410) {
-      throw new Error("Gmail session expired")
-    }
-    throw new Error(`Failed to retrieve Gmail credential: ${response.status}`)
-  }
-
-  const data = (await response.json()) as RelayCredentialResponse
-  if (!data.success || !data.data) {
-    throw new Error("Failed to retrieve Gmail credential")
-  }
-
-  // Parse the access_token from public_token (JSON string)
-  let tokenData: { access_token: string; expires_in: number }
-  try {
-    tokenData = JSON.parse(data.data.public_token) as {
-      access_token: string
-      expires_in: number
-    }
-  } catch {
-    throw new Error(
-      `Invalid credential format from relay: expected JSON string in public_token, got: ${typeof data.data.public_token}`,
-    )
-  }
-
+  const result = await retrieveRelayCredential(relayBaseUrl, "gmail", sessionId, codeVerifier)
   return {
-    accessToken: tokenData.access_token,
-    expiresIn: tokenData.expires_in,
-    email: data.data.metadata, // Relay stores Gmail email in metadata
+    accessToken: result.accessToken,
+    expiresIn: result.expiresIn,
+    email: result.identity, // For Gmail, identity is the email address
   }
 }
 
 /**
  * Refresh Gmail access token via relay
  *
- * The relay holds the refresh_token and proxies the refresh to Google.
- * This function only works with an API key that has openbanking:gmail scope.
+ * Delegates to refreshTokenViaRelay with provider='gmail'.
  *
  * @param relayBaseUrl - Relay server base URL
  * @param apiKey - API key with openbanking:gmail scope
@@ -160,31 +76,7 @@ export async function refreshGmailTokenViaRelay(
   apiKey: string,
   email: string,
 ): Promise<{ accessToken: string; expiresIn: number }> {
-  const response = await fetch(`${relayBaseUrl}/api/connect/gmail/refresh`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ email }),
-  })
-
-  if (!response.ok) {
-    if (response.status === 410) {
-      throw new Error("GMAIL_AUTH_REVOKED")
-    }
-    throw new Error(`Gmail token refresh failed: ${response.status}`)
-  }
-
-  const data = (await response.json()) as RelayRefreshResponse
-  if (!data.success) {
-    throw new Error("Gmail token refresh failed")
-  }
-
-  return {
-    accessToken: data.data.access_token,
-    expiresIn: data.data.expires_in,
-  }
+  return refreshTokenViaRelay(relayBaseUrl, "gmail", apiKey, email)
 }
 
 // ─── Direct OAuth (for UI/Workers that hold Google credentials) ────────────────
