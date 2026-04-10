@@ -26,8 +26,6 @@ describe("env-loader", () => {
     delete process.env.PLAID_CLIENT_ID
     delete process.env.PLAID_SECRET
     delete process.env.PLAID_ENVIRONMENT
-    delete process.env.GMAIL_CLIENT_ID
-    delete process.env.GMAIL_CLIENT_SECRET
     delete process.env.PUBLIC_URL
     delete process.env.TLS_ENABLED
     delete process.env.TLS_KEY_PATH

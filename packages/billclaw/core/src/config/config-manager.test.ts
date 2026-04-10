@@ -370,8 +370,6 @@ describe("env-loader", () => {
       delete process.env.PLAID_CLIENT_ID
       delete process.env.PLAID_SECRET
       delete process.env.PLAID_ENVIRONMENT
-      delete process.env.GMAIL_CLIENT_ID
-      delete process.env.GMAIL_CLIENT_SECRET
       delete process.env.FIRELA_RELAY_URL
       delete process.env.FIRELA_RELAY_API_KEY
       delete process.env.FIRELA_RELAY_TIMEOUT
@@ -409,8 +407,6 @@ describe("env-loader", () => {
       delete process.env.PLAID_CLIENT_ID
       delete process.env.PLAID_SECRET
       delete process.env.PLAID_ENVIRONMENT
-      delete process.env.GMAIL_CLIENT_ID
-      delete process.env.GMAIL_CLIENT_SECRET
       delete process.env.FIRELA_RELAY_URL
       delete process.env.FIRELA_RELAY_API_KEY
       delete process.env.FIRELA_RELAY_TIMEOUT

@@ -41,8 +41,6 @@ interface PlaidAnswers {
  */
 interface GmailAnswers {
   credentialsPath: string
-  clientId?: string
-  clientSecret?: string
 }
 
 /**
@@ -192,17 +190,6 @@ async function setupGmail(context: CliContext): Promise<void> {
       message: "Path to Gmail credentials JSON:",
       default: "~/.gmail-credentials.json",
     },
-    {
-      type: "input",
-      name: "clientId",
-      message: "Gmail OAuth Client ID (optional):",
-    },
-    {
-      type: "password",
-      name: "clientSecret",
-      message: "Gmail OAuth Client Secret (optional):",
-      mask: "*",
-    },
   ])
 
   const accountId = `gmail-${Date.now()}`
@@ -232,10 +219,7 @@ async function setupGmail(context: CliContext): Promise<void> {
     accountPath,
     JSON.stringify(
       {
-        gmailRefreshToken: null, // Will be populated by OAuth flow
         credentialsPath: answers.credentialsPath,
-        clientId: answers.clientId || null,
-        clientSecret: answers.clientSecret || null,
       },
       null,
       2,
