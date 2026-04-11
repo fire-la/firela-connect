@@ -6,7 +6,7 @@
  * No local Gmail OAuth credentials needed.
  */
 import { useEffect, useState, useCallback } from "react"
-import { Loader2, CheckCircle, XCircle } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -179,10 +179,20 @@ export function GmailConnectPage() {
           )}
 
           {status === "success" && (
-            <div data-testid="gmail-status" className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
-              <CheckCircle className="w-5 h-5" />
-              <span>Gmail connected successfully!</span>
-            </div>
+            <>
+              <div data-testid="gmail-status" className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+                <CheckCircle className="w-5 h-5" />
+                <span>Gmail connected successfully!</span>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.location.href = "/connect/"}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Connect
+              </Button>
+            </>
           )}
 
           {status === "error" && (
