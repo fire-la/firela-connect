@@ -43,6 +43,7 @@ relayRoutes.post("/connect/session", async (c) => {
       provider?: string
       code_challenge?: string
       code_challenge_method?: string
+      return_url?: string
     }>()
 
     if (!body.provider || !body.code_challenge) {
@@ -63,6 +64,7 @@ relayRoutes.post("/connect/session", async (c) => {
         provider: body.provider,
         code_challenge: body.code_challenge,
         code_challenge_method: body.code_challenge_method || "S256",
+        return_url: body.return_url,
       }),
     })
 

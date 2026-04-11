@@ -123,6 +123,7 @@ export function GmailConnectPage() {
       sessionStorage.setItem("gmail_pkce_verifier", verifier)
 
       // Create connect session via UI backend proxy (avoids CORS)
+      const returnUrl = `${window.location.origin}/connect/gmail`
       const sessionRes = await fetch("/api/relay/connect/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,6 +131,7 @@ export function GmailConnectPage() {
           provider: "gmail",
           code_challenge: challenge,
           code_challenge_method: "S256",
+          return_url: returnUrl,
         }),
       })
 
