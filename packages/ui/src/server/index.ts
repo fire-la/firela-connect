@@ -80,11 +80,16 @@ app.route("/auth", authRoutes)
 import { webhookRoutes } from "./routes/webhooks.js"
 app.route("/webhook", webhookRoutes)
 
+// Relay routes (health check needed before login for Gmail relay-only flow)
+import { relayRoutes } from "./routes/relay.js"
+app.route("/api/relay", relayRoutes)
+
 // ============================================================================
 // Protected Routes (JWT authentication required)
 // ============================================================================
 
 // Apply JWT authentication middleware to all /api/* routes
+// Note: /api/relay/* is registered above and skips this middleware
 app.use("/api/*", authMiddleware)
 
 // Apply service toggle middleware — blocks routes for disabled services (503)
@@ -103,10 +108,6 @@ import { gocardlessRoutes } from "./routes/oauth/gocardless.js"
 app.route("/api/oauth/plaid", plaidRoutes)
 app.route("/api/connect", credentialsRoutes)
 app.route("/api/oauth/gocardless", gocardlessRoutes)
-
-// Relay routes (health check, configuration status)
-import { relayRoutes } from "./routes/relay.js"
-app.route("/api/relay", relayRoutes)
 
 // Cache routes (statistics and management)
 import { cacheRoutes } from "./routes/cache.js"

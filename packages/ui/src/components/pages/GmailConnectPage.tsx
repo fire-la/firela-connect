@@ -58,13 +58,10 @@ export function GmailConnectPage() {
   }, [sessionId])
 
   async function pollForCredential(sid: string, verifier: string) {
-    const relayUrl = await getRelayUrl()
-    if (!relayUrl) return
-
     const maxAttempts = 60 // 2 minutes at 2s intervals
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const url = `${relayUrl}/api/connect/credentials/${sid}?code_verifier=${verifier}`
+        const url = `/api/relay/connect/credentials/${sid}?code_verifier=${encodeURIComponent(verifier)}`
         const res = await fetch(url, { method: "GET" })
 
         if (res.ok) {
@@ -125,8 +122,8 @@ export function GmailConnectPage() {
       const challenge = await generateCodeChallenge(verifier)
       sessionStorage.setItem("gmail_pkce_verifier", verifier)
 
-      // Create connect session on relay
-      const sessionRes = await fetch(`${relayUrl}/api/connect/session`, {
+      // Create connect session via UI backend proxy (avoids CORS)
+      const sessionRes = await fetch("/api/relay/connect/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
