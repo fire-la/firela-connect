@@ -176,6 +176,14 @@ export function PlaidConnectPage() {
               >
                 {plaidLoaded ? "Connect Bank Account" : "Loading..."}
               </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => window.location.href = "/connect/"}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
             </>
           )}
 
