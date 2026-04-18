@@ -128,7 +128,7 @@ The easiest way to connect your financial accounts:
 
 ```bash
 # 1. Clone and build
-git clone https://github.com/fire-la/billclaw.git
+git clone https://github.com/fire-la/firela-connect.git
 cd billclaw
 pnpm install && pnpm build
 
@@ -178,7 +178,7 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs git
 
 # Clone and build
-git clone https://github.com/fire-la/billclaw.git
+git clone https://github.com/fire-la/firela-connect.git
 cd billclaw
 pnpm install
 pnpm build
@@ -275,7 +275,7 @@ const transactions = await billclaw.getTransactions("all", 2024, 1);
 
 ```bash
 # Clone repository
-git clone https://github.com/fire-la/billclaw.git
+git clone https://github.com/fire-la/firela-connect.git
 cd billclaw
 
 # Install dependencies
@@ -332,6 +332,6 @@ AGPL-3.0 - see [LICENSE](./LICENSE) file for details.
 
 ## Links
 
-- [GitHub](https://github.com/fire-la/billclaw)
+- [GitHub](https://github.com/fire-la/firela-connect)
 - [npm](https://www.npmjs.com/org/fire-la)
-- [Documentation](https://github.com/fire-la/billclaw/wiki)
+- [Documentation](https://github.com/fire-la/firela-connect/wiki)

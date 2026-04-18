@@ -2,7 +2,7 @@
 name: billclaw
 description: This skill should be used when managing financial data, syncing bank transactions via Plaid/GoCardless, fetching bills from Gmail, or exporting to Beancount/Ledger formats. Provides local-first data sovereignty for OpenClaw users.
 tags: [finance, banking, plaid, gocardless, gmail, beancount, ledger, transactions]
-homepage: https://github.com/fire-la/billclaw
+homepage: https://github.com/fire-la/firela-connect
 metadata:
   {
     "openclaw":
@@ -52,7 +52,7 @@ Complete financial data management for OpenClaw with local-first architecture. S
 ### Verification
 
 - **Transparent packages**: All npm packages are open-source and published with provenance
-- **Auditable code**: Full source available at [GitHub](https://github.com/fire-la/billclaw)
+- **Auditable code**: Full source available at [GitHub](https://github.com/fire-la/firela-connect)
 - **npm provenance**: Cryptographic proof linking packages to source code
 - **Local-first**: Your financial data never leaves your machine
 - **User-controlled credentials**: You provide all API credentials through your own accounts
@@ -169,11 +169,11 @@ This skill provides instructions for using BillClaw with OpenClaw. The actual in
 
 ### Standalone CLI
 
-For users who prefer a command-line interface, the standalone CLI is available as a separate npm package. See https://github.com/fire-la/billclaw for installation instructions.
+For users who prefer a command-line interface, the standalone CLI is available as a separate npm package. See https://github.com/fire-la/firela-connect for installation instructions.
 
 ### Connect OAuth Server
 
-For self-hosted OAuth flows, the Connect server is available as a separate npm package. See https://github.com/fire-la/billclaw for configuration details.
+For self-hosted OAuth flows, the Connect server is available as a separate npm package. See https://github.com/fire-la/firela-connect for configuration details.
 
 ## Data Sources
 
@@ -228,7 +228,7 @@ Configuration is stored in `~/.firela/billclaw/config.json`:
 
 ## Getting Help
 
-- **Documentation**: https://github.com/fire-la/billclaw
-- **Issues**: https://github.com/fire-la/billclaw/issues
+- **Documentation**: https://github.com/fire-la/firela-connect
+- **Issues**: https://github.com/fire-la/firela-connect/issues
 - **Security**: Report security vulnerabilities privately at security@fire-la.dev
 - **npm packages**: https://www.npmjs.com/org/firela

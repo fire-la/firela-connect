@@ -12,3 +12,9 @@ export const DEFAULT_RELAY_URL = "https://relay.firela.io"
 
 /** Default Plaid environment */
 export const DEFAULT_PLAID_ENV = "sandbox"
+
+/** KV key for auto-generated JWT signing secret */
+export const AUTH_SECRET_KEY = "firela:auth:jwt_secret"
+
+/** KV key for setup password (set on first /auth/setup call) */
+export const SETUP_PASSWORD_KEY = "firela:auth:setup_password"
