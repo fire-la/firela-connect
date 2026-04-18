@@ -10,6 +10,7 @@
  */
 
 import { createMiddleware } from "hono/factory"
+import { ensureAuthSecret } from "../lib/auth-helpers.js"
 import type { Env } from "../index.js"
 
 /**
@@ -116,12 +117,8 @@ export const authMiddleware = createMiddleware<{ Bindings: Env }>(
       return next()
     }
 
-    // Skip authentication when JWT is not configured (self-hosted setup)
-    // Without JWT_SECRET, no tokens can be verified, so blocking all requests
-    // would make the app unusable until setup is complete.
-    if (!c.env.JWT_SECRET) {
-      return next()
-    }
+    // Get or auto-generate JWT secret (env var > KV > auto-generate)
+    const jwtSecret = await ensureAuthSecret(c.env)
 
     // Check for Authorization header
     const authHeader = c.req.header("Authorization")
@@ -137,7 +134,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Env }>(
     }
 
     const token = authHeader.slice(7)
-    const payload = await verifyToken(token, c.env.JWT_SECRET)
+    const payload = await verifyToken(token, jwtSecret)
 
     if (!payload) {
       return c.json(

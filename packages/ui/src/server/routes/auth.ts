@@ -13,6 +13,8 @@ import { sign, verify } from "hono/jwt"
 import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import type { Env } from "../index.js"
+import { SETUP_PASSWORD_KEY } from "../constants.js"
+import { getAuthSecret, ensureAuthSecret } from "../lib/auth-helpers.js"
 
 export const authRoutes = new Hono<{ Bindings: Env }>()
 
@@ -33,7 +35,9 @@ const setupRequestSchema = z.object({
  * used for all subsequent API calls.
  *
  * Request body:
- * - password: The setup password (must match SETUP_PASSWORD env var)
+ * - password: The setup password. On first call (no password configured),
+ *   the provided password is stored and becomes the permanent setup password.
+ *   Subsequent calls must match this password.
  *
  * Response:
  * - success: true
@@ -41,16 +45,23 @@ const setupRequestSchema = z.object({
  * - expiresIn: Token expiration time in seconds
  *
  * Security:
- * - SETUP_PASSWORD should be a strong password
- * - After setup, consider rotating SETUP_PASSWORD
+ * - JWT_SECRET is auto-generated on first run if not set via env var
+ * - The first password provided becomes the permanent setup password
  * - The generated JWT is long-lived (1 year) for self-hosted convenience
  */
 authRoutes.post("/setup", zValidator("json", setupRequestSchema), async (c) => {
   const { password } = c.req.valid("json")
   const env = c.env
 
-  // Verify the setup password
-  if (password !== env.SETUP_PASSWORD) {
+  // Get or auto-generate JWT secret
+  const jwtSecret = await ensureAuthSecret(env)
+
+  // Password check: env var > KV stored > first-time auto-lock
+  const storedPassword = env.SETUP_PASSWORD || await env.CONFIG.get(SETUP_PASSWORD_KEY) as string | null
+  if (!storedPassword) {
+    // First call: accept any password and store it for future verification
+    await env.CONFIG.put(SETUP_PASSWORD_KEY, password)
+  } else if (password !== storedPassword) {
     return c.json(
       {
         success: false,
@@ -73,7 +84,7 @@ authRoutes.post("/setup", zValidator("json", setupRequestSchema), async (c) => {
   }
 
   // Sign the JWT with HS256 algorithm
-  const token = await sign(payload, env.JWT_SECRET, "HS256")
+  const token = await sign(payload, jwtSecret, "HS256")
 
   return c.json({
     success: true,
@@ -117,7 +128,18 @@ authRoutes.post("/verify", async (c) => {
 
   try {
     const token = authHeader.slice(7)
-    const payload = await verify(token, c.env.JWT_SECRET, "HS256")
+    const jwtSecret = await getAuthSecret(c.env)
+    if (!jwtSecret) {
+      return c.json(
+        {
+          success: false,
+          error: "Auth not configured",
+          errorCode: "AUTH_NOT_CONFIGURED",
+        },
+        503,
+      )
+    }
+    const payload = await verify(token, jwtSecret, "HS256")
 
     return c.json({
       success: true,
@@ -145,11 +167,12 @@ authRoutes.post("/verify", async (c) => {
  *
  * Get authentication status and configuration info.
  */
-authRoutes.get("/status", (c) => {
+authRoutes.get("/status", async (c) => {
+  const jwtSecret = await getAuthSecret(c.env)
   return c.json({
     success: true,
-    configured: !!c.env.JWT_SECRET && !!c.env.SETUP_PASSWORD,
+    configured: !!jwtSecret,
     authType: "jwt",
-    setupRequired: !c.env.SETUP_PASSWORD,
+    setupRequired: false,
   })
 })

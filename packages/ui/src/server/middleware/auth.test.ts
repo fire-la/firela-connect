@@ -113,13 +113,19 @@ describe("authMiddleware", () => {
     })
   })
 
-  describe("without JWT_SECRET configured (self-hosted setup)", () => {
-    const app = createTestApp({ JWT_SECRET: "" })
+  describe("without JWT_SECRET configured (auto-generates from KV)", () => {
+    it("should return 401 when JWT_SECRET is empty (auto-generated secret protects routes)", async () => {
+      const app = createTestApp({
+        JWT_SECRET: "",
+        CONFIG: {
+          get: async () => null,
+          put: async () => undefined,
+        } as unknown as KVNamespace,
+      })
 
-    it("should allow /api/* routes when JWT_SECRET is empty (setup mode)", async () => {
       const res = await app.request("/api/oauth/plaid/link-token")
-      // When JWT_SECRET is not set, auth is skipped for self-hosted setup
-      expect(res.status).toBe(200)
+      // JWT_SECRET is auto-generated from KV, so routes are still protected
+      expect(res.status).toBe(401)
     })
   })
 })
