@@ -7,12 +7,11 @@
  *
  * @packageDocumentation
  */
-import { type ReactNode, useState, useEffect } from "react"
+import { type ReactNode, useEffect } from "react"
 import { Link, useNavigate, useLocation } from "react-router-dom"
-import { AlertCircle, AlertTriangle, Loader2, Settings } from "lucide-react"
+import { AlertCircle, Loader2, Settings } from "lucide-react"
 import { useServiceState } from "@/contexts/ServiceStateContext"
 import { type ServiceId } from "@/types/services"
-import { Button } from "@/components/ui/button"
 import { getToken, apiFetch } from "@/lib/auth"
 
 interface ProtectedRouteProps {
@@ -31,10 +30,6 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Auth expiry detection
-  const [authExpired, setAuthExpired] = useState(false)
-  const [authChecked, setAuthChecked] = useState(false)
-
   useEffect(() => {
     let cancelled = false
 
@@ -47,33 +42,15 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
       }
 
       try {
-        // Step 1: Check if auth is configured at all
-        const statusRes = await fetch("/auth/status")
-        const statusData = (await statusRes.json()) as {
-          configured?: boolean
-        }
-
-        // If auth not configured, skip check (no banner needed)
-        if (!statusData.configured) {
-          if (!cancelled) setAuthChecked(true)
-          return
-        }
-
-        // Step 2: Probe an API endpoint to detect 401
+        // Probe an API endpoint to detect 401 (expired/invalid token)
         const probeRes = await apiFetch("/api/services", { method: "GET" })
 
-        if (!cancelled) {
-          if (probeRes.status === 401) {
-            // Token expired or invalid — redirect to setup
-            const redirect = encodeURIComponent(location.pathname + location.search)
-            navigate(`/auth/setup?redirect=${redirect}`, { replace: true })
-            return
-          }
-          setAuthChecked(true)
+        if (!cancelled && probeRes.status === 401) {
+          const redirect = encodeURIComponent(location.pathname + location.search)
+          navigate(`/auth/setup?redirect=${redirect}`, { replace: true })
         }
       } catch {
-        // Network error -- don't show banner (might be offline)
-        if (!cancelled) setAuthChecked(true)
+        // Network error — allow page to render (might be offline)
       }
     }
 
@@ -83,50 +60,23 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
     }
   }, [])
 
-  // Auth warning banner (rendered above everything when auth expired)
-  const authBanner =
-    authExpired && authChecked ? (
-      <div className="sticky top-0 z-50 bg-yellow-500 text-black px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" />
-          <span className="text-sm font-medium">
-            Session expired. Sign in again.
-          </span>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="bg-transparent border-black/30 hover:bg-black/10 text-black"
-          onClick={() => {
-            window.location.href = "/auth/setup"
-          }}
-        >
-          Sign In
-        </Button>
-      </div>
-    ) : null
-
   // Status verification banner (shown when service state cannot be confirmed)
-  const statusBanner =
-    !authExpired && authChecked ? (
-      loading ? (
-        <div className="sticky top-0 z-40 bg-muted/80 backdrop-blur-sm px-4 py-1.5 flex items-center gap-2 border-b">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Verifying service status...</span>
-        </div>
-      ) : (error || !state) ? (
-        <div className="sticky top-0 z-40 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-4 py-1.5 flex items-center gap-2">
-          <AlertCircle className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
-          <span className="text-xs text-yellow-700 dark:text-yellow-300">Unable to verify service status. Showing page without protection.</span>
-        </div>
-      ) : null
-    ) : null
+  const statusBanner = loading ? (
+    <div className="sticky top-0 z-40 bg-muted/80 backdrop-blur-sm px-4 py-1.5 flex items-center gap-2 border-b">
+      <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+      <span className="text-xs text-muted-foreground">Verifying service status...</span>
+    </div>
+  ) : (error || !state) ? (
+    <div className="sticky top-0 z-40 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-4 py-1.5 flex items-center gap-2">
+      <AlertCircle className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
+      <span className="text-xs text-yellow-700 dark:text-yellow-300">Unable to verify service status. Showing page without protection.</span>
+    </div>
+  ) : null
 
   // Still loading or error/no state — render children (non-blocking)
   if (loading || error || !state) {
     return (
       <>
-        {authBanner}
         {statusBanner}
         {children}
       </>
@@ -137,7 +87,6 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
   if (!state[serviceId]) {
     return (
       <>
-        {authBanner}
         {statusBanner}
         <div className="protected-route-disabled">
           <div className="service-disabled-card">
@@ -162,7 +111,6 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
   // Service enabled — render children with banner above
   return (
     <>
-      {authBanner}
       {statusBanner}
       {children}
     </>
