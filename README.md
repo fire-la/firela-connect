@@ -15,6 +15,25 @@ BillClaw is an open-source financial data import system that puts you in control
 - **Local Storage**: All data stored locally with optional encryption
 - **Real-time Sync**: Webhook support for instant transaction updates
 
+## Production Deployment
+
+For real bank authentication (not sandbox), you need an external accessible URL since Plaid callbacks cannot reach `localhost`.
+
+### Cloudflare Workers (Recommended)
+
+The easiest way to deploy BillClaw for production use:
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fire-la/firela-connect/tree/main/packages/ui)
+
+**Benefits:**
+- Zero infrastructure management
+- Global edge network (300+ locations)
+- Automatic HTTPS
+- Generous free tier
+- One-click deployment per service
+
+See the [Cloudflare Deployment Guide](./billclaw-docs/docs/guide/cloudflare-deployment.md) for detailed instructions.
+
 ## Architecture
 
 BillClaw uses a **Framework-Agnostic Core + Adapter Pattern** architecture:
@@ -138,102 +157,6 @@ billclaw ui
 # 3. Open your browser
 # Visit http://localhost:8787
 ```
-
-## Production Deployment
-
-For real bank authentication (not sandbox), you need an external accessible URL since Plaid callbacks cannot reach `localhost`.
-
-### Cloudflare Workers (Recommended)
-
-The easiest way to deploy BillClaw for production use:
-
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/fire-la/firela-connect/tree/main/packages/ui)
-
-**Benefits:**
-- Zero infrastructure management
-- Global edge network (300+ locations)
-- Automatic HTTPS
-- Generous free tier
-- One-click deployment per service
-
-See the [Cloudflare Deployment Guide](./billclaw-docs/docs/guide/cloudflare-deployment.md) for detailed instructions.
-
-### VPS Deployment with HTTPS (Advanced)
-
-For production use with a custom domain, we recommend using Caddy as a reverse proxy:
-
-```bash
-# 1. Purchase VPS and domain (e.g., DigitalOcean, $5-20/month)
-#    VPS: 1-2GB RAM
-#    Domain: billclaw.yourdomain.com
-
-# 2. Configure DNS
-#    A record: billclaw -> your-vps-public-ip
-
-# 3. SSH into VPS and setup
-ssh root@your-vps-ip
-
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs git
-
-# Clone and build
-git clone https://github.com/fire-la/firela-connect.git
-cd billclaw
-pnpm install
-pnpm build
-
-# 4. Install Caddy (automatic HTTPS)
-apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-apt update
-apt install caddy
-
-# 5. Configure Caddy reverse proxy
-cat > /etc/caddy/Caddyfile << EOF
-billclaw.yourdomain.com {
-    reverse_proxy localhost:8787
-}
-EOF
-systemctl restart caddy
-
-# 6. Setup systemd service for BillClaw UI
-cat > /etc/systemd/system/billclaw-ui.service << 'EOF'
-[Unit]
-Description=BillClaw UI Service
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/root/billclaw
-Environment=PLAID_CLIENT_ID=your_production_client_id
-Environment=PLAID_SECRET=your_production_secret
-ExecStart=/usr/local/bin/pnpm --filter @firela/billclaw-ui run wrangler dev --port 8787 --local
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl enable billclaw-ui
-systemctl start billclaw-ui
-
-# 7. Verify
-curl https://billclaw.yourdomain.com/health
-# Should return: {"status":"ok"}
-```
-
-**Important**: Add your production URL to Plaid Dashboard as a redirect URI:
-- `https://billclaw.yourdomain.com/oauth/plaid/callback`
-
-For more deployment scenarios, see [docs/architecture.md](./docs/architecture.md).
-
----
-
-### As OpenClaw Plugin
 
 ### As OpenClaw Plugin
 
