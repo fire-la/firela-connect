@@ -24,6 +24,8 @@ export interface ServiceConfig {
   description: string
   /** Route prefixes protected by this toggle */
   routes: string[]
+  /** If set, the toggle is disabled and this message is shown */
+  disabledReason?: string
 }
 
 /**
@@ -62,6 +64,7 @@ export const SERVICE_CONFIGS: ServiceConfig[] = [
     name: "Firela Bot",
     description: "Messaging and notification service",
     routes: ["/api/bot", "/api/messages"],
+    disabledReason: "Under development",
   },
 ]
 

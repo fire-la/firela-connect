@@ -168,6 +168,7 @@ export function SettingsPage() {
             const config = getServiceConfig(serviceId)
             const isEnabled = serviceState[serviceId]
             const isToggling = toggling === serviceId
+            const isDisabled = !!config?.disabledReason
 
             return (
               <Card key={serviceId}>
@@ -183,6 +184,9 @@ export function SettingsPage() {
                       <p className="text-sm text-muted-foreground">
                         {config?.description || "Service configuration"}
                       </p>
+                      {isDisabled ? (
+                        <p className="text-sm text-amber-600">{config.disabledReason}</p>
+                      ) : (
                       <div className="flex items-center gap-2">
                         {isEnabled ? (
                           <>
@@ -196,13 +200,14 @@ export function SettingsPage() {
                           </>
                         )}
                       </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={isEnabled}
                       onCheckedChange={() => handleToggle(serviceId, isEnabled)}
-                      disabled={isToggling}
+                      disabled={isToggling || isDisabled}
                     />
                     {isToggling && (
                       <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
