@@ -26,7 +26,7 @@ interface ProtectedRouteProps {
  * Also detects JWT auth expiry and shows a sticky warning banner.
  */
 export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
-  const { state, loading, error } = useServiceState()
+  const { state, loading, error, refresh } = useServiceState()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -45,9 +45,14 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
         // Probe an API endpoint to detect 401 (expired/invalid token)
         const probeRes = await apiFetch("/api/services", { method: "GET" })
 
-        if (!cancelled && probeRes.status === 401) {
-          const redirect = encodeURIComponent(location.pathname + location.search)
-          navigate(`/auth/setup?redirect=${redirect}`, { replace: true })
+        if (!cancelled) {
+          if (probeRes.status === 401) {
+            const redirect = encodeURIComponent(location.pathname + location.search)
+            navigate(`/auth/setup?redirect=${redirect}`, { replace: true })
+          } else if (error || !state) {
+            // Auth OK but service state is stale (e.g. from pre-login 401) — refresh
+            refresh()
+          }
         }
       } catch {
         // Network error — allow page to render (might be offline)
