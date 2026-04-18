@@ -4,7 +4,7 @@
 # Unified UI + API service for Cloudflare Workers deployment
 # Combines React SPA with Hono API server
 
-name = "billclaw-ui"
+name = "firela-connect"
 main = "src/server/index.ts"
 compatibility_date = "2025-09-15"
 compatibility_flags = ["nodejs_compat_v2"]
@@ -23,7 +23,7 @@ binding = "ASSETS"
 # D1 Database (shared with billclaw-worker)
 [[d1_databases]]
 binding = "DB"
-database_name = "billclaw-data"
+database_name = "firela-connect-data"
 database_id = "ae67cab3-392b-4f46-b783-9a8e32b6250f"
 
 # KV Namespace (shared with billclaw-worker)

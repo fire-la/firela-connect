@@ -67,7 +67,7 @@ app.use(
 app.get("/health", (c) => {
   return c.json({
     status: "ok",
-    service: "billclaw-ui",
+    service: "firela-connect",
     version: "0.0.1",
   })
 })
