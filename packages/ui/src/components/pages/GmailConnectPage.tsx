@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from "react"
 import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { apiFetch } from "@/lib/auth"
 
 type PageStatus = "ready" | "loading" | "authorizing" | "success" | "error"
 
@@ -94,7 +95,7 @@ export function GmailConnectPage() {
 
   async function getRelayUrl(): Promise<string | null> {
     try {
-      const res = await fetch("/api/relay/health")
+      const res = await apiFetch("/api/relay/health")
       const data = (await res.json()) as { success: boolean; data?: { relayUrl?: string; available?: boolean } }
       if (data.success && data.data?.relayUrl) {
         return data.data.relayUrl
@@ -124,7 +125,7 @@ export function GmailConnectPage() {
 
       // Create connect session via UI backend proxy (avoids CORS)
       const returnUrl = `${window.location.origin}/connect/gmail`
-      const sessionRes = await fetch("/api/relay/connect/session", {
+      const sessionRes = await apiFetch("/api/relay/connect/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

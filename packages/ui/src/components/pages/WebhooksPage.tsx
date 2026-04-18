@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { WebhookResultResponse } from "@/types/api"
+import { apiFetch } from "@/lib/auth"
 
 type ConnectionMode = "auto" | "direct" | "polling"
 
@@ -104,7 +105,7 @@ export function WebhooksPage() {
       setTesting(true)
       setTestResult(null)
 
-      const response = await fetch("/api/webhooks/test", {
+      const response = await apiFetch("/api/webhooks/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

@@ -8,6 +8,7 @@
  */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { type ServiceState, type ServicesApiResponse } from "@/types/services"
+import { apiFetch } from "@/lib/auth"
 
 /**
  * Context value type
@@ -37,7 +38,7 @@ export function ServiceStateProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/services")
+      const res = await apiFetch("/api/services")
       const json: ServicesApiResponse = await res.json()
       if (json.success && json.data) {
         setState(json.data)

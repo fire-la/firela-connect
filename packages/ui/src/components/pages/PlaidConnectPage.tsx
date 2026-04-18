@@ -9,6 +9,7 @@ import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react"
 import type { LinkTokenResponse, OAuthExchangeResponse } from "@/types/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { apiFetch } from "@/lib/auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Type for Plaid Link handler
@@ -104,7 +105,7 @@ export function PlaidConnectPage() {
             requestBody.sessionId = sessionId
           }
 
-          const res = await fetch("/api/oauth/plaid/exchange", {
+          const res = await apiFetch("/api/oauth/plaid/exchange", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody),

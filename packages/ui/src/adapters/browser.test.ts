@@ -5,6 +5,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { BrowserAdapter } from "./browser"
 import type { BillclawConfig, Account } from "./types"
 
+// Mock auth module so apiFetch passes through to global fetch
+vi.mock("../lib/auth", () => ({
+  apiFetch: (...args: Parameters<typeof fetch>) => fetch(...args),
+  getToken: () => null,
+  setToken: () => {},
+  clearToken: () => {},
+}))
+
 describe("BrowserAdapter", () => {
   let adapter: BrowserAdapter
   let fetchMock: ReturnType<typeof vi.fn>

@@ -17,6 +17,7 @@ import { ExportPage } from "@/components/pages/ExportPage"
 import { VltPage } from "@/components/pages/VltPage"
 import { WebhooksPage } from "@/components/pages/WebhooksPage"
 import { SettingsPage } from "@/components/pages/SettingsPage"
+import { AuthSetupPage } from "@/components/pages/AuthSetupPage"
 import { PlaidConnectPage } from "@/components/pages/PlaidConnectPage"
 import { GmailConnectPage } from "@/components/pages/GmailConnectPage"
 import { GoCardlessConnectPage } from "@/components/pages/GoCardlessConnectPage"
@@ -121,6 +122,9 @@ export function App() {
               </PageLayout>
             }
           />
+
+          {/* Auth routes - full page, no layout */}
+          <Route path="/auth/setup" element={<AuthSetupPage />} />
 
           {/* OAuth routes without layout (full-page OAuth flows) - UNPROTECTED */}
           <Route path="/connect/plaid" element={<PlaidConnectPage />} />

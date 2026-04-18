@@ -13,6 +13,7 @@ import type {
   SystemStatus,
 } from "./types"
 import type { RelayHealthInfo, GoCardlessInstitution, GoCardlessRequisition } from "../types/relay"
+import { apiFetch } from "../lib/auth"
 
 // API response wrapper types
 interface ApiResponse<T> {
@@ -28,14 +29,14 @@ export class BrowserAdapter implements UIAdapter {
   private baseUrl = "/api"
 
   async getConfig(): Promise<BillclawConfig> {
-    const res = await fetch(`${this.baseUrl}/config`)
+    const res = await apiFetch(`${this.baseUrl}/config`)
     const json: ApiResponse<BillclawConfig> = await res.json()
     if (!json.data) throw new Error("No config data returned")
     return json.data
   }
 
   async updateConfig(config: Partial<BillclawConfig>): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/config`, {
+    const res = await apiFetch(`${this.baseUrl}/config`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
@@ -47,13 +48,13 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async listAccounts(): Promise<Account[]> {
-    const res = await fetch(`${this.baseUrl}/accounts`)
+    const res = await apiFetch(`${this.baseUrl}/accounts`)
     const json: ApiResponse<Account[]> = await res.json()
     return Array.isArray(json.data) ? json.data : []
   }
 
   async connectAccount(provider: "plaid" | "gmail"): Promise<{ url: string }> {
-    const res = await fetch(`${this.baseUrl}/connect/${provider}`, {
+    const res = await apiFetch(`${this.baseUrl}/connect/${provider}`, {
       method: "POST",
     })
     const json: ApiResponse<{ url: string }> = await res.json()
@@ -62,7 +63,7 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async disconnectAccount(accountId: string): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/accounts/${accountId}`, {
+    const res = await apiFetch(`${this.baseUrl}/accounts/${accountId}`, {
       method: "DELETE",
     })
     if (!res.ok) {
@@ -72,7 +73,7 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async syncAccount(accountId: string): Promise<SyncResult> {
-    const res = await fetch(`${this.baseUrl}/sync/${accountId}`, {
+    const res = await apiFetch(`${this.baseUrl}/sync/${accountId}`, {
       method: "POST",
     })
     const json: ApiResponse<SyncResult> = await res.json()
@@ -81,14 +82,14 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async getSyncStatus(): Promise<SyncStatus> {
-    const res = await fetch(`${this.baseUrl}/sync/status`)
+    const res = await apiFetch(`${this.baseUrl}/sync/status`)
     const json: ApiResponse<SyncStatus> = await res.json()
     if (!json.data) throw new Error("No sync status returned")
     return json.data
   }
 
   async getSystemStatus(): Promise<SystemStatus> {
-    const res = await fetch(`${this.baseUrl}/system/status`)
+    const res = await apiFetch(`${this.baseUrl}/system/status`)
     const json: ApiResponse<SystemStatus> = await res.json()
     if (!json.data) throw new Error("No system status returned")
     return json.data
@@ -99,7 +100,7 @@ export class BrowserAdapter implements UIAdapter {
     data?: Account
     error?: string
   }> {
-    const res = await fetch(`${this.baseUrl}/accounts/${accountId}`, {
+    const res = await apiFetch(`${this.baseUrl}/accounts/${accountId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -110,7 +111,7 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async searchInstitutions(country: string): Promise<GoCardlessInstitution[]> {
-    const res = await fetch(`${this.baseUrl}/oauth/gocardless/institutions`, {
+    const res = await apiFetch(`${this.baseUrl}/oauth/gocardless/institutions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ country }),
@@ -120,7 +121,7 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async createRequisition(institutionId: string, redirectUrl: string): Promise<GoCardlessRequisition> {
-    const res = await fetch(`${this.baseUrl}/oauth/gocardless/requisitions`, {
+    const res = await apiFetch(`${this.baseUrl}/oauth/gocardless/requisitions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ institution_id: institutionId, redirect_url: redirectUrl }),
@@ -131,7 +132,7 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async pollRequisitionStatus(requisitionId: string, accessToken: string): Promise<GoCardlessRequisition> {
-    const res = await fetch(`${this.baseUrl}/oauth/gocardless/requisitions/${requisitionId}/status`, {
+    const res = await apiFetch(`${this.baseUrl}/oauth/gocardless/requisitions/${requisitionId}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ access_token: accessToken }),
@@ -142,14 +143,14 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async getRelayHealth(): Promise<RelayHealthInfo> {
-    const res = await fetch(`${this.baseUrl}/relay/health`)
+    const res = await apiFetch(`${this.baseUrl}/relay/health`)
     const json: ApiResponse<RelayHealthInfo> = await res.json()
     // Health endpoint always returns data even when not configured
     return json.data || { available: false, configured: false }
   }
 
   async getCacheStats(): Promise<{ entries: number; keys: string[]; estimatedSize: string }> {
-    const res = await fetch(`${this.baseUrl}/cache/stats`)
+    const res = await apiFetch(`${this.baseUrl}/cache/stats`)
     const json: ApiResponse<{ entries: number; keys: string[]; estimatedSize: string }> =
       await res.json()
     if (!json.data) throw new Error("No cache stats returned")
@@ -157,7 +158,7 @@ export class BrowserAdapter implements UIAdapter {
   }
 
   async clearCache(): Promise<{ success: boolean; message?: string; error?: string }> {
-    const res = await fetch(`${this.baseUrl}/cache/clear`, { method: "POST" })
+    const res = await apiFetch(`${this.baseUrl}/cache/clear`, { method: "POST" })
     return res.json()
   }
 }

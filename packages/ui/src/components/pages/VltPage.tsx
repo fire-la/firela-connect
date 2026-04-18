@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { ApiResultResponse } from "@/types/api"
+import { apiFetch } from "@/lib/auth"
 
 // Form schema for VLT settings
 const VltSettingsSchema = z.object({
@@ -101,7 +102,7 @@ export function VltPage() {
       setTesting(true)
       setTestResult(null)
 
-      const response = await fetch("/api/vlt/test", {
+      const response = await apiFetch("/api/vlt/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

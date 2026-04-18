@@ -8,11 +8,12 @@
  * @packageDocumentation
  */
 import { type ReactNode, useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate, useLocation } from "react-router-dom"
 import { AlertCircle, AlertTriangle, Loader2, Settings } from "lucide-react"
 import { useServiceState } from "@/contexts/ServiceStateContext"
 import { type ServiceId } from "@/types/services"
 import { Button } from "@/components/ui/button"
+import { getToken, apiFetch } from "@/lib/auth"
 
 interface ProtectedRouteProps {
   /** Service ID to check for enabled state */
@@ -27,6 +28,8 @@ interface ProtectedRouteProps {
  */
 export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
   const { state, loading, error } = useServiceState()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   // Auth expiry detection
   const [authExpired, setAuthExpired] = useState(false)
@@ -36,6 +39,13 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
     let cancelled = false
 
     async function checkAuth() {
+      // No token stored — redirect to setup immediately
+      if (!getToken()) {
+        const redirect = encodeURIComponent(location.pathname + location.search)
+        navigate(`/auth/setup?redirect=${redirect}`, { replace: true })
+        return
+      }
+
       try {
         // Step 1: Check if auth is configured at all
         const statusRes = await fetch("/auth/status")
@@ -50,11 +60,14 @@ export function ProtectedRoute({ serviceId, children }: ProtectedRouteProps) {
         }
 
         // Step 2: Probe an API endpoint to detect 401
-        const probeRes = await fetch("/api/services", { method: "GET" })
+        const probeRes = await apiFetch("/api/services", { method: "GET" })
 
         if (!cancelled) {
           if (probeRes.status === 401) {
-            setAuthExpired(true)
+            // Token expired or invalid — redirect to setup
+            const redirect = encodeURIComponent(location.pathname + location.search)
+            navigate(`/auth/setup?redirect=${redirect}`, { replace: true })
+            return
           }
           setAuthChecked(true)
         }

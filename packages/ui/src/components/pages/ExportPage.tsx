@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import type { ApiResultResponse } from "@/types/api"
+import { apiFetch } from "@/lib/auth"
 
 // Export config type
 interface ExportConfig {
@@ -138,7 +139,7 @@ export function ExportPage() {
       setTesting(true)
       setTestResult(null)
 
-      const response = await fetch("/api/export/test", {
+      const response = await apiFetch("/api/export/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
 import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database, Save, Eye, EyeOff } from "lucide-react"
 import { SERVICE_CONFIGS, type ServiceState, type ServiceId, type ServicesApiResponse } from "@/types/services"
+import { apiFetch } from "@/lib/auth"
 import { useRelayStore } from "@/stores/relayStore"
 import { createAdapter } from "@/adapters"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -79,7 +80,7 @@ export function SettingsPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/services")
+      const res = await apiFetch("/api/services")
       const json: ServicesApiResponse = await res.json()
       if (json.success && json.data) {
         setServiceState(json.data)
@@ -97,7 +98,7 @@ export function SettingsPage() {
   const handleToggle = async (serviceId: ServiceId, currentValue: boolean) => {
     setToggling(serviceId)
     try {
-      const res = await fetch(`/api/services/${serviceId}`, {
+      const res = await apiFetch(`/api/services/${serviceId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !currentValue }),
@@ -125,7 +126,7 @@ export function SettingsPage() {
     if (!relayApiKeyInput.trim()) return
     setRelaySaving(true)
     try {
-      const res = await fetch("/api/settings/relay", {
+      const res = await apiFetch("/api/settings/relay", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: relayApiKeyInput.trim() }),
