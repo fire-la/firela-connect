@@ -19,6 +19,7 @@ import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import { GoCardlessRelayClient } from "@firela/billclaw-core/relay"
 
+import { DEFAULT_RELAY_URL } from "../../constants.js"
 import type { OAuthEnv as Env } from "./env.js"
 
 export const gocardlessRoutes = new Hono<{ Bindings: Env }>()
@@ -32,14 +33,14 @@ export const gocardlessRoutes = new Hono<{ Bindings: Env }>()
  * @throws Error if FIRELA_RELAY_URL or FIRELA_RELAY_API_KEY is missing
  */
 function getGoCardlessClient(env: Env): GoCardlessRelayClient {
-  if (!env.FIRELA_RELAY_URL || !env.FIRELA_RELAY_API_KEY) {
+  if (!env.FIRELA_RELAY_API_KEY) {
     throw new Error(
-      "GoCardless relay is not configured. Set FIRELA_RELAY_URL and FIRELA_RELAY_API_KEY environment variables.",
+      "GoCardless relay is not configured. Set FIRELA_RELAY_API_KEY environment variable.",
     )
   }
 
   return new GoCardlessRelayClient(
-    { relayUrl: env.FIRELA_RELAY_URL, relayApiKey: env.FIRELA_RELAY_API_KEY },
+    { relayUrl: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL, relayApiKey: env.FIRELA_RELAY_API_KEY },
     console,
   )
 }

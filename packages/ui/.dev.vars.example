@@ -1,7 +1,0 @@
-# Local development secrets for
-# These variables are loaded by wrangler dev for local testing
-# DO NOT commit this file to git
-
-PLAID_CLIENT_ID="your-plaid-client-id"
-PLAID_SECRET="your-plaid-secret"
-JWT_SECRET="local-dev-jwt-secret-for-testing-only"

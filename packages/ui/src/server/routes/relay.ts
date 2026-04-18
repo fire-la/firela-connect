@@ -10,6 +10,7 @@
 import { Hono } from "hono"
 import { RelayClient, maskApiKey } from "@firela/billclaw-core/relay"
 
+import { DEFAULT_RELAY_URL } from "../constants.js"
 import type { Env } from "../index.js"
 
 export const relayRoutes = new Hono<{ Bindings: Env }>()
@@ -32,7 +33,7 @@ export const relayRoutes = new Hono<{ Bindings: Env }>()
  */
 relayRoutes.post("/connect/session", async (c) => {
   try {
-    if (!c.env.FIRELA_RELAY_URL || !c.env.FIRELA_RELAY_API_KEY) {
+    if (!c.env.FIRELA_RELAY_API_KEY) {
       return c.json(
         { success: false, error: "Relay not configured" },
         503,
@@ -53,7 +54,7 @@ relayRoutes.post("/connect/session", async (c) => {
       )
     }
 
-    const relayUrl = c.env.FIRELA_RELAY_URL
+    const relayUrl = c.env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL
     const relayRes = await fetch(`${relayUrl}/api/connect/session`, {
       method: "POST",
       headers: {
@@ -93,7 +94,7 @@ relayRoutes.post("/connect/session", async (c) => {
  */
 function getRelayClient(env: Env): RelayClient {
   return new RelayClient({
-    url: env.FIRELA_RELAY_URL!,
+    url: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL,
     apiKey: env.FIRELA_RELAY_API_KEY!,
   })
 }
@@ -114,7 +115,7 @@ function getRelayClient(env: Env): RelayClient {
 relayRoutes.get("/health", async (c) => {
   try {
     // Check if relay is configured
-    if (!c.env.FIRELA_RELAY_URL || !c.env.FIRELA_RELAY_API_KEY) {
+    if (!c.env.FIRELA_RELAY_API_KEY) {
       return c.json({
         success: true,
         data: {
@@ -135,7 +136,7 @@ relayRoutes.get("/health", async (c) => {
         configured: true,
         latency: health.latency,
         error: health.error,
-        relayUrl: c.env.FIRELA_RELAY_URL,
+        relayUrl: c.env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL,
         apiKeyMasked: maskApiKey(c.env.FIRELA_RELAY_API_KEY),
         lastChecked: new Date().toISOString(),
       },
@@ -167,7 +168,7 @@ relayRoutes.get("/health", async (c) => {
  */
 relayRoutes.get("/connect/credentials/:sessionId", async (c) => {
   try {
-    if (!c.env.FIRELA_RELAY_URL || !c.env.FIRELA_RELAY_API_KEY) {
+    if (!c.env.FIRELA_RELAY_API_KEY) {
       return c.json({ success: false, error: "Relay not configured" }, 503)
     }
 
@@ -178,7 +179,7 @@ relayRoutes.get("/connect/credentials/:sessionId", async (c) => {
       return c.json({ success: false, error: "Missing code_verifier" }, 400)
     }
 
-    const relayUrl = c.env.FIRELA_RELAY_URL
+    const relayUrl = c.env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL
     const relayRes = await fetch(
       `${relayUrl}/api/connect/credentials/${sessionId}?code_verifier=${encodeURIComponent(codeVerifier)}`,
       {

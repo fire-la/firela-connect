@@ -11,6 +11,7 @@ import { Hono } from "hono"
 import { PlaidWebhookVerifier } from "@firela/billclaw-core"
 import { RelayClient } from "@firela/billclaw-core/relay"
 import type { RelayJwkProxyResponse } from "@firela/billclaw-core/relay"
+import { DEFAULT_RELAY_URL, DEFAULT_PLAID_ENV } from "../constants.js"
 import type { Env } from "../index.js"
 
 export const webhookRoutes = new Hono<{ Bindings: Env }>()
@@ -27,7 +28,7 @@ export const webhookRoutes = new Hono<{ Bindings: Env }>()
  */
 export function createPlaidVerifier(env: Env): PlaidWebhookVerifier {
   const client = new RelayClient({
-    url: env.FIRELA_RELAY_URL!,
+    url: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL,
     apiKey: env.FIRELA_RELAY_API_KEY!,
   })
 
@@ -111,7 +112,7 @@ webhookRoutes.post("/plaid", async (c) => {
         "[webhook] Plaid webhook received without verification header",
       )
 
-      if (c.env.PLAID_ENV !== "sandbox") {
+      if ((c.env.PLAID_ENV || DEFAULT_PLAID_ENV) !== "sandbox") {
         return c.json(
           { received: false, error: "Missing verification header" },
           401,

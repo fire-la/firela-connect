@@ -16,6 +16,7 @@ import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import { RelayPlaidClient } from "@firela/billclaw-core"
 
+import { DEFAULT_RELAY_URL } from "../../constants.js"
 import type { OAuthEnv as Env } from "./env.js"
 
 // KV key for accounts storage (same as accounts.ts)
@@ -32,14 +33,14 @@ export const plaidRoutes = new Hono<{ Bindings: Env }>()
  * @throws Error if FIRELA_RELAY_URL or FIRELA_RELAY_API_KEY is missing
  */
 function getPlaidRelayClient(env: Env): RelayPlaidClient {
-  if (!env.FIRELA_RELAY_URL || !env.FIRELA_RELAY_API_KEY) {
+  if (!env.FIRELA_RELAY_API_KEY) {
     throw new Error(
-      "Plaid relay is not configured. Set FIRELA_RELAY_URL and FIRELA_RELAY_API_KEY environment variables.",
+      "Plaid relay is not configured. Set FIRELA_RELAY_API_KEY environment variable.",
     )
   }
 
   return new RelayPlaidClient(
-    { relayUrl: env.FIRELA_RELAY_URL, relayApiKey: env.FIRELA_RELAY_API_KEY },
+    { relayUrl: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL, relayApiKey: env.FIRELA_RELAY_API_KEY },
     console,
   )
 }

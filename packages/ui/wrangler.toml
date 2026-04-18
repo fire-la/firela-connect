@@ -31,20 +31,13 @@ database_id = "ae67cab3-392b-4f46-b783-9a8e32b6250f"
 binding = "CONFIG"
 id = "59865e1e3cb34909ade239a6423f7fec"
 
-# Environment variables (non-sensitive defaults)
-[vars]
-PLAID_ENV = "sandbox"
-# Service toggles (default enabled)
-BILLCLAW_ENABLED = "true"
-FIRELA_BOT_ENABLED = "true"
-FIRELA_RELAY_URL = "https://napi-dev.firela.io"
-
-# Secrets (set in Cloudflare dashboard after deploy)
-# Required secrets:
-# - PLAID_CLIENT_ID: Your Plaid client ID from dashboard.plaid.com
-# - PLAID_SECRET: Your Plaid secret key (sandbox/development/production)
-# - PLAID_WEBHOOK_SECRET: Secret for verifying Plaid webhooks
-# - JWT_SECRET: Secret key for JWT tokens (any random 32+ char string)
+# Environment variables: none required (zero-config deploy)
+# All defaults are handled in code via constants.ts
+# Secrets are configured post-deploy via Cloudflare Dashboard:
+# - FIRELA_RELAY_API_KEY: Required for Relay mode (default)
+# - JWT_SECRET: Required for API authentication
+# - PLAID_CLIENT_ID / PLAID_SECRET: Optional, for self-hosted Plaid mode
+# - SETUP_PASSWORD: Optional, for initial JWT token setup
 
 # Development settings
 [dev]

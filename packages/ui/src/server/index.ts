@@ -15,24 +15,28 @@ import { serviceToggleMiddleware } from "./middleware/service-toggle.js"
 
 /**
  * Environment bindings for Cloudflare Workers
+ *
+ * All bindings are optional to support zero-config deploy (Relay mode).
+ * Fallback defaults are provided via constants.ts.
  */
 export type Env = {
   DB: D1Database
   CONFIG: KVNamespace
-  PLAID_CLIENT_ID: string
-  PLAID_SECRET: string
-  PLAID_ENV: string
-  PLAID_WEBHOOK_SECRET: string
-  JWT_SECRET: string
-  SETUP_PASSWORD?: string // Required for initial JWT setup (Phase 13.2-05)
-  // Service toggles (from wrangler.toml vars)
+  ASSETS?: Fetcher
+  // Plaid (optional: self-hosted users set via Dashboard or UI)
+  PLAID_CLIENT_ID?: string
+  PLAID_SECRET?: string
+  PLAID_ENV?: string
+  PLAID_WEBHOOK_SECRET?: string
+  // JWT auth (optional: skips auth when not set)
+  JWT_SECRET?: string
+  SETUP_PASSWORD?: string
+  // Service toggles (optional: default true)
   BILLCLAW_ENABLED?: string
   FIRELA_BOT_ENABLED?: string
-  // Relay environment bindings for GoCardless OAuth flow via firela-relay
+  // Relay (optional: defaults to production relay)
   FIRELA_RELAY_URL?: string
   FIRELA_RELAY_API_KEY?: string
-  // ASSETS binding for static files (provided by wrangler when [assets] is configured)
-  ASSETS?: Fetcher
 }
 
 /**
