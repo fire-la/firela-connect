@@ -11,6 +11,7 @@ import { Hono } from "hono"
 import { RelayClient, maskApiKey } from "@firela/billclaw-core/relay"
 
 import { DEFAULT_RELAY_URL } from "../constants.js"
+import { getRelayApiKey } from "../lib/relay-helpers.js"
 import type { Env } from "../index.js"
 
 export const relayRoutes = new Hono<{ Bindings: Env }>()
@@ -33,7 +34,8 @@ export const relayRoutes = new Hono<{ Bindings: Env }>()
  */
 relayRoutes.post("/connect/session", async (c) => {
   try {
-    if (!c.env.FIRELA_RELAY_API_KEY) {
+    const apiKey = await getRelayApiKey(c.env)
+    if (!apiKey) {
       return c.json(
         { success: false, error: "Relay not configured" },
         503,
@@ -59,7 +61,7 @@ relayRoutes.post("/connect/session", async (c) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${c.env.FIRELA_RELAY_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         provider: body.provider,
@@ -87,15 +89,16 @@ relayRoutes.post("/connect/session", async (c) => {
 })
 
 /**
- * Create a RelayClient from environment bindings
+ * Create a RelayClient from environment bindings or KV-stored key.
  *
  * @param env - Server environment bindings
  * @returns Configured RelayClient instance
  */
-function getRelayClient(env: Env): RelayClient {
+async function getRelayClient(env: Env): Promise<RelayClient> {
+  const apiKey = await getRelayApiKey(env)
   return new RelayClient({
     url: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL,
-    apiKey: env.FIRELA_RELAY_API_KEY!,
+    apiKey: apiKey!,
   })
 }
 
@@ -104,18 +107,16 @@ function getRelayClient(env: Env): RelayClient {
  *
  * Check relay service health and configuration status.
  *
- * If relay is not configured (missing env vars), returns configured: false.
+ * If relay is not configured (no API key), returns configured: false.
  * Otherwise, performs a health check against the relay service and returns
  * availability, latency, and masked API key.
- *
- * Response:
- * - success: boolean
- * - data: { available, configured, latency?, error?, relayUrl?, apiKeyMasked?, lastChecked? }
  */
 relayRoutes.get("/health", async (c) => {
   try {
+    const apiKey = await getRelayApiKey(c.env)
+
     // Check if relay is configured
-    if (!c.env.FIRELA_RELAY_API_KEY) {
+    if (!apiKey) {
       return c.json({
         success: true,
         data: {
@@ -126,7 +127,7 @@ relayRoutes.get("/health", async (c) => {
       })
     }
 
-    const client = getRelayClient(c.env)
+    const client = await getRelayClient(c.env)
     const health = await client.healthCheck()
 
     return c.json({
@@ -137,7 +138,7 @@ relayRoutes.get("/health", async (c) => {
         latency: health.latency,
         error: health.error,
         relayUrl: c.env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL,
-        apiKeyMasked: maskApiKey(c.env.FIRELA_RELAY_API_KEY),
+        apiKeyMasked: maskApiKey(apiKey),
         lastChecked: new Date().toISOString(),
       },
     })
@@ -168,7 +169,8 @@ relayRoutes.get("/health", async (c) => {
  */
 relayRoutes.get("/connect/credentials/:sessionId", async (c) => {
   try {
-    if (!c.env.FIRELA_RELAY_API_KEY) {
+    const apiKey = await getRelayApiKey(c.env)
+    if (!apiKey) {
       return c.json({ success: false, error: "Relay not configured" }, 503)
     }
 
@@ -185,7 +187,7 @@ relayRoutes.get("/connect/credentials/:sessionId", async (c) => {
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${c.env.FIRELA_RELAY_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
         },
       },
     )

@@ -18,3 +18,6 @@ export const AUTH_SECRET_KEY = "firela:auth:jwt_secret"
 
 /** KV key for setup password (set on first /auth/setup call) */
 export const SETUP_PASSWORD_KEY = "firela:auth:setup_password"
+
+/** KV key for relay API key (configured via UI settings) */
+export const RELAY_API_KEY_KEY = "firela:relay:api_key"

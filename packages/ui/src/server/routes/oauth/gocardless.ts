@@ -20,27 +20,26 @@ import { zValidator } from "@hono/zod-validator"
 import { GoCardlessRelayClient } from "@firela/billclaw-core/relay"
 
 import { DEFAULT_RELAY_URL } from "../../constants.js"
+import { getRelayApiKey } from "../../lib/relay-helpers.js"
 import type { OAuthEnv as Env } from "./env.js"
 
 export const gocardlessRoutes = new Hono<{ Bindings: Env }>()
 
 /**
- * Create a GoCardlessRelayClient from environment bindings
+ * Create a GoCardlessRelayClient from environment bindings or KV-stored key.
  *
- * Validates that relay environment variables are configured before
- * creating the client instance.
- *
- * @throws Error if FIRELA_RELAY_URL or FIRELA_RELAY_API_KEY is missing
+ * @throws Error if relay API key is not configured
  */
-function getGoCardlessClient(env: Env): GoCardlessRelayClient {
-  if (!env.FIRELA_RELAY_API_KEY) {
+async function getGoCardlessClient(env: Env): Promise<GoCardlessRelayClient> {
+  const apiKey = await getRelayApiKey(env)
+  if (!apiKey) {
     throw new Error(
-      "GoCardless relay is not configured. Set FIRELA_RELAY_API_KEY environment variable.",
+      "Relay API key not configured. Set it in Settings or via FIRELA_RELAY_API_KEY environment variable.",
     )
   }
 
   return new GoCardlessRelayClient(
-    { relayUrl: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL, relayApiKey: env.FIRELA_RELAY_API_KEY },
+    { relayUrl: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL, relayApiKey: apiKey },
     console,
   )
 }
@@ -79,7 +78,7 @@ gocardlessRoutes.post(
   async (c) => {
     try {
       const { country } = c.req.valid("json")
-      const client = getGoCardlessClient(c.env)
+      const client = await getGoCardlessClient(c.env)
       const institutions = await client.getInstitutions(country)
 
       return c.json({
@@ -122,7 +121,7 @@ gocardlessRoutes.post(
   async (c) => {
     try {
       const { institution_id, redirect_url } = c.req.valid("json")
-      const client = getGoCardlessClient(c.env)
+      const client = await getGoCardlessClient(c.env)
 
       const requisition = await client.createRequisition({
         institution_id,
@@ -171,7 +170,7 @@ gocardlessRoutes.post(
     try {
       const { id } = c.req.param()
       const { access_token } = c.req.valid("json")
-      const client = getGoCardlessClient(c.env)
+      const client = await getGoCardlessClient(c.env)
 
       // Pass access_token if provided, empty string triggers auto-creation in relay
       const requisition = await client.getRequisition(id, access_token ?? "")

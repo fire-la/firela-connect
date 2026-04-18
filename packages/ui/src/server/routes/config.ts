@@ -14,6 +14,9 @@ import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import type { Env } from "../index.js"
 import { serverCache, CacheKeys } from "../lib/server-cache.js"
+import { RELAY_API_KEY_KEY } from "../constants.js"
+import { getRelayApiKey } from "../lib/relay-helpers.js"
+import { maskApiKey } from "@firela/billclaw-core/relay"
 
 export const configRoutes = new Hono<{ Bindings: Env }>()
 
@@ -402,3 +405,65 @@ configRoutes.post("/webhooks/test", async (c) => {
     )
   }
 })
+
+// ============================================================================
+// Relay API Key Settings
+// ============================================================================
+
+const relayApiKeySchema = z.object({
+  apiKey: z.string().min(1, "API key is required"),
+})
+
+/**
+ * GET /api/settings/relay
+ *
+ * Get current relay configuration (masked API key).
+ */
+configRoutes.get("/settings/relay", async (c) => {
+  try {
+    const apiKey = await getRelayApiKey(c.env)
+    return c.json({
+      success: true,
+      data: {
+        configured: !!apiKey,
+        apiKeyMasked: apiKey ? maskApiKey(apiKey) : null,
+        source: c.env.FIRELA_RELAY_API_KEY ? "env" : (apiKey ? "kv" : null),
+      },
+    })
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get relay settings",
+      },
+      500,
+    )
+  }
+})
+
+/**
+ * PUT /api/settings/relay
+ *
+ * Save relay API key to KV storage.
+ * This allows users to configure the relay API key via the UI
+ * without needing Cloudflare Dashboard access.
+ */
+configRoutes.put(
+  "/settings/relay",
+  zValidator("json", relayApiKeySchema),
+  async (c) => {
+    try {
+      const { apiKey } = c.req.valid("json")
+      await c.env.CONFIG.put(RELAY_API_KEY_KEY, apiKey)
+      return c.json({ success: true })
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to save relay settings",
+        },
+        500,
+      )
+    }
+  },
+)

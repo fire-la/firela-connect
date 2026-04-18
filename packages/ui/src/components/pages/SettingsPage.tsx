@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
-import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database } from "lucide-react"
+import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database, Save, Eye, EyeOff } from "lucide-react"
 import { SERVICE_CONFIGS, type ServiceState, type ServiceId, type ServicesApiResponse } from "@/types/services"
 import { useRelayStore } from "@/stores/relayStore"
 import { createAdapter } from "@/adapters"
@@ -28,6 +28,9 @@ export function SettingsPage() {
     estimatedSize: string
   } | null>(null)
   const [clearing, setClearing] = useState(false)
+  const [relayApiKeyInput, setRelayApiKeyInput] = useState("")
+  const [relaySaving, setRelaySaving] = useState(false)
+  const [showRelayKey, setShowRelayKey] = useState(false)
 
   // Load service state on mount
   useEffect(() => {
@@ -116,6 +119,30 @@ export function SettingsPage() {
 
   const getServiceConfig = (serviceId: ServiceId) => {
     return SERVICE_CONFIGS.find((c) => c.id === serviceId)
+  }
+
+  const handleSaveRelayKey = async () => {
+    if (!relayApiKeyInput.trim()) return
+    setRelaySaving(true)
+    try {
+      const res = await fetch("/api/settings/relay", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: relayApiKeyInput.trim() }),
+      })
+      const json = await res.json() as { success?: boolean; error?: string }
+      if (json.success) {
+        toast.success("Relay API key saved")
+        setRelayApiKeyInput("")
+        loadRelayHealth()
+      } else {
+        toast.error(json.error || "Failed to save relay API key")
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save relay API key")
+    } finally {
+      setRelaySaving(false)
+    }
   }
 
   return (
@@ -288,6 +315,40 @@ export function SettingsPage() {
               )}
             </>
           )}
+
+          {/* Relay API Key input */}
+          <div className="space-y-2 pt-2 border-t">
+            <label className="text-sm font-medium">
+              {relayHealth?.configured ? "Update Relay API Key" : "Set Relay API Key"}
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showRelayKey ? "text" : "password"}
+                  placeholder={relayHealth?.configured ? "Enter new key to update" : "Enter your relay API key"}
+                  value={relayApiKeyInput}
+                  onChange={(e) => setRelayApiKeyInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveRelayKey()}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRelayKey(!showRelayKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showRelayKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSaveRelayKey}
+                disabled={!relayApiKeyInput.trim() || relaySaving}
+              >
+                {relaySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                Save
+              </Button>
+            </div>
+          </div>
 
           <div className="flex justify-end">
             <Button variant="ghost" size="sm" onClick={loadRelayHealth}>

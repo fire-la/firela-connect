@@ -12,6 +12,7 @@ import { PlaidWebhookVerifier } from "@firela/billclaw-core"
 import { RelayClient } from "@firela/billclaw-core/relay"
 import type { RelayJwkProxyResponse } from "@firela/billclaw-core/relay"
 import { DEFAULT_RELAY_URL, DEFAULT_PLAID_ENV } from "../constants.js"
+import { getRelayApiKey } from "../lib/relay-helpers.js"
 import type { Env } from "../index.js"
 
 export const webhookRoutes = new Hono<{ Bindings: Env }>()
@@ -26,10 +27,11 @@ export const webhookRoutes = new Hono<{ Bindings: Env }>()
  * @param env - Server environment bindings with FIRELA_RELAY_URL and FIRELA_RELAY_API_KEY
  * @returns PlaidWebhookVerifier instance with real JWK fetch
  */
-export function createPlaidVerifier(env: Env): PlaidWebhookVerifier {
+export async function createPlaidVerifier(env: Env): Promise<PlaidWebhookVerifier> {
+  const apiKey = await getRelayApiKey(env)
   const client = new RelayClient({
     url: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL,
-    apiKey: env.FIRELA_RELAY_API_KEY!,
+    apiKey: apiKey!,
   })
 
   return new PlaidWebhookVerifier(
@@ -96,7 +98,7 @@ webhookRoutes.post("/plaid", async (c) => {
 
     // Plaid JWT verification
     if (verificationHeader) {
-      const verifier = createPlaidVerifier(c.env)
+      const verifier = await createPlaidVerifier(c.env)
       const isValid = await verifier.verify(rawBody, verificationHeader)
 
       if (!isValid) {

@@ -17,6 +17,7 @@ import { zValidator } from "@hono/zod-validator"
 import { RelayPlaidClient } from "@firela/billclaw-core"
 
 import { DEFAULT_RELAY_URL } from "../../constants.js"
+import { getRelayApiKey } from "../../lib/relay-helpers.js"
 import type { OAuthEnv as Env } from "./env.js"
 
 // KV key for accounts storage (same as accounts.ts)
@@ -25,22 +26,23 @@ const ACCOUNTS_KEY = "billclaw:accounts"
 export const plaidRoutes = new Hono<{ Bindings: Env }>()
 
 /**
- * Create a RelayPlaidClient from environment bindings
+ * Create a RelayPlaidClient from environment bindings or KV-stored key.
  *
- * Validates that relay environment variables are configured before
+ * Validates that relay API key is available (env var or KV) before
  * creating the client instance.
  *
- * @throws Error if FIRELA_RELAY_URL or FIRELA_RELAY_API_KEY is missing
+ * @throws Error if relay API key is not configured
  */
-function getPlaidRelayClient(env: Env): RelayPlaidClient {
-  if (!env.FIRELA_RELAY_API_KEY) {
+async function getPlaidRelayClient(env: Env): Promise<RelayPlaidClient> {
+  const apiKey = await getRelayApiKey(env)
+  if (!apiKey) {
     throw new Error(
-      "Plaid relay is not configured. Set FIRELA_RELAY_API_KEY environment variable.",
+      "Relay API key not configured. Set it in Settings or via FIRELA_RELAY_API_KEY environment variable.",
     )
   }
 
   return new RelayPlaidClient(
-    { relayUrl: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL, relayApiKey: env.FIRELA_RELAY_API_KEY },
+    { relayUrl: env.FIRELA_RELAY_URL || DEFAULT_RELAY_URL, relayApiKey: apiKey },
     console,
   )
 }
@@ -66,7 +68,7 @@ const exchangeTokenSchema = z.object({
  */
 plaidRoutes.get("/link-token", async (c) => {
   try {
-    const client = getPlaidRelayClient(c.env)
+    const client = await getPlaidRelayClient(c.env)
     const result = await client.createLinkToken({
       client_name: "BillClaw",
       language: "en",
@@ -116,7 +118,7 @@ plaidRoutes.post(
     try {
       const { publicToken, sessionId } = c.req.valid("json")
 
-      const client = getPlaidRelayClient(c.env)
+      const client = await getPlaidRelayClient(c.env)
       const result = await client.exchangePublicToken(publicToken)
 
       // Store credential for Direct mode polling if sessionId is provided

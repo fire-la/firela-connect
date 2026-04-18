@@ -58,8 +58,8 @@ describe("createPlaidVerifier", () => {
     vi.clearAllMocks()
   })
 
-  it("creates RelayClient with env credentials", () => {
-    createPlaidVerifier(mockEnv)
+  it("creates RelayClient with env credentials", async () => {
+    await createPlaidVerifier(mockEnv)
 
     expect(RelayClient).toHaveBeenCalledWith({
       url: mockEnv.FIRELA_RELAY_URL,
@@ -83,7 +83,7 @@ describe("createPlaidVerifier", () => {
     }
     mockRequest.mockResolvedValue(mockKeyResponse)
 
-    createPlaidVerifier(mockEnv)
+    await createPlaidVerifier(mockEnv)
 
     // Call the captured fetchVerificationKey callback
     const fetchKey = mockVerify._fetchVerificationKey as (
@@ -113,7 +113,7 @@ describe("createPlaidVerifier", () => {
     }
     mockRequest.mockResolvedValue(mockKeyResponse)
 
-    createPlaidVerifier(mockEnv)
+    await createPlaidVerifier(mockEnv)
 
     const fetchKey = mockVerify._fetchVerificationKey as (
       kid: string,
@@ -127,7 +127,7 @@ describe("createPlaidVerifier", () => {
     const relayError = new Error("HTTP 404: key not found")
     mockRequest.mockRejectedValue(relayError)
 
-    createPlaidVerifier(mockEnv)
+    await createPlaidVerifier(mockEnv)
 
     const fetchKey = mockVerify._fetchVerificationKey as (
       kid: string,
@@ -142,7 +142,7 @@ describe("createPlaidVerifier", () => {
     const networkError = new Error("ECONNREFUSED")
     mockRequest.mockRejectedValue(networkError)
 
-    createPlaidVerifier(mockEnv)
+    await createPlaidVerifier(mockEnv)
 
     const fetchKey = mockVerify._fetchVerificationKey as (
       kid: string,
