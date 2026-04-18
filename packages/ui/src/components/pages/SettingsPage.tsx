@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
-import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database, Save, Eye, EyeOff } from "lucide-react"
+import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database, Save, Eye, EyeOff, KeyRound } from "lucide-react"
 import { SERVICE_CONFIGS, type ServiceState, type ServiceId, type ServicesApiResponse } from "@/types/services"
 import { apiFetch } from "@/lib/auth"
 import { useRelayStore } from "@/stores/relayStore"
@@ -32,6 +32,10 @@ export function SettingsPage() {
   const [relayApiKeyInput, setRelayApiKeyInput] = useState("")
   const [relaySaving, setRelaySaving] = useState(false)
   const [showRelayKey, setShowRelayKey] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [changingPassword, setChangingPassword] = useState(false)
 
   // Load service state on mount
   useEffect(() => {
@@ -143,6 +147,35 @@ export function SettingsPage() {
       toast.error(err instanceof Error ? err.message : "Failed to save relay API key")
     } finally {
       setRelaySaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) return
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match")
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const res = await apiFetch("/api/settings/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      const json = await res.json() as { success?: boolean; error?: string }
+      if (json.success) {
+        toast.success("Password changed successfully")
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+      } else {
+        toast.error(json.error || "Failed to change password")
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to change password")
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -357,6 +390,50 @@ export function SettingsPage() {
               Refresh
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Password Change */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="w-5 h-5" />
+            Change Password
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleChangePassword()}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={handleChangePassword}
+            disabled={!currentPassword || !newPassword || !confirmPassword || changingPassword}
+          >
+            {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+            Update Password
+          </Button>
         </CardContent>
       </Card>
 

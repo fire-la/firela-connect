@@ -14,7 +14,7 @@ import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import type { Env } from "../index.js"
 import { serverCache, CacheKeys } from "../lib/server-cache.js"
-import { RELAY_API_KEY_KEY } from "../constants.js"
+import { RELAY_API_KEY_KEY, SETUP_PASSWORD_KEY } from "../constants.js"
 import { getRelayApiKey } from "../lib/relay-helpers.js"
 import { maskApiKey } from "@firela/billclaw-core/relay"
 
@@ -461,6 +461,61 @@ configRoutes.put(
         {
           success: false,
           error: error instanceof Error ? error.message : "Failed to save relay settings",
+        },
+        500,
+      )
+    }
+  },
+)
+
+// ============================================================================
+// Password Settings
+// ============================================================================
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(1, "New password is required"),
+})
+
+/**
+ * PUT /api/settings/password
+ *
+ * Change the setup password. Requires JWT auth.
+ * Rejects if password is managed via SETUP_PASSWORD env var.
+ */
+configRoutes.put(
+  "/settings/password",
+  zValidator("json", changePasswordSchema),
+  async (c) => {
+    try {
+      const { currentPassword, newPassword } = c.req.valid("json")
+
+      // If password comes from env var, UI cannot change it
+      if (c.env.SETUP_PASSWORD) {
+        return c.json(
+          {
+            success: false,
+            error: "Password is managed via SETUP_PASSWORD environment variable",
+          },
+          403,
+        )
+      }
+
+      const storedPassword = await c.env.CONFIG.get(SETUP_PASSWORD_KEY) as string | null
+      if (!storedPassword || currentPassword !== storedPassword) {
+        return c.json(
+          { success: false, error: "Current password is incorrect" },
+          401,
+        )
+      }
+
+      await c.env.CONFIG.put(SETUP_PASSWORD_KEY, newPassword)
+      return c.json({ success: true })
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to change password",
         },
         500,
       )
