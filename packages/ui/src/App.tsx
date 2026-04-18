@@ -59,9 +59,11 @@ export function App() {
           <Route
             path="/"
             element={
-              <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
-                <HomePage />
-              </PageLayout>
+              <ProtectedRoute serviceId="billclaw">
+                <PageLayout menuItems={billclawMenuItems} systemName="connect" logo={getLogo()}>
+                  <HomePage />
+                </PageLayout>
+              </ProtectedRoute>
             }
           />
           <Route
