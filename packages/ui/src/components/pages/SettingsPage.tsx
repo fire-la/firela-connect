@@ -59,9 +59,8 @@ export function SettingsPage() {
     phase: "idle" | "enumerating" | "confirming" | "deleting" | "done"
     resources?: { workers: any[]; databases: any[]; kvNamespaces: any[] }
     accountId?: string
-    confirmText: string
     results?: Array<{ resource: string; type: string; success: boolean; error?: string }>
-  }>({ phase: "idle", confirmText: "" })
+  }>({ phase: "idle" })
 
   // Load service state on mount
   useEffect(() => {
@@ -286,11 +285,11 @@ export function SettingsPage() {
         }))
       } else {
         toast.error(json.error || "Failed to enumerate resources")
-        setUninstallState({ phase: "idle", confirmText: "" })
+        setUninstallState({ phase: "idle" })
       }
     } catch {
       toast.error("Failed to enumerate resources -- network error")
-      setUninstallState({ phase: "idle", confirmText: "" })
+      setUninstallState({ phase: "idle" })
     }
   }
 
@@ -314,11 +313,11 @@ export function SettingsPage() {
         toast.success(`Uninstalled: ${succeeded}/${total} resources deleted`)
       } else {
         toast.error(json.error || "Uninstall failed")
-        setUninstallState({ phase: "idle", confirmText: "" })
+        setUninstallState({ phase: "idle" })
       }
     } catch {
       toast.error("Uninstall failed -- network error (Worker may have been deleted)")
-      setUninstallState({ phase: "idle", confirmText: "" })
+      setUninstallState({ phase: "idle" })
     }
   }
 
@@ -726,7 +725,7 @@ export function SettingsPage() {
       <AlertDialog
         open={uninstallState.phase === "confirming" || uninstallState.phase === "deleting" || uninstallState.phase === "done"}
         onOpenChange={(open) => {
-          if (!open) setUninstallState({ phase: "idle", confirmText: "" })
+          if (!open) setUninstallState({ phase: "idle" })
         }}
       >
         <AlertDialogContent>
@@ -790,28 +789,17 @@ export function SettingsPage() {
                     This will permanently delete all listed Cloudflare resources. The running Worker will be deleted last.
                   </p>
                 )}
-
-                {/* Type-to-confirm input */}
-                {uninstallState.phase === "confirming" && (
-                  <input
-                    type="text"
-                    placeholder='Type "uninstall" to confirm'
-                    value={uninstallState.confirmText}
-                    onChange={(e) => setUninstallState((prev) => ({ ...prev, confirmText: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUninstallState({ phase: "idle", confirmText: "" })}>
+            <AlertDialogCancel onClick={() => setUninstallState({ phase: "idle" })}>
               {uninstallState.phase === "done" ? "Close" : "Cancel"}
             </AlertDialogCancel>
             {uninstallState.phase !== "done" && (
               <AlertDialogAction
                 onClick={handleUninstallConfirm}
-                disabled={uninstallState.phase === "deleting" || uninstallState.confirmText !== "uninstall"}
+                disabled={uninstallState.phase === "deleting"}
               >
                 {uninstallState.phase === "deleting" && <Loader2 className="w-4 h-4 animate-spin" />}
                 Delete All
