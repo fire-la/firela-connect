@@ -49,7 +49,7 @@ export function PlaidConnectPage() {
         const url = sessionId
           ? `/api/oauth/plaid/link-token?session=${sessionId}`
           : "/api/oauth/plaid/link-token"
-        const res = await fetch(url)
+        const res = await apiFetch(url)
         const data: LinkTokenResponse = await res.json()
 
         if (data.success && data.linkToken) {
