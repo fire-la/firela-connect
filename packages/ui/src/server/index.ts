@@ -37,6 +37,10 @@ export type Env = {
   // Relay (optional: defaults to production relay)
   FIRELA_RELAY_URL?: string
   FIRELA_RELAY_API_KEY?: string
+  // Cloudflare management (optional: for upgrade/uninstall from UI)
+  CLOUDFLARE_API_TOKEN?: string
+  GITHUB_TOKEN?: string
+  APP_VERSION?: string
 }
 
 /**
@@ -130,6 +134,10 @@ app.route("/api/accounts", accountsRoutes)
 // Config routes (config management, system status, test endpoints)
 import { configRoutes } from "./routes/config.js"
 app.route("/api", configRoutes)
+
+// Cloudflare management routes (upgrade/uninstall from UI)
+import { cloudflareRoutes } from "./routes/cloudflare.js"
+app.route("/api/cloudflare", cloudflareRoutes)
 
 // ============================================================================
 // SPA Fallback - handled by Cloudflare Workers Assets
