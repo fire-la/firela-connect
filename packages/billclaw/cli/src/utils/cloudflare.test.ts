@@ -14,7 +14,6 @@ import {
   verifyCloudflareAuth,
   parseWranglerToml,
   getPackagePath,
-  type CloudflareResources,
 } from "./cloudflare.js"
 
 describe("cloudflare utilities", () => {
