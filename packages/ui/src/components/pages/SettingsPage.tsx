@@ -50,6 +50,11 @@ export function SettingsPage() {
   // Cloudflare upgrade/uninstall state
   const [cfVersion, setCfVersion] = useState<{ current: string; latest: string | null } | null>(null)
   const [upgrading, setUpgrading] = useState(false)
+  const [cfApiTokenInput, setCfApiTokenInput] = useState("")
+  const [cfTokenSaving, setCfTokenSaving] = useState(false)
+  const [cfTokenConfigured, setCfTokenConfigured] = useState(false)
+  const [cfTokenSource, setCfTokenSource] = useState<string | null>(null)
+  const [showCfToken, setShowCfToken] = useState(false)
   const [uninstallState, setUninstallState] = useState<{
     phase: "idle" | "enumerating" | "confirming" | "deleting" | "done"
     resources?: { workers: any[]; databases: any[]; kvNamespaces: any[] }
@@ -85,10 +90,23 @@ export function SettingsPage() {
 
   // Load Cloudflare version info on mount
   useEffect(() => {
-    fetch("/api/cloudflare/version")
+    apiFetch("/api/cloudflare/version")
       .then((r) => r.json())
       .then((json: any) => json.success && setCfVersion(json.data))
       .catch(() => {}) // silently fail -- buttons still work
+  }, [])
+
+  // Load Cloudflare API token status on mount
+  useEffect(() => {
+    apiFetch("/api/settings/cloudflare")
+      .then((r) => r.json())
+      .then((json: any) => {
+        if (json.success) {
+          setCfTokenConfigured(json.data.configured)
+          setCfTokenSource(json.data.source)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const handleClearCache = async () => {
@@ -205,6 +223,31 @@ export function SettingsPage() {
       toast.error(err instanceof Error ? err.message : "Failed to change password")
     } finally {
       setChangingPassword(false)
+    }
+  }
+
+  const handleSaveCfToken = async () => {
+    if (!cfApiTokenInput.trim()) return
+    setCfTokenSaving(true)
+    try {
+      const res = await apiFetch("/api/settings/cloudflare", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiToken: cfApiTokenInput.trim() }),
+      })
+      const json = await res.json() as { success?: boolean; error?: string }
+      if (json.success) {
+        toast.success("Cloudflare API token saved")
+        setCfApiTokenInput("")
+        setCfTokenConfigured(true)
+        setCfTokenSource("kv")
+      } else {
+        toast.error(json.error || "Failed to save token")
+      }
+    } catch {
+      toast.error("Failed to save token -- network error")
+    } finally {
+      setCfTokenSaving(false)
     }
   }
 
@@ -598,6 +641,64 @@ export function SettingsPage() {
               )}
             </div>
           )}
+
+          {/* Cloudflare API token configuration */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">API Token</span>
+              {cfTokenConfigured && (
+                <Badge variant="secondary" className="text-xs">
+                  {cfTokenSource === "env" ? "via env" : "configured"}
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showCfToken ? "text" : "password"}
+                  placeholder={cfTokenConfigured ? "Enter new token to update" : "Enter your Cloudflare API token"}
+                  value={cfApiTokenInput}
+                  onChange={(e) => setCfApiTokenInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveCfToken()}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCfToken(!showCfToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showCfToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSaveCfToken}
+                disabled={!cfApiTokenInput.trim() || cfTokenSaving}
+              >
+                {cfTokenSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                Save
+              </Button>
+            </div>
+            {!cfTokenConfigured && (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Required for Uninstall. Create a token with these permissions:</p>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  <li>Workers Scripts: Edit</li>
+                  <li>D1: Edit</li>
+                  <li>Workers KV Storage: Edit</li>
+                </ul>
+                <a
+                  href="https://dash.cloudflare.com/profile/api-tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  Create API Token &rarr;
+                </a>
+              </div>
+            )}
+          </div>
 
           {/* Action buttons */}
           <div className="flex items-center gap-2">

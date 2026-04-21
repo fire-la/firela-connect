@@ -14,8 +14,9 @@ import { z } from "zod"
 import { zValidator } from "@hono/zod-validator"
 import type { Env } from "../index.js"
 import { serverCache, CacheKeys } from "../lib/server-cache.js"
-import { RELAY_API_KEY_KEY, SETUP_PASSWORD_KEY } from "../constants.js"
+import { RELAY_API_KEY_KEY, SETUP_PASSWORD_KEY, CF_API_TOKEN_KEY } from "../constants.js"
 import { getRelayApiKey } from "../lib/relay-helpers.js"
+import { getCloudflareApiToken } from "../lib/cloudflare-helpers.js"
 import { maskApiKey } from "@firela/billclaw-core/relay"
 
 export const configRoutes = new Hono<{ Bindings: Env }>()
@@ -461,6 +462,68 @@ configRoutes.put(
         {
           success: false,
           error: error instanceof Error ? error.message : "Failed to save relay settings",
+        },
+        500,
+      )
+    }
+  },
+)
+
+// ============================================================================
+// Cloudflare API Token Settings
+// ============================================================================
+
+const cfApiTokenSchema = z.object({
+  apiToken: z.string().min(1, "Cloudflare API token is required"),
+})
+
+/**
+ * GET /api/settings/cloudflare
+ *
+ * Get current Cloudflare API token configuration (masked token).
+ */
+configRoutes.get("/settings/cloudflare", async (c) => {
+  try {
+    const cfToken = await getCloudflareApiToken(c.env)
+    return c.json({
+      success: true,
+      data: {
+        configured: !!cfToken,
+        tokenMasked: cfToken ? maskApiKey(cfToken) : null,
+        source: c.env.CLOUDFLARE_API_TOKEN ? "env" : (cfToken ? "kv" : null),
+      },
+    })
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get Cloudflare settings",
+      },
+      500,
+    )
+  }
+})
+
+/**
+ * PUT /api/settings/cloudflare
+ *
+ * Save Cloudflare API token to KV storage.
+ * This allows users to configure the CF API token via the UI
+ * without needing Cloudflare Dashboard or wrangler CLI access.
+ */
+configRoutes.put(
+  "/settings/cloudflare",
+  zValidator("json", cfApiTokenSchema),
+  async (c) => {
+    try {
+      const { apiToken } = c.req.valid("json")
+      await c.env.CONFIG.put(CF_API_TOKEN_KEY, apiToken)
+      return c.json({ success: true })
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to save Cloudflare settings",
         },
         500,
       )
