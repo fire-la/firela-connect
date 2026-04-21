@@ -13,7 +13,7 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 import { verifyCloudflareAuth, getPackagePath } from "../utils/cloudflare.js"
 import { Spinner } from "../utils/progress.js"
-import { success, error } from "../utils/format.js"
+import { success } from "../utils/format.js"
 
 /**
  * Spawn a command and return a promise that resolves on success or rejects on failure
@@ -77,7 +77,7 @@ function getMonorepoRoot(): string {
  * 3. Deploy UI Worker
  * 4. Deploy Bot Worker
  */
-async function runUpgrade(context: CliContext): Promise<void> {
+async function runUpgrade(_context: CliContext): Promise<void> {
   // Step 1: Verify authentication
   await Spinner.withLoading(
     "Verifying Cloudflare authentication...",

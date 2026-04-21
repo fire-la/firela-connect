@@ -15,14 +15,6 @@ vi.mock("../utils/cloudflare.js", () => ({
 }))
 
 // Mock Spinner
-const mockSpinner = {
-  start: vi.fn().mockReturnThis(),
-  succeed: vi.fn().mockReturnThis(),
-  fail: vi.fn().mockReturnThis(),
-  update: vi.fn().mockReturnThis(),
-  stop: vi.fn().mockReturnThis(),
-}
-
 vi.mock("../utils/progress.js", () => ({
   Spinner: {
     withLoading: vi.fn(async (_text: string, fn: () => Promise<unknown>) => {
