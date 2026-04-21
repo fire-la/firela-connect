@@ -10,6 +10,8 @@ import {
   cfApiFetch,
   verifyCloudflareAuth,
   getAccountId,
+  getLatestRelease,
+  downloadReleaseAsset,
   enumerateResources,
   deleteResources,
 } from "../lib/cloudflare-api.js"
@@ -211,5 +213,77 @@ describe("deleteResources", () => {
 
     expect(result).toEqual([])
     expect(mockFetch).not.toHaveBeenCalled()
+  })
+})
+
+describe("getLatestRelease", () => {
+  it("returns release with tag name and assets", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          tag_name: "v1.2.3",
+          assets: [
+            { id: 100, name: "firela-connect-worker.js", browser_download_url: "https://example.com/worker.js" },
+            { id: 101, name: "source.tar.gz", browser_download_url: "https://example.com/source.tar.gz" },
+          ],
+        }),
+    })
+
+    const result = await getLatestRelease("gh-token")
+
+    expect(result.tagName).toBe("v1.2.3")
+    expect(result.assets).toEqual([
+      { id: 100, name: "firela-connect-worker.js" },
+      { id: 101, name: "source.tar.gz" },
+    ])
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.github.com/repos/fire-la/firela-connect/releases/latest",
+      expect.objectContaining({
+        headers: {
+          Authorization: "Bearer gh-token",
+          Accept: "application/vnd.github+json",
+        },
+      }),
+    )
+  })
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 403 })
+
+    await expect(getLatestRelease("gh-token")).rejects.toThrow(
+      "Failed to fetch latest release: HTTP 403",
+    )
+  })
+})
+
+describe("downloadReleaseAsset", () => {
+  it("returns asset content as text", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: () => Promise.resolve("const workerCode = 'hello';"),
+    })
+
+    const result = await downloadReleaseAsset("gh-token", 42)
+
+    expect(result).toBe("const workerCode = 'hello';")
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.github.com/repos/fire-la/firela-connect/releases/assets/42",
+      expect.objectContaining({
+        headers: {
+          Authorization: "Bearer gh-token",
+          Accept: "application/octet-stream",
+        },
+        redirect: "follow",
+      }),
+    )
+  })
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+
+    await expect(downloadReleaseAsset("gh-token", 999)).rejects.toThrow(
+      "Failed to download release asset: HTTP 404",
+    )
   })
 })

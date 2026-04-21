@@ -35,11 +35,12 @@ export async function cfApiFetch(
     headers["Content-Type"] = contentType
   }
 
-  const response = await fetch(`${CF_API_BASE}${path}`, {
-    method,
-    headers,
-    body,
-  })
+  const options: RequestInit = { method, headers }
+  if (body !== undefined) {
+    options.body = body
+  }
+
+  const response = await fetch(`${CF_API_BASE}${path}`, options)
 
   const responseBody = (await response.json()) as {
     success: boolean

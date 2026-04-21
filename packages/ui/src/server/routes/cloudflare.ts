@@ -256,7 +256,8 @@ cloudflareRoutes.post(
     const { workers, databases, kvNamespaces } = c.req.valid("json")
 
     // Delete non-Worker resources first, then Workers last
-    // This ensures the API response is sent before the Worker is deleted
+    // Workers are deleted last so the current request can complete
+    // (CF Workers runtime keeps in-flight handlers running after script deletion)
     const nonWorkerResults = await deleteResources(cfToken, accountId, {
       databases,
       kvNamespaces,
