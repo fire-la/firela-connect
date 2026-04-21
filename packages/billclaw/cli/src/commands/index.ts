@@ -44,4 +44,5 @@ export const allCommands = [
   { ui: () => import("./ui.js").then((m) => m.uiCommand) },
   { import: () => import("./import.js").then((m) => m.importCommand) },
   { discover: () => import("./discover.js").then((m) => m.discoverCommand) },
+  { upgrade: () => import("./upgrade.js").then((m) => m.upgradeCommand) },
 ]
