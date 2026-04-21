@@ -61,7 +61,7 @@ function spawnCommand(
 /**
  * Get monorepo root directory
  *
- * Resolves 3 levels up from commands/ directory:
+ * Resolves 5 levels up from commands/ directory:
  * commands/ -> src/ -> cli/ -> billclaw/ -> packages/ -> monorepo root
  */
 function getMonorepoRoot(): string {
