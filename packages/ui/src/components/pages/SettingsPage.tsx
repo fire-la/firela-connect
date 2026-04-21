@@ -216,7 +216,7 @@ export function SettingsPage() {
       if (json.success) {
         toast.success(`Upgraded to ${json.data!.version}`)
         // Refresh version info
-        const versionRes = await fetch("/api/cloudflare/version")
+        const versionRes = await apiFetch("/api/cloudflare/version")
         const versionJson = await versionRes.json() as { success?: boolean; data?: { current: string; latest: string | null } }
         if (versionJson.success) setCfVersion(versionJson.data!)
       } else {
