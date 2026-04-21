@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "sonner"
-import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database, Save, Eye, EyeOff, KeyRound } from "lucide-react"
+import { Settings, RefreshCw, AlertCircle, CheckCircle, Loader2, Radio, Database, Save, Eye, EyeOff, KeyRound, ArrowUpCircle, Trash2 } from "lucide-react"
 import { SERVICE_CONFIGS, type ServiceState, type ServiceId, type ServicesApiResponse } from "@/types/services"
 import { apiFetch } from "@/lib/auth"
 import { useRelayStore } from "@/stores/relayStore"
@@ -16,6 +16,16 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export function SettingsPage() {
   const [serviceState, setServiceState] = useState<ServiceState | null>(null)
@@ -36,6 +46,17 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [changingPassword, setChangingPassword] = useState(false)
+
+  // Cloudflare upgrade/uninstall state
+  const [cfVersion, setCfVersion] = useState<{ current: string; latest: string | null } | null>(null)
+  const [upgrading, setUpgrading] = useState(false)
+  const [uninstallState, setUninstallState] = useState<{
+    phase: "idle" | "enumerating" | "confirming" | "deleting" | "done"
+    resources?: { workers: any[]; databases: any[]; kvNamespaces: any[] }
+    accountId?: string
+    confirmText: string
+    results?: Array<{ resource: string; type: string; success: boolean; error?: string }>
+  }>({ phase: "idle", confirmText: "" })
 
   // Load service state on mount
   useEffect(() => {
@@ -60,6 +81,14 @@ export function SettingsPage() {
 
   useEffect(() => {
     loadCacheStats()
+  }, [])
+
+  // Load Cloudflare version info on mount
+  useEffect(() => {
+    fetch("/api/cloudflare/version")
+      .then((r) => r.json())
+      .then((json: any) => json.success && setCfVersion(json.data))
+      .catch(() => {}) // silently fail -- buttons still work
   }, [])
 
   const handleClearCache = async () => {
@@ -176,6 +205,77 @@ export function SettingsPage() {
       toast.error(err instanceof Error ? err.message : "Failed to change password")
     } finally {
       setChangingPassword(false)
+    }
+  }
+
+  const handleUpgrade = async () => {
+    setUpgrading(true)
+    try {
+      const res = await apiFetch("/api/cloudflare/upgrade", { method: "POST" })
+      const json = await res.json() as { success?: boolean; data?: { version: string }; error?: string }
+      if (json.success) {
+        toast.success(`Upgraded to ${json.data!.version}`)
+        // Refresh version info
+        const versionRes = await fetch("/api/cloudflare/version")
+        const versionJson = await versionRes.json() as { success?: boolean; data?: { current: string; latest: string | null } }
+        if (versionJson.success) setCfVersion(versionJson.data!)
+      } else {
+        toast.error(json.error || "Upgrade failed")
+      }
+    } catch {
+      toast.error("Upgrade failed -- network error")
+    } finally {
+      setUpgrading(false)
+    }
+  }
+
+  const handleUninstallClick = async () => {
+    setUninstallState((prev) => ({ ...prev, phase: "enumerating" }))
+    try {
+      const res = await apiFetch("/api/cloudflare/uninstall/enumerate", { method: "POST" })
+      const json = await res.json() as { success?: boolean; data?: { resources: any; accountId: string }; error?: string }
+      if (json.success) {
+        setUninstallState((prev) => ({
+          ...prev,
+          phase: "confirming",
+          resources: json.data!.resources,
+          accountId: json.data!.accountId,
+        }))
+      } else {
+        toast.error(json.error || "Failed to enumerate resources")
+        setUninstallState({ phase: "idle", confirmText: "" })
+      }
+    } catch {
+      toast.error("Failed to enumerate resources -- network error")
+      setUninstallState({ phase: "idle", confirmText: "" })
+    }
+  }
+
+  const handleUninstallConfirm = async () => {
+    setUninstallState((prev) => ({ ...prev, phase: "deleting" }))
+    try {
+      const res = await apiFetch("/api/cloudflare/uninstall/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workers: uninstallState.resources?.workers?.map((w: any) => w.id),
+          databases: uninstallState.resources?.databases?.map((d: any) => d.id),
+          kvNamespaces: uninstallState.resources?.kvNamespaces?.map((k: any) => k.id),
+        }),
+      })
+      const json = await res.json() as { success?: boolean; data?: { results: Array<{ resource: string; type: string; success: boolean; error?: string }> }; error?: string }
+      if (json.success) {
+        const succeeded = json.data!.results.filter((r) => r.success).length
+        const total = json.data!.results.length
+        setUninstallState((prev) => ({ ...prev, phase: "done", results: json.data!.results }))
+        toast.success(`Uninstalled: ${succeeded}/${total} resources deleted`)
+      } else {
+        toast.error(json.error || "Uninstall failed")
+        setUninstallState({ phase: "idle", confirmText: "" })
+      }
+    } catch {
+      toast.error("Uninstall failed -- network error (Worker may have been deleted)")
+      setUninstallState({ phase: "idle", confirmText: "" })
     }
   }
 
@@ -473,6 +573,152 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Cloudflare Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ArrowUpCircle className="w-5 h-5" />
+            Cloudflare Deployment
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Version display */}
+          {cfVersion && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Current version</span>
+                <span className="text-sm text-muted-foreground">{cfVersion.current}</span>
+              </div>
+              {cfVersion.latest && cfVersion.latest !== cfVersion.current && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Latest version</span>
+                  <Badge variant="secondary">{cfVersion.latest}</Badge>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleUpgrade}
+              disabled={upgrading}
+            >
+              {upgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpCircle className="w-4 h-4" />}
+              Upgrade
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleUninstallClick}
+              disabled={uninstallState.phase !== "idle"}
+            >
+              {uninstallState.phase === "enumerating" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Uninstall
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Uninstall Confirmation Dialog */}
+      <AlertDialog
+        open={uninstallState.phase === "confirming" || uninstallState.phase === "deleting" || uninstallState.phase === "done"}
+        onOpenChange={(open) => {
+          if (!open) setUninstallState({ phase: "idle", confirmText: "" })
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Uninstall Firela Connect</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-left">
+                {/* Resource list */}
+                {uninstallState.resources && (
+                  <div className="space-y-2">
+                    {uninstallState.resources.workers.length > 0 && (
+                      <div>
+                        <p className="font-medium text-sm">Workers:</p>
+                        <ul className="text-sm text-muted-foreground ml-4 list-disc">
+                          {uninstallState.resources.workers.map((w: any) => (
+                            <li key={w.id}>{w.id}{w.title ? ` (${w.title})` : ""}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {uninstallState.resources.databases.length > 0 && (
+                      <div>
+                        <p className="font-medium text-sm">D1 Databases:</p>
+                        <ul className="text-sm text-muted-foreground ml-4 list-disc">
+                          {uninstallState.resources.databases.map((d: any) => (
+                            <li key={d.id}>{d.name} ({d.id})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {uninstallState.resources.kvNamespaces.length > 0 && (
+                      <div>
+                        <p className="font-medium text-sm">KV Namespaces:</p>
+                        <ul className="text-sm text-muted-foreground ml-4 list-disc">
+                          {uninstallState.resources.kvNamespaces.map((k: any) => (
+                            <li key={k.id}>{k.title} ({k.id})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Results summary after deletion */}
+                {uninstallState.phase === "done" && uninstallState.results && (
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">Results:</p>
+                    <ul className="text-sm ml-4 list-disc">
+                      {uninstallState.results.map((r, i) => (
+                        <li key={i} className={r.success ? "text-green-600" : "text-destructive"}>
+                          {r.type}: {r.resource} -- {r.success ? "deleted" : r.error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Warning */}
+                {uninstallState.phase !== "done" && (
+                  <p className="text-sm text-destructive">
+                    This will permanently delete all listed Cloudflare resources. The running Worker will be deleted last.
+                  </p>
+                )}
+
+                {/* Type-to-confirm input */}
+                {uninstallState.phase === "confirming" && (
+                  <input
+                    type="text"
+                    placeholder='Type "uninstall" to confirm'
+                    value={uninstallState.confirmText}
+                    onChange={(e) => setUninstallState((prev) => ({ ...prev, confirmText: e.target.value }))}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUninstallState({ phase: "idle", confirmText: "" })}>
+              {uninstallState.phase === "done" ? "Close" : "Cancel"}
+            </AlertDialogCancel>
+            {uninstallState.phase !== "done" && (
+              <AlertDialogAction
+                onClick={handleUninstallConfirm}
+                disabled={uninstallState.phase === "deleting" || uninstallState.confirmText !== "uninstall"}
+              >
+                {uninstallState.phase === "deleting" && <Loader2 className="w-4 h-4 animate-spin" />}
+                Delete All
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Info section */}
       {!loading && serviceState && (
