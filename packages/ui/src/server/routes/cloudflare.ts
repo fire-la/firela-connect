@@ -22,6 +22,7 @@ import {
   enumerateResources,
   deleteResources,
 } from "../lib/cloudflare-api.js"
+import { getCloudflareApiToken } from "../lib/cloudflare-helpers.js"
 
 /**
  * Worker script name (matches wrangler.toml `name` field)
@@ -49,18 +50,12 @@ export const cloudflareRoutes = new Hono<{ Bindings: Env }>()
  * via CF API PUT .../content (preserves all bindings).
  */
 cloudflareRoutes.post("/upgrade", async (c) => {
-  const cfToken = c.env.CLOUDFLARE_API_TOKEN
+  const cfToken = await getCloudflareApiToken(c.env)
   const ghToken = c.env.GITHUB_TOKEN
 
   if (!cfToken) {
     return c.json(
       { success: false, error: "Cloudflare API token not configured" },
-      400,
-    )
-  }
-  if (!ghToken) {
-    return c.json(
-      { success: false, error: "GitHub token not configured" },
       400,
     )
   }
@@ -88,7 +83,7 @@ cloudflareRoutes.post("/upgrade", async (c) => {
     )
   }
 
-  // Get latest release
+  // Get latest release (ghToken is optional — anonymous access works for public repos)
   let release: { tagName: string; assets: Array<{ id: number; name: string }> }
   try {
     release = await getLatestRelease(ghToken)
@@ -113,7 +108,7 @@ cloudflareRoutes.post("/upgrade", async (c) => {
     )
   }
 
-  // Download bundle
+  // Download bundle (ghToken is optional)
   let bundleContent: string
   try {
     bundleContent = await downloadReleaseAsset(ghToken, bundleAsset.id)
@@ -165,7 +160,7 @@ cloudflareRoutes.post("/upgrade", async (c) => {
  * Enumerates all firela-related Workers, D1 databases, and KV namespaces.
  */
 cloudflareRoutes.post("/uninstall/enumerate", async (c) => {
-  const cfToken = c.env.CLOUDFLARE_API_TOKEN
+  const cfToken = await getCloudflareApiToken(c.env)
   if (!cfToken) {
     return c.json(
       { success: false, error: "Cloudflare API token not configured" },
@@ -222,7 +217,7 @@ cloudflareRoutes.post(
   "/uninstall/delete",
   zValidator("json", deleteSchema),
   async (c) => {
-    const cfToken = c.env.CLOUDFLARE_API_TOKEN
+    const cfToken = await getCloudflareApiToken(c.env)
     if (!cfToken) {
       return c.json(
         { success: false, error: "Cloudflare API token not configured" },
@@ -285,17 +280,9 @@ cloudflareRoutes.post(
  */
 cloudflareRoutes.get("/version", async (c) => {
   const currentVersion = c.env.APP_VERSION ?? "0.0.2"
-  const ghToken = c.env.GITHUB_TOKEN
-
-  if (!ghToken) {
-    return c.json({
-      success: true,
-      data: { current: currentVersion, latest: null },
-    })
-  }
 
   try {
-    const release = await getLatestRelease(ghToken)
+    const release = await getLatestRelease(c.env.GITHUB_TOKEN)
     return c.json({
       success: true,
       data: { current: currentVersion, latest: release.tagName },

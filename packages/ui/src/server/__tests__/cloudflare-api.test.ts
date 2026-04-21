@@ -255,6 +255,34 @@ describe("getLatestRelease", () => {
       "Failed to fetch latest release: HTTP 403",
     )
   })
+
+  it("works without token (anonymous access)", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          tag_name: "v1.2.3",
+          assets: [
+            { id: 100, name: "firela-connect-worker.js", browser_download_url: "https://example.com/worker.js" },
+          ],
+        }),
+    })
+
+    const result = await getLatestRelease()
+
+    expect(result.tagName).toBe("v1.2.3")
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.github.com/repos/fire-la/firela-connect/releases/latest",
+      expect.objectContaining({
+        headers: {
+          Accept: "application/vnd.github+json",
+        },
+      }),
+    )
+    // Verify no Authorization header was sent
+    const callArgs = mockFetch.mock.calls[0][1] as { headers: Record<string, string> }
+    expect(callArgs.headers).not.toHaveProperty("Authorization")
+  })
 })
 
 describe("downloadReleaseAsset", () => {
@@ -285,5 +313,28 @@ describe("downloadReleaseAsset", () => {
     await expect(downloadReleaseAsset("gh-token", 999)).rejects.toThrow(
       "Failed to download release asset: HTTP 404",
     )
+  })
+
+  it("works without token (anonymous access)", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: () => Promise.resolve("const workerCode = 'hello';"),
+    })
+
+    const result = await downloadReleaseAsset(undefined, 42)
+
+    expect(result).toBe("const workerCode = 'hello';")
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.github.com/repos/fire-la/firela-connect/releases/assets/42",
+      expect.objectContaining({
+        headers: {
+          Accept: "application/octet-stream",
+        },
+        redirect: "follow",
+      }),
+    )
+    // Verify no Authorization header was sent
+    const callArgs = mockFetch.mock.calls[0][1] as { headers: Record<string, string> }
+    expect(callArgs.headers).not.toHaveProperty("Authorization")
   })
 })

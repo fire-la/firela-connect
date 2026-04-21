@@ -93,18 +93,20 @@ export async function getAccountId(token: string): Promise<string> {
  * @returns Release info with tag name and assets
  * @throws Error if fetch fails
  */
-export async function getLatestRelease(ghToken: string): Promise<{
+export async function getLatestRelease(ghToken?: string): Promise<{
   tagName: string
   assets: Array<{ id: number; name: string }>
 }> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+  }
+  if (ghToken) {
+    headers.Authorization = `Bearer ${ghToken}`
+  }
+
   const response = await fetch(
     `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
-    {
-      headers: {
-        Authorization: `Bearer ${ghToken}`,
-        Accept: "application/vnd.github+json",
-      },
-    },
+    { headers },
   )
 
   if (!response.ok) {
@@ -135,18 +137,19 @@ export async function getLatestRelease(ghToken: string): Promise<{
  * @throws Error if download fails
  */
 export async function downloadReleaseAsset(
-  ghToken: string,
+  ghToken: string | undefined,
   assetId: number,
 ): Promise<string> {
+  const headers: Record<string, string> = {
+    Accept: "application/octet-stream",
+  }
+  if (ghToken) {
+    headers.Authorization = `Bearer ${ghToken}`
+  }
+
   const response = await fetch(
     `https://api.github.com/repos/${GITHUB_REPO}/releases/assets/${assetId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${ghToken}`,
-        Accept: "application/octet-stream",
-      },
-      redirect: "follow",
-    },
+    { headers, redirect: "follow" },
   )
 
   if (!response.ok) {
