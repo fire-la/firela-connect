@@ -88,12 +88,20 @@ app.route("/webhook", webhookRoutes)
 import { relayRoutes } from "./routes/relay.js"
 app.route("/api/relay", relayRoutes)
 
+// OAuth routes (accessible without JWT for OAuth callback flows)
+import plaidRoutes from "./routes/oauth/plaid.js"
+import credentialsRoutes from "./routes/oauth/credentials.js"
+import { gocardlessRoutes } from "./routes/oauth/gocardless.js"
+app.route("/api/oauth/plaid", plaidRoutes)
+app.route("/api/connect", credentialsRoutes)
+app.route("/api/oauth/gocardless", gocardlessRoutes)
+
 // ============================================================================
 // Protected Routes (JWT authentication required)
 // ============================================================================
 
 // Apply JWT authentication middleware to all /api/* routes
-// Note: /api/relay/* is registered above and skips this middleware
+// Note: /api/relay/* and /api/oauth/* are registered above and skip this middleware
 app.use("/api/*", authMiddleware)
 
 // Apply service toggle middleware — blocks routes for disabled services (503)
@@ -102,16 +110,6 @@ app.use("/api/*", serviceToggleMiddleware())
 // ============================================================================
 // API Routes
 // ============================================================================
-
-// OAuth routes
-import plaidRoutes from "./routes/oauth/plaid.js"
-import credentialsRoutes from "./routes/oauth/credentials.js"
-import { gocardlessRoutes } from "./routes/oauth/gocardless.js"
-
-// Register OAuth routes
-app.route("/api/oauth/plaid", plaidRoutes)
-app.route("/api/connect", credentialsRoutes)
-app.route("/api/oauth/gocardless", gocardlessRoutes)
 
 // Cache routes (statistics and management)
 import { cacheRoutes } from "./routes/cache.js"
