@@ -45,4 +45,5 @@ export const allCommands = [
   { import: () => import("./import.js").then((m) => m.importCommand) },
   { discover: () => import("./discover.js").then((m) => m.discoverCommand) },
   { upgrade: () => import("./upgrade.js").then((m) => m.upgradeCommand) },
+  { uninstall: () => import("./uninstall.js").then((m) => m.uninstallCommand) },
 ]
