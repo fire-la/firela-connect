@@ -5,7 +5,7 @@
  * requisition (OAuth) flow, and status polling via firela-relay.
  *
  * All requests are proxied through GoCardlessRelayClient from the core package,
- * keeping FIRELA_RELAY_API_KEY server-side.
+ * keeping the relay API key server-side (stored in KV).
  *
  * SECURITY:
  * - access_token is always passed in request body, never in URL parameters
@@ -34,7 +34,7 @@ async function getGoCardlessClient(env: Env): Promise<GoCardlessRelayClient> {
   const apiKey = await getRelayApiKey(env)
   if (!apiKey) {
     throw new Error(
-      "Relay API key not configured. Set it in Settings or via FIRELA_RELAY_API_KEY environment variable.",
+      "Relay API key not configured. Set it in Settings.",
     )
   }
 

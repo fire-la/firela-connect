@@ -24,7 +24,7 @@ export const webhookRoutes = new Hono<{ Bindings: Env }>()
  * verification keys from the relay JWK proxy endpoint. This enables
  * production Plaid webhook verification through the relay service.
  *
- * @param env - Server environment bindings with FIRELA_RELAY_URL and FIRELA_RELAY_API_KEY
+ * @param env - Server environment bindings with CONFIG KV namespace
  * @returns PlaidWebhookVerifier instance with real JWK fetch
  */
 export async function createPlaidVerifier(env: Env): Promise<PlaidWebhookVerifier> {

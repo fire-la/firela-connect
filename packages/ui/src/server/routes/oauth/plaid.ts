@@ -3,7 +3,7 @@
  *
  * Provides HTTP endpoints for Plaid Link OAuth flow via firela-relay.
  * All Plaid API calls are proxied through RelayPlaidClient, keeping
- * FIRELA_RELAY_API_KEY server-side.
+ * the relay API key server-side (stored in KV).
  *
  * Migrated from Express (packages/connect/src/routes/plaid.ts) to Hono,
  * then updated from Direct mode to Relay mode.
@@ -37,7 +37,7 @@ async function getPlaidRelayClient(env: Env): Promise<RelayPlaidClient> {
   const apiKey = await getRelayApiKey(env)
   if (!apiKey) {
     throw new Error(
-      "Relay API key not configured. Set it in Settings or via FIRELA_RELAY_API_KEY environment variable.",
+      "Relay API key not configured. Set it in Settings.",
     )
   }
 

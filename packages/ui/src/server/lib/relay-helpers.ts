@@ -2,11 +2,7 @@
  * Relay Helpers
  *
  * Utilities for relay API key management with KV-backed storage.
- * The relay API key can be configured via:
- * 1. Environment variable (FIRELA_RELAY_API_KEY)
- * 2. KV storage (set via UI settings page)
- *
- * Priority: Environment variable > KV stored value.
+ * The relay API key is configured via the Settings UI and stored in KV.
  *
  * @packageDocumentation
  */
@@ -14,12 +10,11 @@
 import { RELAY_API_KEY_KEY } from "../constants.js"
 
 /**
- * Get relay API key from env var or KV.
+ * Get relay API key from KV storage.
  *
- * Returns null if neither source has a value.
+ * Returns null if not configured.
  */
-export async function getRelayApiKey(env: { FIRELA_RELAY_API_KEY?: string; CONFIG: KVNamespace }): Promise<string | null> {
-  if (env.FIRELA_RELAY_API_KEY) return env.FIRELA_RELAY_API_KEY
+export async function getRelayApiKey(env: { CONFIG: KVNamespace }): Promise<string | null> {
   const stored = await env.CONFIG.get(RELAY_API_KEY_KEY)
   return stored || null
 }

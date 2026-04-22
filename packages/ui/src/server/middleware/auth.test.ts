@@ -21,12 +21,11 @@ function createTestApp(envOverrides?: Partial<Env>) {
 
   const testEnv: Env = {
     DB: {} as D1Database,
-    CONFIG: {} as KVNamespace,
-    PLAID_CLIENT_ID: "test-client-id",
-    PLAID_SECRET: "test-secret",
+    CONFIG: {
+      get: vi.fn().mockResolvedValue(null),
+      put: vi.fn().mockResolvedValue(undefined),
+    } as unknown as KVNamespace,
     PLAID_ENV: "sandbox",
-    PLAID_WEBHOOK_SECRET: "test-webhook-secret",
-    JWT_SECRET: "test-jwt-secret-for-testing",
     ...envOverrides,
   }
 

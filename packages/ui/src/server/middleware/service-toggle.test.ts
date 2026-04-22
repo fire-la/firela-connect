@@ -38,11 +38,7 @@ function createTestApp(mockKV: ReturnType<typeof createMockKV>, envVars?: Partia
   const testEnv: Env = {
     DB: {} as D1Database,
     CONFIG: mockKV,
-    PLAID_CLIENT_ID: "",
-    PLAID_SECRET: "",
     PLAID_ENV: "sandbox",
-    PLAID_WEBHOOK_SECRET: "",
-    JWT_SECRET: "",
     BILLCLAW_ENABLED: "true",
     FIRELA_BOT_ENABLED: "true",
     ...envVars,

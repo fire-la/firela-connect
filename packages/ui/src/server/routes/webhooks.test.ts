@@ -43,14 +43,12 @@ import type { RelayJwkProxyResponse } from "@firela/billclaw-core/relay"
 
 const mockEnv = {
   DB: {} as unknown as D1Database,
-  CONFIG: {} as unknown as KVNamespace,
-  PLAID_CLIENT_ID: "test-client-id",
-  PLAID_SECRET: "test-secret",
+  CONFIG: {
+    get: vi.fn().mockResolvedValue("relay-api-key-12345"),
+  } as unknown as KVNamespace,
   PLAID_ENV: "sandbox",
-  PLAID_WEBHOOK_SECRET: "test-webhook-secret",
   JWT_SECRET: "test-jwt-secret",
   FIRELA_RELAY_URL: "https://relay.example.com",
-  FIRELA_RELAY_API_KEY: "relay-api-key-12345",
 }
 
 describe("createPlaidVerifier", () => {
@@ -58,12 +56,12 @@ describe("createPlaidVerifier", () => {
     vi.clearAllMocks()
   })
 
-  it("creates RelayClient with env credentials", async () => {
+  it("creates RelayClient with KV credentials", async () => {
     await createPlaidVerifier(mockEnv)
 
     expect(RelayClient).toHaveBeenCalledWith({
       url: mockEnv.FIRELA_RELAY_URL,
-      apiKey: mockEnv.FIRELA_RELAY_API_KEY,
+      apiKey: "relay-api-key-12345",
     })
   })
 

@@ -23,22 +23,14 @@ export type Env = {
   DB: D1Database
   CONFIG: KVNamespace
   ASSETS?: Fetcher
-  // Plaid (optional: self-hosted users set via Dashboard or UI)
-  PLAID_CLIENT_ID?: string
-  PLAID_SECRET?: string
+  // Plaid (optional: sandbox/production toggle)
   PLAID_ENV?: string
-  PLAID_WEBHOOK_SECRET?: string
-  // JWT auth (optional: skips auth when not set)
-  JWT_SECRET?: string
-  SETUP_PASSWORD?: string
   // Service toggles (optional: default true)
   BILLCLAW_ENABLED?: string
   FIRELA_BOT_ENABLED?: string
   // Relay (optional: defaults to production relay)
   FIRELA_RELAY_URL?: string
-  FIRELA_RELAY_API_KEY?: string
   // Cloudflare management (optional: for upgrade/uninstall from UI)
-  CLOUDFLARE_API_TOKEN?: string
   GITHUB_TOKEN?: string
   APP_VERSION?: string
 }

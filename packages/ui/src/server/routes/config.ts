@@ -428,7 +428,7 @@ configRoutes.get("/settings/relay", async (c) => {
       data: {
         configured: !!apiKey,
         apiKeyMasked: apiKey ? maskApiKey(apiKey) : null,
-        source: c.env.FIRELA_RELAY_API_KEY ? "env" : (apiKey ? "kv" : null),
+        source: apiKey ? "kv" : null,
       },
     })
   } catch (error) {
@@ -490,7 +490,7 @@ configRoutes.get("/settings/cloudflare", async (c) => {
       data: {
         configured: !!cfToken,
         tokenMasked: cfToken ? maskApiKey(cfToken) : null,
-        source: c.env.CLOUDFLARE_API_TOKEN ? "env" : (cfToken ? "kv" : null),
+        source: cfToken ? "kv" : null,
       },
     })
   } catch (error) {
@@ -552,17 +552,6 @@ configRoutes.put(
   async (c) => {
     try {
       const { currentPassword, newPassword } = c.req.valid("json")
-
-      // If password comes from env var, UI cannot change it
-      if (c.env.SETUP_PASSWORD) {
-        return c.json(
-          {
-            success: false,
-            error: "Password is managed via SETUP_PASSWORD environment variable",
-          },
-          403,
-        )
-      }
 
       const storedPassword = await c.env.CONFIG.get(SETUP_PASSWORD_KEY) as string | null
       if (!storedPassword || currentPassword !== storedPassword) {

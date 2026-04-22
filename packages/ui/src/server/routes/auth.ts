@@ -56,8 +56,8 @@ authRoutes.post("/setup", zValidator("json", setupRequestSchema), async (c) => {
   // Get or auto-generate JWT secret
   const jwtSecret = await ensureAuthSecret(env)
 
-  // Password check: env var > KV stored > first-time auto-lock
-  const storedPassword = env.SETUP_PASSWORD || await env.CONFIG.get(SETUP_PASSWORD_KEY) as string | null
+  // Password check: KV stored > first-time auto-lock
+  const storedPassword = await env.CONFIG.get(SETUP_PASSWORD_KEY) as string | null
   if (!storedPassword) {
     // First call: accept any password and store it for future verification
     await env.CONFIG.put(SETUP_PASSWORD_KEY, password)

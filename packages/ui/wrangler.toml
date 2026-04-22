@@ -32,12 +32,8 @@ binding = "CONFIG"
 id = "59865e1e3cb34909ade239a6423f7fec"
 
 # Environment variables: none required (zero-config deploy)
-# All defaults are handled in code via constants.ts
-# Secrets are configured post-deploy via Cloudflare Dashboard:
-# - FIRELA_RELAY_API_KEY: Required for Relay mode (default)
-# - JWT_SECRET: Required for API authentication
-# - PLAID_CLIENT_ID / PLAID_SECRET: Optional, for self-hosted Plaid mode
-# - SETUP_PASSWORD: Optional, for initial JWT token setup
+# All secrets are auto-generated and stored in KV on first run.
+# No Cloudflare Dashboard configuration needed.
 
 # Development settings
 [dev]
